@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { validateRequest } from '@/lib/auth/validate'
-import { rateLimitPublic } from '@/lib/rate-limit'
+import { rateLimitAuth } from '@/lib/rate-limit'
 
 /**
  * GET /api/corporate/[id]/employees
- * Returns users associated with this corporate account.
- * The `id` param is the corporate admin's user ID.
+ * Returns active corporate employees for this corporate admin.
+ * Uses the CorporateEmployee join table.
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const limited = rateLimitPublic(request)
+  const limited = rateLimitAuth(request)
   if (limited) return limited
 
   const auth = validateRequest(request)
@@ -26,41 +26,48 @@ export async function GET(
   }
 
   try {
-    // Get the corporate admin profile to find company name
-    const corporateProfile = await prisma.corporateAdminProfile.findUnique({
-      where: { userId: id },
-      select: { id: true, companyName: true },
-    })
-
-    if (!corporateProfile) {
-      return NextResponse.json({ success: false, message: 'Corporate profile not found' }, { status: 404 })
-    }
-
-    // Find users whose address contains the company name (simple association)
-    // In a full implementation, this would use a CorporateEmployee join table
-    const employees = await prisma.user.findMany({
+    const employees = await prisma.corporateEmployee.findMany({
       where: {
-        userType: 'PATIENT',
-        address: { contains: corporateProfile.companyName, mode: 'insensitive' },
+        corporateAdminId: id,
+        status: 'active',
       },
       select: {
         id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        phone: true,
-        profileImage: true,
-        accountStatus: true,
-        createdAt: true,
+        department: true,
+        joinedAt: true,
+        approvedAt: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            profileImage: true,
+            accountStatus: true,
+            createdAt: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { joinedAt: 'desc' },
       take: 100,
     })
 
+    // Map to flat structure for backward compatibility
+    const data = employees.map(emp => ({
+      id: emp.user.id,
+      name: `${emp.user.firstName} ${emp.user.lastName}`,
+      email: emp.user.email,
+      department: emp.department || 'General',
+      policyType: 'Standard',
+      status: emp.user.accountStatus,
+      joinDate: emp.joinedAt.toISOString().split('T')[0],
+    }))
+
     return NextResponse.json({
       success: true,
-      data: employees,
-      total: employees.length,
+      data,
+      total: data.length,
     })
   } catch (error) {
     console.error('GET /api/corporate/[id]/employees error:', error)

@@ -32,6 +32,13 @@ export const registerSchema = z.object({
   // Referral Information (optional for all)
   referralCode: z.string().optional().default(''),
 
+  // Doctor category (generalist vs specialist)
+  doctorCategory: z.enum(['general_practitioner', 'specialist']).optional(),
+
+  // Corporate enrollment (patient enrolling in a company plan)
+  enrolledInCompany: z.boolean().optional().default(false),
+  companyId: z.string().optional(),
+
   // Professional Information (conditional)
   licenseNumber: z.string().optional(),
   specialization: z.string().optional(),

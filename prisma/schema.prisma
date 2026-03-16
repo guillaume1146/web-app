@@ -81,6 +81,28 @@ enum ExerciseIntensity {
   vigorous
 }
 
+enum SubscriptionPlanType {
+  individual
+  corporate
+}
+
+enum SubscriptionStatus {
+  active
+  cancelled
+  expired
+}
+
+enum CorporateEmployeeStatus {
+  pending
+  active
+  removed
+}
+
+enum DoctorCategory {
+  GENERAL_PRACTITIONER
+  SPECIALIST
+}
+
 // ─── Region Model ────────────────────────────────────────────────────────────
 
 model Region {
@@ -98,20 +120,20 @@ model Region {
 // ─── Base User Model (auth + shared fields) ──────────────────────────────────
 
 model User {
-  id            String    @id @default(uuid())
-  firstName     String
-  lastName      String
-  email         String    @unique
-  password      String
-  profileImage  String?
-  phone         String
-  userType      UserType
-  dateOfBirth   DateTime?
-  gender        String?
-  address       String?
-  verified      Boolean   @default(false)
+  id             String    @id @default(uuid())
+  firstName      String
+  lastName       String
+  email          String    @unique
+  password       String
+  profileImage   String?
+  phone          String
+  userType       UserType
+  dateOfBirth    DateTime?
+  gender         String?
+  address        String?
+  verified       Boolean   @default(false)
   accountStatus  String    @default("active") // active, suspended, pending
-  referredByCode String?   // Referral code used at signup
+  referredByCode String? // Referral code used at signup
   regionId       String?
   region         Region?   @relation(fields: [regionId], references: [id])
   createdAt      DateTime  @default(now())
@@ -131,43 +153,48 @@ model User {
   regionalAdminProfile   RegionalAdminProfile?
 
   // Cross-cutting relations (generic for all user types)
-  videoCallSessions VideoCallSession[]
-  conversations     ConversationParticipant[]
-  sentMessages      Message[]
-  notifications     Notification[]
-  billingInfo       BillingInfo[]
-  documents         Document[]
-  wallet            UserWallet?
+  videoCallSessions    VideoCallSession[]
+  conversations        ConversationParticipant[]
+  sentMessages         Message[]
+  notifications        Notification[]
+  billingInfo          BillingInfo[]
+  documents            Document[]
+  wallet               UserWallet?
   providerAvailability ProviderAvailability[]
 
   // Social / posts relations
-  posts             DoctorPost[]   @relation("PostAuthor")
-  postComments      PostComment[]  @relation("CommentAuthor")
-  postLikes         PostLike[]     @relation("PostLiker")
+  posts        DoctorPost[]  @relation("PostAuthor")
+  postComments PostComment[] @relation("CommentAuthor")
+  postLikes    PostLike[]    @relation("PostLiker")
 
   // AI Chat relations
   aiChatSessions    AiChatSession[]
   aiPatientInsights AiPatientInsight[]
 
   // Health Tracker relations
-  healthTrackerProfile  HealthTrackerProfile?
-  foodEntries           FoodEntry[]
-  exerciseEntries       ExerciseEntry[]
-  waterEntries          WaterEntry[]
-  sleepEntries          SleepEntry[]
-  dailyGoalSnapshots    DailyGoalSnapshot[]
-  mealPlanEntries       MealPlanEntry[]
+  healthTrackerProfile HealthTrackerProfile?
+  foodEntries          FoodEntry[]
+  exerciseEntries      ExerciseEntry[]
+  waterEntries         WaterEntry[]
+  sleepEntries         SleepEntry[]
+  dailyGoalSnapshots   DailyGoalSnapshot[]
+  mealPlanEntries      MealPlanEntry[]
 
   // Provider reviews
-  reviewsReceived   ProviderReview[] @relation("ReviewsReceived")
-  reviewsGiven      ProviderReview[] @relation("ReviewsGiven")
+  reviewsReceived ProviderReview[] @relation("ReviewsReceived")
+  reviewsGiven    ProviderReview[] @relation("ReviewsGiven")
 
   // Connection relations
   connectionsSent     UserConnection[] @relation("ConnectionsSent")
   connectionsReceived UserConnection[] @relation("ConnectionsReceived")
 
   // Preferences
-  preferences         UserPreference?
+  preferences UserPreference?
+
+  // Subscription
+  subscription         UserSubscription?
+  corporateEmployments CorporateEmployee[] @relation("EmployeeUser")
+  corporateEnrollments CorporateEmployee[] @relation("CorporateAdminUser")
 
   @@index([email])
   @@index([userType])
@@ -195,15 +222,15 @@ model PatientProfile {
   vitalSigns        VitalSigns[]
   appointments      Appointment[]
   childcareBookings ChildcareBooking[]
-  nurseBookings      NurseBooking[]
-  pillReminders      PillReminder[]
-  emergencyServices  EmergencyServiceContact[]
-  nutritionAnalyses  NutritionAnalysis[]
-  labTests           LabTest[]
-  medicineOrders     MedicineOrder[]
-  labTestBookings    LabTestBooking[]
-  emergencyBookings  EmergencyBooking[]
-  insuranceClaims    InsuranceClaim[]
+  nurseBookings     NurseBooking[]
+  pillReminders     PillReminder[]
+  emergencyServices EmergencyServiceContact[]
+  nutritionAnalyses NutritionAnalysis[]
+  labTests          LabTest[]
+  medicineOrders    MedicineOrder[]
+  labTestBookings   LabTestBooking[]
+  emergencyBookings EmergencyBooking[]
+  insuranceClaims   InsuranceClaim[]
 
   @@index([userId])
 }
@@ -263,7 +290,7 @@ model DoctorServiceCatalog {
   doctorId    String
   doctor      DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   serviceName String
-  category    String        // Consultation, Surgery, Screening, Therapy, Procedure, etc.
+  category    String // Consultation, Surgery, Screening, Therapy, Procedure, etc.
   description String
   price       Float
   currency    String        @default("MUR")
@@ -299,8 +326,8 @@ model NannyProfile {
   certifications String[]
 
   // Nanny-specific relations
-  childcareBookings       ChildcareBooking[]
-  nannyServiceCatalog     NannyServiceCatalog[]
+  childcareBookings   ChildcareBooking[]
+  nannyServiceCatalog NannyServiceCatalog[]
 
   @@index([userId])
 }
@@ -342,8 +369,8 @@ model EmergencyWorkerProfile {
   responseZone   String?
   emtLevel       String? // EMT-Basic, EMT-Intermediate, Paramedic
 
-  serviceListings    EmergencyServiceListing[]
-  emergencyBookings  EmergencyBooking[]
+  serviceListings   EmergencyServiceListing[]
+  emergencyBookings EmergencyBooking[]
 
   @@index([userId])
 }
@@ -387,14 +414,14 @@ model ReferralPartnerProfile {
 }
 
 model RegionalAdminProfile {
-  id               String  @id @default(uuid())
-  userId           String  @unique
-  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  region           String
-  country          String
-  countryCode      String?
-  commissionRate   Float   @default(10) // % of each transaction
-  totalCommission  Float   @default(0)  // accumulated earnings
+  id              String  @id @default(uuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  region          String
+  country         String
+  countryCode     String?
+  commissionRate  Float   @default(10) // % of each transaction
+  totalCommission Float   @default(0) // accumulated earnings
 
   @@index([userId])
   @@index([countryCode])
@@ -533,19 +560,19 @@ model LabTestResult {
 // ─── Scheduling Models ──────────────────────────────────────────────────────
 
 model Appointment {
-  id          String         @id @default(uuid())
-  patientId   String
-  patient     PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  doctorId    String
-  doctor      DoctorProfile  @relation(fields: [doctorId], references: [id], onDelete: Restrict)
-  scheduledAt DateTime
-  type        String // video, in-person
-  status      String         @default("pending") // pending, upcoming, completed, cancelled
-  specialty   String
-  reason      String
-  duration    Int            @default(30)
-  location    String?
-  roomId      String?
+  id                 String         @id @default(uuid())
+  patientId          String
+  patient            PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId           String
+  doctor             DoctorProfile  @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  scheduledAt        DateTime
+  type               String // video, in-person
+  status             String         @default("pending") // pending, upcoming, completed, cancelled
+  specialty          String
+  reason             String
+  duration           Int            @default(30)
+  location           String?
+  roomId             String?
   notes              String?
   cancellationReason String?
   cancelledBy        String?
@@ -578,21 +605,21 @@ model ScheduleSlot {
 }
 
 model NurseBooking {
-  id          String         @id @default(uuid())
-  patientId   String
-  patient     PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  nurseId     String
-  nurse       NurseProfile   @relation(fields: [nurseId], references: [id], onDelete: Restrict)
-  scheduledAt DateTime
-  duration    Int
-  type        String // in_person, home_visit, video
-  status      String         @default("pending") // pending, upcoming, completed, cancelled
-  reason      String?
-  notes       String?
-  serviceName String?
+  id           String         @id @default(uuid())
+  patientId    String
+  patient      PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  nurseId      String
+  nurse        NurseProfile   @relation(fields: [nurseId], references: [id], onDelete: Restrict)
+  scheduledAt  DateTime
+  duration     Int
+  type         String // in_person, home_visit, video
+  status       String         @default("pending") // pending, upcoming, completed, cancelled
+  reason       String?
+  notes        String?
+  serviceName  String?
   servicePrice Float?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   @@index([patientId])
   @@index([nurseId])
@@ -876,16 +903,16 @@ model MedicineOrderItem {
 }
 
 model Notification {
-  id        String    @id @default(uuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String // appointment, prescription, lab_result, message, system
-  title     String
-  message   String
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          String // appointment, prescription, lab_result, message, system
+  title         String
+  message       String
   referenceId   String?
   referenceType String?
-  readAt    DateTime?
-  createdAt DateTime  @default(now())
+  readAt        DateTime?
+  createdAt     DateTime  @default(now())
 
   @@index([userId])
   @@index([readAt])
@@ -999,9 +1026,9 @@ model CmsTestimonial {
 // ─── Professional Catalog Models ────────────────────────────────────────────
 
 model PharmacyMedicine {
-  id                   String            @id @default(uuid())
+  id                   String              @id @default(uuid())
   pharmacistId         String
-  pharmacist           PharmacistProfile @relation(fields: [pharmacistId], references: [id], onDelete: Cascade)
+  pharmacist           PharmacistProfile   @relation(fields: [pharmacistId], references: [id], onDelete: Cascade)
   name                 String
   genericName          String?
   category             String
@@ -1009,15 +1036,15 @@ model PharmacyMedicine {
   dosageForm           String // tablet, capsule, syrup, injection, cream, drops
   strength             String // e.g. "500mg"
   price                Float
-  currency             String            @default("MUR")
-  quantity             Int               @default(0)
-  inStock              Boolean           @default(true)
-  requiresPrescription Boolean           @default(false)
+  currency             String              @default("MUR")
+  quantity             Int                 @default(0)
+  inStock              Boolean             @default(true)
+  requiresPrescription Boolean             @default(false)
   sideEffects          String[]
   imageUrl             String?
-  isActive             Boolean           @default(true)
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  isActive             Boolean             @default(true)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
   orderItems           MedicineOrderItem[]
 
   @@index([pharmacistId])
@@ -1127,23 +1154,23 @@ model InsurancePlanListing {
 }
 
 model InsuranceClaim {
-  id               String               @id @default(uuid())
-  claimId          String               @unique @default(uuid())
+  id               String                @id @default(uuid())
+  claimId          String                @unique @default(uuid())
   insuranceRepId   String
-  insuranceRep     InsuranceRepProfile  @relation(fields: [insuranceRepId], references: [id], onDelete: Cascade)
+  insuranceRep     InsuranceRepProfile   @relation(fields: [insuranceRepId], references: [id], onDelete: Cascade)
   patientId        String
-  patient          PatientProfile       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient          PatientProfile        @relation(fields: [patientId], references: [id], onDelete: Cascade)
   planId           String?
   plan             InsurancePlanListing? @relation(fields: [planId], references: [id])
   policyHolderName String
   description      String
   policyType       String
   claimAmount      Float
-  status           String               @default("pending") // pending, approved, rejected
-  submittedDate    DateTime             @default(now())
+  status           String                @default("pending") // pending, approved, rejected
+  submittedDate    DateTime              @default(now())
   resolvedDate     DateTime?
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   @@index([insuranceRepId])
   @@index([patientId])
@@ -1167,22 +1194,22 @@ model UserWallet {
 }
 
 model WalletTransaction {
-  id                   String     @id @default(uuid())
-  walletId             String
-  wallet               UserWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  type                 String     // credit, debit
-  amount               Float
-  description          String
-  serviceType          String?    // consultation, medicine, lab_test, emergency, subscription
-  referenceId          String?
-  balanceBefore        Float
-  balanceAfter         Float
-  status               String     @default("completed")
-  platformCommission   Float?     // 5% platform fee
-  regionalCommission   Float?     // 10% regional admin fee
-  providerAmount       Float?     // 85% provider earnings
-  regionalAdminId      String?    // regional admin who gets commission
-  createdAt            DateTime   @default(now())
+  id                 String     @id @default(uuid())
+  walletId           String
+  wallet             UserWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  type               String // credit, debit
+  amount             Float
+  description        String
+  serviceType        String? // consultation, medicine, lab_test, emergency, subscription
+  referenceId        String?
+  balanceBefore      Float
+  balanceAfter       Float
+  status             String     @default("completed")
+  platformCommission Float? // 5% platform fee
+  regionalCommission Float? // 10% regional admin fee
+  providerAmount     Float? // 85% provider earnings
+  regionalAdminId    String? // regional admin who gets commission
+  createdAt          DateTime   @default(now())
 
   @@index([walletId])
   @@index([walletId, createdAt])
@@ -1243,11 +1270,11 @@ model PostLike {
 // ─── Booking Models (Lab Test & Emergency) ──────────────────────────────────
 
 model LabTestBooking {
-  id          String          @id @default(uuid())
-  patientId   String
-  patient     PatientProfile  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  labTechId   String?
-  labTech     LabTechProfile? @relation(fields: [labTechId], references: [id])
+  id             String          @id @default(uuid())
+  patientId      String
+  patient        PatientProfile  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  labTechId      String?
+  labTech        LabTechProfile? @relation(fields: [labTechId], references: [id])
   testName       String
   scheduledAt    DateTime
   status         String          @default("pending") // pending, upcoming, completed, cancelled
@@ -1292,9 +1319,9 @@ model ProviderAvailability {
   id           String   @id @default(uuid())
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dayOfWeek    Int      // 0=Sunday, 6=Saturday
-  startTime    String   // "09:00" (24h)
-  endTime      String   // "17:00"
+  dayOfWeek    Int // 0=Sunday, 6=Saturday
+  startTime    String // "09:00" (24h)
+  endTime      String // "17:00"
   slotDuration Int      @default(60) // minutes per slot (30, 60, etc.)
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
@@ -1308,12 +1335,12 @@ model ProviderAvailability {
 // ─── AI Chat Models ──────────────────────────────────────────────────────────
 
 model AiChatSession {
-  id        String   @id @default(cuid())
+  id        String          @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String   @default("New Chat")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String          @default("New Chat")
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
   messages  AiChatMessage[]
 
   @@index([userId])
@@ -1324,7 +1351,7 @@ model AiChatMessage {
   id        String        @id @default(cuid())
   sessionId String
   session   AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role      String        // "user" | "assistant" | "system"
+  role      String // "user" | "assistant" | "system"
   content   String
   createdAt DateTime      @default(now())
 
@@ -1337,9 +1364,9 @@ model AiPatientInsight {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      DateTime // the date the insight refers to (e.g. "Monday" → resolved to actual date)
-  category  String   // "food", "exercise", "symptom", "medication", "sleep", "water", "mood"
-  summary   String   // concise summary: "Ate sardines for lunch, rice and vegetables for dinner"
-  details   Json?    // optional structured data: { meals: [...], nutrients: [...] }
+  category  String // "food", "exercise", "symptom", "medication", "sleep", "water", "mood"
+  summary   String // concise summary: "Ate sardines for lunch, rice and vegetables for dinner"
+  details   Json? // optional structured data: { meals: [...], nutrients: [...] }
   createdAt DateTime @default(now())
 
   @@index([userId, date])
@@ -1350,24 +1377,24 @@ model AiPatientInsight {
 // ─── Health Tracker Models ──────────────────────────────────────────────────
 
 model HealthTrackerProfile {
-  id                  String        @id @default(cuid())
-  userId              String        @unique
-  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  heightCm            Float?
-  weightKg            Float?
-  age                 Int?
-  gender              String?
-  activityLevel       ActivityLevel @default(moderately_active)
-  weightGoal          WeightGoal    @default(maintain)
-  targetCalories      Int?
-  targetWaterMl       Int           @default(2000)
-  targetExerciseMin   Int           @default(30)
-  targetSleepMin      Int           @default(480)
-  dietaryPreferences  String[]
-  allergenSettings    String[]
-  tdeeCalories        Int?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  id                 String        @id @default(cuid())
+  userId             String        @unique
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  heightCm           Float?
+  weightKg           Float?
+  age                Int?
+  gender             String?
+  activityLevel      ActivityLevel @default(moderately_active)
+  weightGoal         WeightGoal    @default(maintain)
+  targetCalories     Int?
+  targetWaterMl      Int           @default(2000)
+  targetExerciseMin  Int           @default(30)
+  targetSleepMin     Int           @default(480)
+  dietaryPreferences String[]
+  allergenSettings   String[]
+  tdeeCalories       Int?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   @@index([userId])
 }
@@ -1511,7 +1538,7 @@ model ProviderReview {
   providerUser   User      @relation("ReviewsReceived", fields: [providerUserId], references: [id], onDelete: Cascade)
   reviewerUserId String
   reviewerUser   User      @relation("ReviewsGiven", fields: [reviewerUserId], references: [id], onDelete: Cascade)
-  providerType   String    // DOCTOR, NURSE, NANNY, PHARMACIST, LAB_TECHNICIAN, EMERGENCY_WORKER
+  providerType   String // DOCTOR, NURSE, NANNY, PHARMACIST, LAB_TECHNICIAN, EMERGENCY_WORKER
   rating         Int
   comment        String
   verified       Boolean   @default(false)
@@ -1532,9 +1559,9 @@ model ProviderReview {
 
 model PlatformConfig {
   id                     String   @id @default(uuid())
-  platformCommissionRate Float    @default(5)   // % to platform
-  regionalCommissionRate Float    @default(10)  // % default to regional admin
-  providerCommissionRate Float    @default(85)  // % to service provider
+  platformCommissionRate Float    @default(5) // % to platform
+  regionalCommissionRate Float    @default(10) // % default to regional admin
+  providerCommissionRate Float    @default(85) // % to service provider
   currency               String   @default("MUR")
   trialWalletAmount      Float    @default(4500)
   createdAt              DateTime @default(now())
@@ -1572,19 +1599,19 @@ model RequiredDocumentConfig {
 // ─── User Preferences ──────────────────────────────────────────────────────
 
 model UserPreference {
-  id              String   @id @default(uuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  language        String   @default("en") // en, fr, mfe
-  timezone        String   @default("Indian/Mauritius")
-  emailNotifications    Boolean @default(true)
-  pushNotifications     Boolean @default(true)
-  smsNotifications      Boolean @default(false)
-  appointmentReminders  Boolean @default(true)
-  marketingEmails       Boolean @default(false)
-  profileVisibility     String  @default("public") // public, connections, private
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                   String   @id @default(uuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language             String   @default("en") // en, fr, mfe
+  timezone             String   @default("Indian/Mauritius")
+  emailNotifications   Boolean  @default(true)
+  pushNotifications    Boolean  @default(true)
+  smsNotifications     Boolean  @default(false)
+  appointmentReminders Boolean  @default(true)
+  marketingEmails      Boolean  @default(false)
+  profileVisibility    String   @default("public") // public, connections, private
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@index([userId])
 }
@@ -1594,12 +1621,12 @@ model UserPreference {
 model ReferralClick {
   id              String    @id @default(uuid())
   referralCode    String
-  utmSource       String?   // facebook, instagram, linkedin, twitter, whatsapp, email, website, tiktok, youtube
-  utmMedium       String?   // social, messaging, direct, email
-  utmCampaign     String?   // campaign identifier
-  location        String?   // geographic location
-  landingPage     String?   // which page they landed on
-  convertedUserId String?   // null until signup, then linked to User.id
+  utmSource       String? // facebook, instagram, linkedin, twitter, whatsapp, email, website, tiktok, youtube
+  utmMedium       String? // social, messaging, direct, email
+  utmCampaign     String? // campaign identifier
+  location        String? // geographic location
+  landingPage     String? // which page they landed on
+  convertedUserId String? // null until signup, then linked to User.id
   convertedAt     DateTime?
   createdAt       DateTime  @default(now())
 
@@ -1626,4 +1653,79 @@ model UserConnection {
   @@index([receiverId])
   @@index([status])
   @@index([receiverId, status])
+}
+
+// ─── Subscription Models ──────────────────────────────────────────────────────
+
+model SubscriptionPlan {
+  id                         String               @id @default(uuid())
+  name                       String
+  slug                       String               @unique
+  type                       SubscriptionPlanType
+  price                      Float
+  currency                   String               @default("MUR")
+  gpConsultsPerMonth         Int // -1 = unlimited
+  specialistConsultsPerMonth Int // -1 = unlimited
+  features                   Json // Array of feature strings
+  isActive                   Boolean              @default(true)
+  createdAt                  DateTime             @default(now())
+  updatedAt                  DateTime             @updatedAt
+
+  subscriptions UserSubscription[]
+
+  @@index([type])
+  @@index([isActive])
+}
+
+model UserSubscription {
+  id               String             @id @default(uuid())
+  userId           String             @unique
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId           String
+  plan             SubscriptionPlan   @relation(fields: [planId], references: [id])
+  status           SubscriptionStatus @default(active)
+  startDate        DateTime           @default(now())
+  endDate          DateTime?
+  autoRenew        Boolean            @default(true)
+  corporateAdminId String? // If enrolled via company
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  usage SubscriptionUsage[]
+
+  @@index([planId])
+  @@index([status])
+  @@index([corporateAdminId])
+}
+
+model SubscriptionUsage {
+  id                     String           @id @default(uuid())
+  subscriptionId         String
+  subscription           UserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  month                  String // "2026-03"
+  gpConsultsUsed         Int              @default(0)
+  specialistConsultsUsed Int              @default(0)
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  @@unique([subscriptionId, month])
+  @@index([month])
+}
+
+model CorporateEmployee {
+  id               String                  @id @default(uuid())
+  corporateAdminId String
+  corporateAdmin   User                    @relation("CorporateAdminUser", fields: [corporateAdminId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User                    @relation("EmployeeUser", fields: [userId], references: [id], onDelete: Cascade)
+  status           CorporateEmployeeStatus @default(pending)
+  department       String?
+  joinedAt         DateTime                @default(now())
+  approvedAt       DateTime?
+  removedAt        DateTime?
+
+  @@unique([corporateAdminId, userId])
+  @@index([corporateAdminId])
+  @@index([userId])
+  @@index([status])
 }

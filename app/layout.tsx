@@ -85,12 +85,15 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
 }
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mediwyz.com'
+
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'MedicalOrganization',
   name: 'MediWyz',
-  url: process.env.NEXT_PUBLIC_APP_URL || 'https://mediwyz.com',
-  logo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediwyz.com'}/images/logo.png`,
+  url: appUrl,
+  logo: `${appUrl}/images/logo.png`,
+  image: `${appUrl}/images/og-banner.png`,
   description:
     'A full-stack healthcare platform for Mauritius connecting patients with doctors, nurses, pharmacists, and emergency services via video consultations and appointment booking.',
   address: {
@@ -113,19 +116,32 @@ const jsonLd = {
     'General Practice',
   ],
   availableService: [
-    {
-      '@type': 'MedicalTherapy',
-      name: 'Video Consultation',
-    },
-    {
-      '@type': 'MedicalTherapy',
-      name: 'In-Person Consultation',
-    },
-    {
-      '@type': 'MedicalTherapy',
-      name: 'Prescription Management',
-    },
+    { '@type': 'MedicalTherapy', name: 'Video Consultation' },
+    { '@type': 'MedicalTherapy', name: 'In-Person Consultation' },
+    { '@type': 'MedicalTherapy', name: 'Prescription Management' },
+    { '@type': 'MedicalTherapy', name: 'Lab Test Booking' },
+    { '@type': 'MedicalTherapy', name: 'Medicine Ordering' },
+    { '@type': 'MedicalTherapy', name: 'Emergency Services' },
   ],
+  sameAs: [],
+  contactPoint: {
+    '@type': 'ContactPoint',
+    contactType: 'customer support',
+    email: 'support@mediwyz.com',
+    availableLanguage: ['en', 'fr'],
+  },
+}
+
+const webSiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'MediWyz',
+  url: appUrl,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: `${appUrl}/search/results?q={search_term_string}`,
+    'query-input': 'required name=search_term_string',
+  },
 }
 
 export default function RootLayout({
@@ -144,6 +160,10 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }}
         />
       </head>
       <body className={inter.className}>

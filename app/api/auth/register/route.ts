@@ -73,15 +73,18 @@ export async function POST(request: NextRequest) {
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : ''
 
     // ── Determine account status ───────────────────────────────────────────
-    // Only REGIONAL_ADMIN requires super-admin approval (always pending).
-    // All other user types are auto-activated:
-    //   - Patients: always active
-    //   - Professionals: active if docs verified (≥70%), otherwise active anyway (manual review later)
-    //   - Users who skipped docs: active but flagged for follow-up
+    // REGIONAL_ADMIN requires super-admin approval (always pending).
+    // Patients enrolling in a company require corporate admin approval.
+    // All other user types are auto-activated.
     const requiresManualApproval = prismaUserType === UserType.REGIONAL_ADMIN
+    const requiresCorporateApproval = prismaUserType === UserType.PATIENT && data.enrolledInCompany && data.companyId
     const hasSkippedDocuments = data.skippedDocuments.length > 0
 
-    const accountStatus = requiresManualApproval ? 'pending' : 'active'
+    const accountStatus = requiresManualApproval
+      ? 'pending'
+      : requiresCorporateApproval
+        ? 'pending_corporate'
+        : 'active'
 
     // ── Create User + profile in a single transaction ──────────────────────
     const user = await prisma.$transaction(async (tx) => {
@@ -131,10 +134,11 @@ export async function POST(request: NextRequest) {
         }
 
         case UserType.DOCTOR: {
+          const doctorCat = data.doctorCategory === 'specialist' ? 'Specialist' : 'General Practitioner'
           await tx.doctorProfile.create({
             data: {
               userId: newUser.id,
-              category: 'General Practitioner',
+              category: doctorCat,
               specialty: data.specialization ? [data.specialization] : [],
               subSpecialties: [],
               licenseNumber: data.licenseNumber || `DOC-${newUser.id.slice(0, 8).toUpperCase()}`,
@@ -367,6 +371,35 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // ── Corporate enrollment — create CorporateEmployee + notify admin ───
+      if (requiresCorporateApproval && data.companyId) {
+        // Find the corporate admin's user ID from their profile
+        const corpProfile = await tx.corporateAdminProfile.findUnique({
+          where: { id: data.companyId },
+          select: { userId: true, companyName: true },
+        })
+
+        if (corpProfile) {
+          await tx.corporateEmployee.create({
+            data: {
+              corporateAdminId: corpProfile.userId,
+              userId: newUser.id,
+              status: 'pending',
+            },
+          })
+
+          // Notify the corporate admin
+          await tx.notification.create({
+            data: {
+              userId: corpProfile.userId,
+              title: 'New Employee Enrollment Request',
+              message: `${firstName} ${lastName} has requested to join your company wellness program.`,
+              type: 'corporate_enrollment',
+            },
+          })
+        }
+      }
+
       return newUser
     })
 
@@ -374,6 +407,8 @@ export async function POST(request: NextRequest) {
     let message: string
     if (requiresManualApproval) {
       message = 'Registration submitted. Your account requires super-admin approval and will be reviewed within 2-5 business days.'
+    } else if (requiresCorporateApproval) {
+      message = 'Registration submitted. Your corporate administrator has been notified and will approve your enrollment shortly.'
     } else if (hasSkippedDocuments) {
       message = 'Registration successful! You can log in now. Please upload your remaining documents from your account settings.'
     } else {

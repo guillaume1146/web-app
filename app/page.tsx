@@ -4,6 +4,7 @@ import StatsSection from '@/components/home/StatsSection'
 import ServicesSection from '@/components/home/ServicesSection'
 import SpecialtiesSection from '@/components/home/SpecialtiesSection'
 import WhyChooseSection from '@/components/home/WhyChooseSection'
+import FaqSection from '@/components/home/FaqSection'
 import { HeroContent, HeroSlide } from '@/types'
 
 export const revalidate = 60
@@ -68,6 +69,7 @@ export default async function HomePage() {
         subtitle={whyChooseContent?.subtitle}
         items={whyChooseContent?.items}
       />
+      <FaqSection />
     </>
   )
 }

@@ -1,6 +1,11 @@
 import { ChangeEvent, useState, useEffect, useRef } from 'react'
-import { FaEye, FaEyeSlash, FaUsers, FaCamera } from 'react-icons/fa'
+import { FaEye, FaEyeSlash, FaUsers, FaCamera, FaBuilding } from 'react-icons/fa'
 import { SignupFormData, UserType } from './types'
+
+interface Company {
+  id: string
+  companyName: string
+}
 
 interface Region {
   id: string
@@ -33,6 +38,7 @@ export default function BasicInfoStep({
 }: BasicInfoStepProps) {
   const SelectedIcon = selectedType?.icon
   const [regions, setRegions] = useState<Region[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
   const [profilePreview, setProfilePreview] = useState<string | null>(formData.profileImageUrl || null)
   const [uploadingImage, setUploadingImage] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -45,6 +51,17 @@ export default function BasicInfoStep({
       })
       .catch(() => {})
   }, [])
+
+  // Fetch companies for patient corporate enrollment
+  useEffect(() => {
+    if (formData.userType !== 'patient') return
+    fetch('/api/corporate/companies')
+      .then(res => res.json())
+      .then(result => {
+        if (result.success) setCompanies(result.data)
+      })
+      .catch(() => {})
+  }, [formData.userType])
 
   const handleProfileImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -270,6 +287,80 @@ export default function BasicInfoStep({
               <option value="prefer-not-to-say">Prefer not to say</option>
             </select>
           </div>
+
+          {/* Doctor category selector */}
+          {formData.userType === 'doctor' && (
+            <div className="md:col-span-2">
+              <label className="block text-gray-700 font-medium mb-2">Doctor Category *</label>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => onFormChange({ target: { name: 'doctorCategory', value: 'general_practitioner', type: 'text' } } as ChangeEvent<HTMLInputElement>)}
+                  className={`p-4 border-2 rounded-xl text-center transition-all ${
+                    formData.doctorCategory === 'general_practitioner'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <p className="font-semibold">General Practitioner</p>
+                  <p className="text-sm text-gray-500 mt-1">Family medicine, general consultations</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onFormChange({ target: { name: 'doctorCategory', value: 'specialist', type: 'text' } } as ChangeEvent<HTMLInputElement>)}
+                  className={`p-4 border-2 rounded-xl text-center transition-all ${
+                    formData.doctorCategory === 'specialist'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <p className="font-semibold">Specialist</p>
+                  <p className="text-sm text-gray-500 mt-1">Cardiology, dermatology, etc.</p>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Patient corporate enrollment */}
+          {formData.userType === 'patient' && companies.length > 0 && (
+            <div className="md:col-span-2">
+              <div className="bg-gradient-to-r from-slate-50 to-gray-50 border border-slate-200 rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <FaBuilding className="text-slate-600 text-xl" />
+                  <h3 className="text-lg font-bold text-gray-900">Corporate Enrollment</h3>
+                  <span className="bg-slate-100 text-slate-700 text-xs px-2 py-1 rounded-full font-medium">
+                    Optional
+                  </span>
+                </div>
+                <label className="flex items-center gap-3 cursor-pointer mb-4">
+                  <input
+                    type="checkbox"
+                    name="enrolledInCompany"
+                    checked={formData.enrolledInCompany || false}
+                    onChange={(e) => onFormChange({ target: { name: 'enrolledInCompany', value: e.target.checked ? 'true' : '', type: 'checkbox' } } as unknown as ChangeEvent<HTMLInputElement>)}
+                    className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-gray-700">I am enrolling through my company&apos;s wellness program</span>
+                </label>
+                {formData.enrolledInCompany && (
+                  <select
+                    name="companyId"
+                    className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
+                    value={formData.companyId || ''}
+                    onChange={onFormChange}
+                  >
+                    <option value="">Select your company</option>
+                    {companies.map(c => (
+                      <option key={c.id} value={c.id}>{c.companyName}</option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-gray-500 text-sm mt-2">
+                  Your account will require corporate admin approval before activation.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Corporate Administrator specific fields */}
           {formData.userType === 'corporate' && (

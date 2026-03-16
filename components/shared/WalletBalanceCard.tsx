@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { FaWallet, FaArrowDown, FaArrowUp, FaChevronDown, FaChevronUp, FaRedo } from 'react-icons/fa'
 import WalletTransactionHistory from './WalletTransactionHistory'
+import WalletTopUp from './WalletTopUp'
 
 interface Transaction {
   id: string
@@ -34,7 +35,7 @@ const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({ userId }) => {
   const [showAllTransactions, setShowAllTransactions] = useState(false)
   const [resetting, setResetting] = useState(false)
 
-  const fetchWallet = async () => {
+  const fetchWallet = useCallback(async () => {
     try {
       setLoading(true)
       const res = await fetch(`/api/users/${userId}/wallet`)
@@ -49,13 +50,12 @@ const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({ userId }) => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
 
   useEffect(() => {
     if (!userId) return
     fetchWallet()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId])
+  }, [userId, fetchWallet])
 
   const handleResetTrial = async () => {
     if (!confirm('Reset your trial balance to the initial credit amount?')) return
@@ -195,6 +195,9 @@ const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({ userId }) => {
           </button>
         )}
       </div>
+
+      {/* Wallet Top-Up */}
+      <WalletTopUp userId={userId} onSuccess={fetchWallet} />
 
       {/* Full Transaction History */}
       {showAllTransactions && wallet.transactions.length > 0 && (

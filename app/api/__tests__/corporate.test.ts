@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/lib/db', () => ({
   default: {
     corporateAdminProfile: { findUnique: vi.fn() },
+    corporateEmployee: { findMany: vi.fn() },
     userWallet: { findUnique: vi.fn() },
     billingInfo: { findMany: vi.fn() },
     walletTransaction: { findMany: vi.fn() },
@@ -18,6 +19,7 @@ vi.mock('@/lib/auth/validate', () => ({
 
 vi.mock('@/lib/rate-limit', () => ({
   rateLimitPublic: vi.fn(() => null),
+  rateLimitAuth: vi.fn(() => null),
 }))
 
 import { GET as getCorporateDashboard } from '../corporate/[id]/dashboard/route'
@@ -129,9 +131,14 @@ describe('GET /api/corporate/[id]/employees', () => {
 
   it('returns 200 with employee list', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'corp-1', userType: 'corporate', email: 'c@ex.com' })
-    vi.mocked(prisma.corporateAdminProfile.findUnique).mockResolvedValue({ id: 'cp-1', companyName: 'TestCorp' } as never)
-    vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { id: 'emp-1', firstName: 'Test', lastName: 'Employee', email: 'e@ex.com' },
+    vi.mocked(prisma.corporateEmployee.findMany).mockResolvedValue([
+      {
+        id: 'ce-1',
+        department: null,
+        joinedAt: new Date('2026-01-01'),
+        approvedAt: new Date('2026-01-02'),
+        user: { id: 'emp-1', firstName: 'Test', lastName: 'Employee', email: 'e@ex.com', phone: '+230 5555', profileImage: null, accountStatus: 'active', createdAt: new Date() },
+      },
     ] as never)
 
     const res = await getCorporateEmployees(
@@ -143,6 +150,7 @@ describe('GET /api/corporate/[id]/employees', () => {
     expect(res.status).toBe(200)
     expect(data.success).toBe(true)
     expect(data.data).toHaveLength(1)
+    expect(data.data[0].name).toBe('Test Employee')
   })
 })
 

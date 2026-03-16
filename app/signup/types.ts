@@ -41,7 +41,14 @@ export interface SignupFormData {
 
   // Referral Information (new field for all users)
   referralCode?: string;
-  
+
+  // Doctor category
+  doctorCategory?: 'general_practitioner' | 'specialist';
+
+  // Corporate enrollment (patient enrolling in company plan)
+  enrolledInCompany?: boolean;
+  companyId?: string;
+
   // Professional Information (conditional)
   licenseNumber?: string;
   specialization?: string;

@@ -5,6 +5,7 @@ import {
   FaArrowUp, FaArrowDown, FaToggleOn, FaToggleOff,
   FaEdit, FaTrash, FaPlus, FaImage, FaSpinner, FaTimes, FaSave,
 } from 'react-icons/fa'
+import CmsImageUpload from '@/components/shared/CmsImageUpload'
 
 interface HeroSlide {
   id: string
@@ -171,13 +172,10 @@ export default function HeroSlidesManager({ slides, onRefresh }: HeroSlidesManag
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-              <input
-                type="text"
+              <CmsImageUpload
                 value={formData.imageUrl}
-                onChange={(e) => handleFormChange('imageUrl', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="https://example.com/image.jpg"
+                onChange={(url) => handleFormChange('imageUrl', url)}
+                label="Slide Image"
               />
             </div>
           </div>

@@ -27,6 +27,7 @@ import { seedFoodDatabase } from './seeds/24-food-database.seed'
 import { seedHealthTrackerDemo } from './seeds/25-health-tracker-demo.seed'
 import { seedMultiCountryUsers } from './seeds/27-multi-country-users.seed'
 import { seedDocumentsAndFiles } from './seeds/28-seed-documents.seed'
+import { seedSubscriptions } from './seeds/29-subscriptions.seed'
 
 const prisma = new PrismaClient()
 
@@ -34,6 +35,12 @@ async function main() {
   console.log('Cleaning database...')
 
   // Delete in reverse dependency order
+  // 0. Subscription + Corporate Employee tables
+  await prisma.subscriptionUsage.deleteMany()
+  await prisma.userSubscription.deleteMany()
+  await prisma.subscriptionPlan.deleteMany()
+  await prisma.corporateEmployee.deleteMany()
+
   // 0. Config + Reviews tables (no FK dependencies)
   await prisma.roleFeatureConfig.deleteMany()
   await prisma.requiredDocumentConfig.deleteMany()
@@ -164,6 +171,7 @@ async function main() {
   await seedHealthTrackerDemo(prisma)
   await seedMultiCountryUsers(prisma)
   await seedDocumentsAndFiles(prisma)
+  await seedSubscriptions(prisma)
 
   console.log('Database seeded successfully!')
 }
