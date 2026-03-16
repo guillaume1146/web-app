@@ -1589,6 +1589,26 @@ model UserPreference {
   @@index([userId])
 }
 
+// ─── Referral Click Tracking ─────────────────────────────────────────────────
+
+model ReferralClick {
+  id              String    @id @default(uuid())
+  referralCode    String
+  utmSource       String?   // facebook, instagram, linkedin, twitter, whatsapp, email, website, tiktok, youtube
+  utmMedium       String?   // social, messaging, direct, email
+  utmCampaign     String?   // campaign identifier
+  location        String?   // geographic location
+  landingPage     String?   // which page they landed on
+  convertedUserId String?   // null until signup, then linked to User.id
+  convertedAt     DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([referralCode])
+  @@index([utmSource])
+  @@index([createdAt])
+  @@index([convertedUserId])
+}
+
 // ─── User Connections ────────────────────────────────────────────────────────
 
 model UserConnection {

@@ -44,7 +44,7 @@ export interface ConversionData {
   planType: string
   conversionDate: string
   commission: number
-  status: 'pending' | 'paid' | 'processing'
+  status: 'pending' | 'paid' | 'processing' | 'completed'
 }
 
 export interface UTMSource {

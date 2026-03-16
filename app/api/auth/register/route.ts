@@ -349,6 +349,21 @@ export async function POST(request: NextRequest) {
               },
             })
           }
+
+          // Link referral click tracking record if trackingId provided
+          if (data.trackingId) {
+            try {
+              await tx.referralClick.update({
+                where: { id: data.trackingId },
+                data: {
+                  convertedUserId: newUser.id,
+                  convertedAt: new Date(),
+                },
+              })
+            } catch {
+              // trackingId might be invalid or ReferralClick model not yet migrated
+            }
+          }
         }
       }
 

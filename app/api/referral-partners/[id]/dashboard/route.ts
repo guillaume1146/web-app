@@ -79,6 +79,61 @@ export async function GET(
       .filter(t => t.status === 'pending')
       .reduce((sum, t) => sum + t.amount, 0)
 
+    // Query referral clicks grouped by source
+    // Build leadsBySource array with conversion data
+    const sourceMap = new Map<string, { visitors: number; conversions: number; earnings: number }>()
+
+    try {
+      const clicksBySource = await prisma.referralClick.groupBy({
+        by: ['utmSource'],
+        where: { referralCode: referralProfile.referralCode },
+        _count: true,
+      })
+
+      for (const click of clicksBySource) {
+        const source = (click.utmSource || 'Direct')
+        sourceMap.set(source, { visitors: click._count, conversions: 0, earnings: 0 })
+      }
+
+      // Count conversions per source from ReferralClick
+      const conversionsBySource = await prisma.referralClick.groupBy({
+        by: ['utmSource'],
+        where: {
+          referralCode: referralProfile.referralCode,
+          convertedUserId: { not: null },
+        },
+        _count: true,
+      })
+
+      for (const conv of conversionsBySource) {
+        const source = (conv.utmSource || 'Direct')
+        const existing = sourceMap.get(source) || { visitors: 0, conversions: 0, earnings: 0 }
+        existing.conversions = conv._count
+        existing.earnings = conv._count * 100 // Rs 100 per conversion
+        sourceMap.set(source, existing)
+      }
+    } catch {
+      // ReferralClick model may not exist yet if migration hasn't run
+    }
+
+    // If no click tracking data yet, fallback to showing direct referrals
+    if (sourceMap.size === 0 && referralProfile.totalReferrals > 0) {
+      sourceMap.set('Direct', {
+        visitors: referralProfile.totalReferrals,
+        conversions: referralProfile.totalReferrals,
+        earnings: totalEarnings,
+      })
+    }
+
+    const leadsBySourceArray = Array.from(sourceMap.entries()).map(([source, data]) => ({
+      source: source.charAt(0).toUpperCase() + source.slice(1),
+      visitors: data.visitors,
+      conversions: data.conversions,
+      conversionRate: data.visitors > 0 ? Math.round((data.conversions / data.visitors) * 100) : 0,
+      earnings: data.earnings,
+      utmLink: '',
+    }))
+
     return NextResponse.json({
       success: true,
       data: {
@@ -101,12 +156,7 @@ export async function GET(
           userType: r.userType,
           joinedAt: r.createdAt,
         })),
-        leadsBySource: {
-          direct: referralProfile.totalReferrals,
-          social: 0,
-          email: 0,
-          other: 0,
-        },
+        leadsBySource: leadsBySourceArray,
         recentConversions,
         recentTransactions: creditTransactions.slice(0, 10),
       },

@@ -54,7 +54,29 @@ export default function ReferralPartnerDashboard() {
         if (res.ok) {
           const json = await res.json()
           if (json.success) {
-            const { stats, recentConversions: conversions = [] } = json.data
+            const { stats, recentConversions: conversions = [], leadsBySource: apiLeads } = json.data
+
+            // Map leadsBySource from API into LeadSourceData[] format
+            const mappedLeads: typeof partnerData.leadsBySource = []
+            if (apiLeads && Array.isArray(apiLeads)) {
+              // If API returns array format (new tracking data)
+              mappedLeads.push(...apiLeads)
+            } else if (apiLeads && typeof apiLeads === 'object') {
+              // Legacy format: { direct: N, social: 0, ... }
+              for (const [source, visitors] of Object.entries(apiLeads)) {
+                if (typeof visitors === 'number' && visitors > 0) {
+                  mappedLeads.push({
+                    source: source.charAt(0).toUpperCase() + source.slice(1),
+                    visitors,
+                    conversions: 0,
+                    conversionRate: 0,
+                    earnings: 0,
+                    utmLink: '',
+                  })
+                }
+              }
+            }
+
             setPartnerData(prev => ({
               ...prev,
               promoCode: stats.referralCode || prev.promoCode,
@@ -74,11 +96,14 @@ export default function ReferralPartnerDashboard() {
                 pending: stats.pendingPayouts ?? 0,
                 nextPayoutDate: prev.earnings.nextPayoutDate || computeNextPayoutDate(),
               },
+              leadsBySource: mappedLeads,
               recentConversions: conversions.map((c: { id: string; firstName: string; lastName: string; userType: string; createdAt: string }) => ({
                 id: c.id,
-                name: `${c.firstName} ${c.lastName}`,
-                type: c.userType,
-                date: new Date(c.createdAt).toLocaleDateString(),
+                customerName: `${c.firstName} ${c.lastName}`,
+                planType: c.userType,
+                conversionDate: c.createdAt,
+                commission: 100, // Rs 100 signup bonus per referral
+                status: 'completed' as const,
               })),
             }))
           }

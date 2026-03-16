@@ -105,43 +105,51 @@ export default function LeadPerformance({ leadsBySource }: LeadPerformanceProps)
       </div>
 
       {/* Performance Insights */}
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-        <h4 className="font-semibold text-gray-800 mb-3">Performance Insights</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-gray-600">Best Converting Source:</span>
-            <span className="font-medium ml-2">
-              {leadsBySource.reduce((best, current) => 
-                current.conversionRate > best.conversionRate ? current : best
-              ).source} ({leadsBySource.reduce((best, current) => 
-                current.conversionRate > best.conversionRate ? current : best
-              ).conversionRate}%)
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-600">Highest Earning Source:</span>
-            <span className="font-medium ml-2">
-              {leadsBySource.reduce((best, current) => 
-                current.earnings > best.earnings ? current : best
-              ).source} (Rs {leadsBySource.reduce((best, current) => 
-                current.earnings > best.earnings ? current : best
-              ).earnings.toLocaleString()})
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-600">Average Conversion Rate:</span>
-            <span className="font-medium ml-2">
-              {(totalConversions / totalVisitors * 100).toFixed(1)}%
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-600">Revenue per Visitor:</span>
-            <span className="font-medium ml-2">
-              Rs {(totalEarnings / totalVisitors).toFixed(2)}
-            </span>
+      {leadsBySource.length > 0 && (
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <h4 className="font-semibold text-gray-800 mb-3">Performance Insights</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">Best Converting Source:</span>
+              <span className="font-medium ml-2">
+                {leadsBySource.reduce((best, current) =>
+                  current.conversionRate > best.conversionRate ? current : best
+                ).source} ({leadsBySource.reduce((best, current) =>
+                  current.conversionRate > best.conversionRate ? current : best
+                ).conversionRate}%)
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-600">Highest Earning Source:</span>
+              <span className="font-medium ml-2">
+                {leadsBySource.reduce((best, current) =>
+                  current.earnings > best.earnings ? current : best
+                ).source} (Rs {leadsBySource.reduce((best, current) =>
+                  current.earnings > best.earnings ? current : best
+                ).earnings.toLocaleString()})
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-600">Average Conversion Rate:</span>
+              <span className="font-medium ml-2">
+                {totalVisitors > 0 ? (totalConversions / totalVisitors * 100).toFixed(1) : '0.0'}%
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-600">Revenue per Visitor:</span>
+              <span className="font-medium ml-2">
+                Rs {totalVisitors > 0 ? (totalEarnings / totalVisitors).toFixed(2) : '0.00'}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {leadsBySource.length === 0 && (
+        <div className="mt-6 p-6 text-center text-gray-500">
+          <p className="text-sm">No lead data yet. Start sharing your referral links to see performance metrics here.</p>
+        </div>
+      )}
     </div>
   )
 }

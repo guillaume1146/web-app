@@ -6,11 +6,12 @@ interface RecentConversionsProps {
 }
 
 export default function RecentConversions({ conversions }: RecentConversionsProps) {
-  const getStatusInfo = (status: 'pending' | 'paid' | 'processing') => {
+  const getStatusInfo = (status: 'pending' | 'paid' | 'processing' | 'completed') => {
     switch (status) {
       case 'pending': return { icon: FaClock, color: 'bg-yellow-100 text-yellow-800', text: 'Pending' };
       case 'paid': return { icon: FaCheckCircle, color: 'bg-green-100 text-green-800', text: 'Paid' };
       case 'processing': return { icon: FaSpinner, color: 'bg-blue-100 text-blue-800', text: 'Processing' };
+      case 'completed': return { icon: FaCheckCircle, color: 'bg-green-100 text-green-800', text: 'Completed' };
     }
   }
 

@@ -13,6 +13,7 @@ import VerificationStep from './VerificationStep'
 import NavigationButtons from './NavigationButtons'
 import LegalModals from './LegalModals'
 import { useDocumentVerification } from './hooks/useDocumentVerification'
+import { captureReferralParams, getTrackingId, setTrackingId, clearReferralTracking } from '@/lib/referral-tracking'
 
 export default function RegistrationForm() {
   const [currentStep, setCurrentStep] = useState(1)
@@ -70,6 +71,32 @@ export default function RegistrationForm() {
       window.removeEventListener('openTerms', handleOpenTerms)
       window.removeEventListener('openPrivacy', handleOpenPrivacy)
       window.removeEventListener('openDisclaimer', handleOpenDisclaimer)
+    }
+  }, [])
+
+  // Capture referral params from URL and record click
+  useEffect(() => {
+    const params = captureReferralParams()
+    if (params?.promo) {
+      fetch('/api/referral-tracking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          referralCode: params.promo,
+          utmSource: params.utm_source,
+          utmMedium: params.utm_medium,
+          utmCampaign: params.utm_campaign,
+          location: params.location,
+          landingPage: params.landing_page,
+        }),
+      })
+        .then(res => res.json())
+        .then(json => {
+          if (json.success && json.data?.trackingId) {
+            setTrackingId(json.data.trackingId)
+          }
+        })
+        .catch(() => { /* silent */ })
     }
   }, [])
 
@@ -223,6 +250,7 @@ export default function RegistrationForm() {
           documentUrls,
           documentVerifications,
           skippedDocuments,
+          trackingId: getTrackingId() || undefined,
         }),
       })
 
@@ -231,6 +259,9 @@ export default function RegistrationForm() {
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Registration failed')
       }
+
+      // Clear referral tracking data
+      clearReferralTracking()
 
       // Set success state
       setSubmissionSuccess(true)

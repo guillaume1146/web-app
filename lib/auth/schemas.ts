@@ -88,6 +88,9 @@ export const registerSchema = z.object({
 
   // Document IDs the user chose to provide later
   skippedDocuments: z.array(z.string()).optional().default([]),
+
+  // Referral click tracking ID (from referral-tracking API)
+  trackingId: z.string().optional(),
 }).refine(data => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],

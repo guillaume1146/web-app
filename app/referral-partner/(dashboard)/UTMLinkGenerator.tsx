@@ -8,7 +8,8 @@ interface UTMLinkGeneratorProps {
 
 export default function UTMLinkGenerator({ promoCode }: UTMLinkGeneratorProps) {
   const [copiedLink, setCopiedLink] = useState<string | null>(null)
-  
+  const [location, setLocation] = useState('mauritius')
+
   const baseUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/signup`
     : 'https://mediwyz.com/signup'
@@ -16,12 +17,13 @@ export default function UTMLinkGenerator({ promoCode }: UTMLinkGeneratorProps) {
   const generateUTMLink = (platform: string) => {
     const utmParams = new URLSearchParams({
       utm_source: platform,
-      utm_medium: platform === 'email' || platform === 'whatsapp' ? 
+      utm_medium: platform === 'email' || platform === 'whatsapp' ?
         (platform === 'email' ? 'direct' : 'messaging') : 'social',
       utm_campaign: `${promoCode.toLowerCase()}_referral_2025`,
       promo: promoCode
     })
-    
+    if (location) utmParams.set('location', location)
+
     return `${baseUrl}?${utmParams.toString()}`
   }
   
@@ -47,7 +49,21 @@ export default function UTMLinkGenerator({ promoCode }: UTMLinkGeneratorProps) {
       <p className="text-gray-600 mb-6 text-sm">
         Generate trackable links for different platforms to monitor your referral performance.
       </p>
-      
+
+      <div className="mb-6">
+        <label htmlFor="location-select" className="block text-sm font-medium text-gray-700 mb-2">Target Location</label>
+        <select
+          id="location-select"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          className="w-full sm:w-64 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+        >
+          <option value="mauritius">Mauritius</option>
+          <option value="madagascar">Madagascar</option>
+          <option value="international">International</option>
+        </select>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {utmSources.map((source) => {
           const Icon = source.icon
