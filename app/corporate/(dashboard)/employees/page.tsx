@@ -143,7 +143,9 @@ export default function CorporateEmployeesPage() {
             <p className="text-sm mt-1">Members will appear here when employees enroll through your company.</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <>
+          {/* Desktop table */}
+          <table className="w-full text-sm hidden sm:table">
             <thead className="bg-gray-50">
               <tr>
                 <th className="p-3 text-left font-medium text-gray-700">Employee</th>
@@ -201,6 +203,54 @@ export default function CorporateEmployeesPage() {
               ))}
             </tbody>
           </table>
+
+          {/* Mobile card view */}
+          <div className="sm:hidden divide-y divide-gray-100">
+            {filteredMembers.map((m) => (
+              <div key={m.id} className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-900">{m.user.firstName} {m.user.lastName}</p>
+                    <p className="text-gray-500 text-xs">{m.user.email}</p>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+                    m.status === 'active'
+                      ? 'bg-green-100 text-green-800'
+                      : m.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-red-100 text-red-800'
+                  }`}>
+                    {m.status === 'pending' && <FaClock className="text-[10px]" />}
+                    {m.status}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>{m.user.phone}</span>
+                  <span>{new Date(m.joinedAt).toLocaleDateString()}</span>
+                </div>
+                {m.status === 'pending' && (
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => handleAction(m.id, 'approve')}
+                      disabled={actionLoading === m.id}
+                      className="flex-1 flex items-center justify-center gap-1 py-2 bg-green-600 text-white rounded-lg text-xs hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {actionLoading === m.id ? <FaSpinner className="animate-spin" /> : <FaCheck />}
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleAction(m.id, 'reject')}
+                      disabled={actionLoading === m.id}
+                      className="flex-1 flex items-center justify-center gap-1 py-2 bg-red-600 text-white rounded-lg text-xs hover:bg-red-700 disabled:opacity-50"
+                    >
+                      <FaBan /> Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
     </div>
