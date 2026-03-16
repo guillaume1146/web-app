@@ -337,7 +337,7 @@ export default function BasicInfoStep({
                     type="checkbox"
                     name="enrolledInCompany"
                     checked={formData.enrolledInCompany || false}
-                    onChange={(e) => onFormChange({ target: { name: 'enrolledInCompany', value: e.target.checked ? 'true' : '', type: 'checkbox' } } as unknown as ChangeEvent<HTMLInputElement>)}
+                    onChange={onFormChange}
                     className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="text-gray-700">I am enrolling through my company&apos;s wellness program</span>
