@@ -52,16 +52,8 @@ describe('POST /api/referral-tracking', () => {
   })
 
   it('creates a ReferralClick and returns trackingId on valid request', async () => {
-    vi.mocked(prisma.referralPartnerProfile.findUnique).mockResolvedValue({
-      id: 'rp1',
-      userId: 'u1',
-      referralCode: 'PARTNER1',
-      commissionRate: 10,
-      totalReferrals: 5,
-      businessType: 'agency',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
+    // API selects only { id: true } from referralPartnerProfile
+    vi.mocked(prisma.referralPartnerProfile.findUnique).mockResolvedValue({ id: 'rp1' } as never)
 
     vi.mocked(prisma.referralClick.create).mockResolvedValue({
       id: 'click-123',
@@ -103,16 +95,7 @@ describe('POST /api/referral-tracking', () => {
   })
 
   it('handles optional fields as null', async () => {
-    vi.mocked(prisma.referralPartnerProfile.findUnique).mockResolvedValue({
-      id: 'rp1',
-      userId: 'u1',
-      referralCode: 'CODE1',
-      commissionRate: 10,
-      totalReferrals: 0,
-      businessType: 'individual',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
+    vi.mocked(prisma.referralPartnerProfile.findUnique).mockResolvedValue({ id: 'rp1' } as never)
 
     vi.mocked(prisma.referralClick.create).mockResolvedValue({
       id: 'click-456',
