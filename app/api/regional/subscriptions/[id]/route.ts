@@ -77,7 +77,11 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const parsed = updateSubscriptionPlanSchema.safeParse(body)
+
+    // Separate services from plan fields for the update schema
+    const { services: servicesPayload, ...planFields } = body as Record<string, unknown>
+
+    const parsed = updateSubscriptionPlanSchema.safeParse(planFields)
     if (!parsed.success) {
       return NextResponse.json({ success: false, message: parsed.error.issues[0].message }, { status: 400 })
     }
@@ -87,9 +91,31 @@ export async function PATCH(
     if (updateData.discounts === null) updateData.discounts = Prisma.JsonNull
     if (updateData.paidServices === null) updateData.paidServices = Prisma.JsonNull
 
-    const updated = await prisma.subscriptionPlan.update({
-      where: { id },
-      data: updateData,
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedPlan = await tx.subscriptionPlan.update({
+        where: { id },
+        data: updateData,
+      })
+
+      // If services array provided, replace all linked services
+      if (Array.isArray(servicesPayload)) {
+        await tx.subscriptionPlanService.deleteMany({ where: { planId: id } })
+        if (servicesPayload.length > 0) {
+          await tx.subscriptionPlanService.createMany({
+            data: servicesPayload.map((svc: Record<string, unknown>) => ({
+              planId: id,
+              platformServiceId: (svc.platformServiceId as string) ?? null,
+              serviceGroupId: (svc.serviceGroupId as string) ?? null,
+              isFree: (svc.isFree as boolean) ?? false,
+              discountPercent: (svc.discountPercent as number) ?? 0,
+              adminPrice: (svc.adminPrice as number) ?? null,
+              monthlyLimit: (svc.monthlyLimit as number) ?? 0,
+            })),
+          })
+        }
+      }
+
+      return updatedPlan
     })
 
     return NextResponse.json({ success: true, data: updated })

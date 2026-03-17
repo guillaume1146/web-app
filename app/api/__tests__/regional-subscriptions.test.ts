@@ -4,7 +4,7 @@ vi.mock('@/lib/db', () => ({
   default: {
     regionalAdminProfile: { findFirst: vi.fn() },
     subscriptionPlan: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
-    subscriptionPlanService: { createMany: vi.fn() },
+    subscriptionPlanService: { createMany: vi.fn(), deleteMany: vi.fn() },
     $transaction: vi.fn(),
   },
 }))
@@ -154,13 +154,24 @@ describe('PATCH /api/regional/subscriptions/[id]', () => {
     expect(res.status).toBe(403)
   })
 
-  it('updates plan successfully', async () => {
+  it('updates plan and services successfully', async () => {
     vi.mocked(validateRequest).mockResolvedValue({ sub: 'u1', userType: 'regional-admin', email: 'a@b.com' })
     vi.mocked(prisma.regionalAdminProfile.findFirst).mockResolvedValue({ countryCode: 'MU' } as never)
     vi.mocked(prisma.subscriptionPlan.findUnique).mockResolvedValue({ id: 'p1', countryCode: 'MU' } as never)
-    vi.mocked(prisma.subscriptionPlan.update).mockResolvedValue({ id: 'p1', price: 600 } as never)
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: unknown) => {
+      const tx = {
+        subscriptionPlan: { update: vi.fn().mockResolvedValue({ id: 'p1', price: 600 }) },
+        subscriptionPlanService: { deleteMany: vi.fn(), createMany: vi.fn() },
+      }
+      return (fn as (t: typeof tx) => Promise<unknown>)(tx)
+    })
 
-    const res = await PATCH(createReq('/api/regional/subscriptions/p1', 'PATCH', { price: 600 }), mockParams('p1'))
+    const res = await PATCH(createReq('/api/regional/subscriptions/p1', 'PATCH', {
+      price: 600,
+      services: [
+        { platformServiceId: 'svc-1', isFree: false, discountPercent: 20, monthlyLimit: 0 },
+      ],
+    }), mockParams('p1'))
     const json = await res.json()
     expect(res.status).toBe(200)
     expect(json.success).toBe(true)

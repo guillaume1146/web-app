@@ -5,6 +5,15 @@ import { FaCrown, FaPlus, FaEdit, FaToggleOn, FaToggleOff, FaSpinner, FaCheckCir
 import { useDashboardUser } from '@/hooks/useDashboardUser'
 import { getCurrencySymbol } from '@/lib/currency'
 
+interface PlanService {
+  isFree: boolean
+  adminPrice: number | null
+  monthlyLimit: number
+  discountPercent: number
+  platformService: { id: string; serviceName: string; category: string; defaultPrice: number; providerType: string } | null
+  serviceGroup: { id: string; name: string } | null
+}
+
 interface Plan {
   id: string
   name: string
@@ -24,6 +33,7 @@ interface Plan {
   features: string[]
   isActive: boolean
   createdByAdminId: string | null
+  planServices?: PlanService[]
 }
 
 interface CatalogService {
@@ -45,6 +55,7 @@ interface PlanServiceLink {
   serviceName: string
   isFree: boolean
   adminPrice: number | null
+  discountPercent: number  // % discount off provider's market price (0-100)
   monthlyLimit: number
 }
 
@@ -126,6 +137,18 @@ export default function SubscriptionsManagementPage() {
 
   const handleEdit = (plan: Plan) => {
     setEditingPlan(plan)
+    // Load existing linked services from planServices
+    const existingLinks: PlanServiceLink[] = (plan.planServices || [])
+      .filter(ps => ps.platformService)
+      .map(ps => ({
+        platformServiceId: ps.platformService!.id,
+        serviceName: ps.platformService!.serviceName,
+        isFree: ps.isFree,
+        adminPrice: ps.adminPrice,
+        discountPercent: ps.discountPercent ?? 0,
+        monthlyLimit: ps.monthlyLimit,
+      }))
+
     setForm({
       name: plan.name,
       type: plan.type as 'individual' | 'corporate',
@@ -140,7 +163,7 @@ export default function SubscriptionsManagementPage() {
       ambulanceFreePerMonth: plan.ambulanceFreePerMonth,
       discounts: (plan.discounts || {}) as Record<string, number>,
       features: plan.features,
-      serviceLinks: [],
+      serviceLinks: existingLinks,
     })
     setShowForm(true)
   }
@@ -166,6 +189,7 @@ export default function SubscriptionsManagementPage() {
           platformServiceId: sl.platformServiceId,
           isFree: sl.isFree,
           adminPrice: sl.adminPrice,
+          discountPercent: sl.discountPercent,
           monthlyLimit: sl.monthlyLimit,
         })),
       }
@@ -444,8 +468,8 @@ export default function SubscriptionsManagementPage() {
 
               {/* Services to include in plan */}
               <div className="border-t pt-4">
-                <h4 className="text-sm font-semibold text-gray-800 mb-3">Included Services</h4>
-                <p className="text-xs text-gray-500 mb-3">Select platform services to include in this plan. Mark as free or set an admin price.</p>
+                <h4 className="text-sm font-semibold text-gray-800 mb-3">Included Services & Discounts</h4>
+                <p className="text-xs text-gray-500 mb-3">Select services to include. For each: mark as free, set a discount %, an admin price, and monthly limit.</p>
                 {services.length > 0 ? (
                   <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
                     {services.flatMap(cat => cat.services).map(svc => {
@@ -464,6 +488,7 @@ export default function SubscriptionsManagementPage() {
                                     serviceName: svc.serviceName,
                                     isFree: false,
                                     adminPrice: null,
+                                    discountPercent: 0,
                                     monthlyLimit: 0,
                                   }],
                                 }))
@@ -479,15 +504,15 @@ export default function SubscriptionsManagementPage() {
                           <span className="flex-1 text-gray-700">{svc.serviceName}</span>
                           <span className="text-xs text-gray-400">{svc.defaultPrice.toLocaleString()}</span>
                           {linked && (
-                            <div className="flex items-center gap-2">
-                              <label className="flex items-center gap-1 text-xs">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <label className="flex items-center gap-1 text-xs whitespace-nowrap">
                                 <input
                                   type="checkbox"
                                   checked={linked.isFree}
                                   onChange={(e) => setForm(prev => ({
                                     ...prev,
                                     serviceLinks: prev.serviceLinks.map(sl =>
-                                      sl.platformServiceId === svc.id ? { ...sl, isFree: e.target.checked } : sl
+                                      sl.platformServiceId === svc.id ? { ...sl, isFree: e.target.checked, discountPercent: e.target.checked ? 100 : sl.discountPercent } : sl
                                     ),
                                   }))}
                                   className="rounded text-green-600"
@@ -495,21 +520,44 @@ export default function SubscriptionsManagementPage() {
                                 Free
                               </label>
                               {!linked.isFree && (
-                                <input
-                                  type="number"
-                                  value={linked.adminPrice ?? ''}
-                                  onChange={(e) => setForm(prev => ({
-                                    ...prev,
-                                    serviceLinks: prev.serviceLinks.map(sl =>
-                                      sl.platformServiceId === svc.id
-                                        ? { ...sl, adminPrice: e.target.value ? parseFloat(e.target.value) : null }
-                                        : sl
-                                    ),
-                                  }))}
-                                  placeholder="Admin price"
-                                  className="w-20 px-1.5 py-1 border border-gray-200 rounded text-xs"
-                                  min="0"
-                                />
+                                <>
+                                  <div className="flex items-center gap-0.5">
+                                    <input
+                                      type="number"
+                                      value={linked.discountPercent || ''}
+                                      onChange={(e) => setForm(prev => ({
+                                        ...prev,
+                                        serviceLinks: prev.serviceLinks.map(sl =>
+                                          sl.platformServiceId === svc.id
+                                            ? { ...sl, discountPercent: parseInt(e.target.value) || 0 }
+                                            : sl
+                                        ),
+                                      }))}
+                                      placeholder="0"
+                                      title="Discount % off provider's market price"
+                                      className="w-12 px-1 py-1 border border-gray-200 rounded text-xs text-center"
+                                      min="0"
+                                      max="100"
+                                    />
+                                    <span className="text-xs text-gray-400">%</span>
+                                  </div>
+                                  <input
+                                    type="number"
+                                    value={linked.adminPrice ?? ''}
+                                    onChange={(e) => setForm(prev => ({
+                                      ...prev,
+                                      serviceLinks: prev.serviceLinks.map(sl =>
+                                        sl.platformServiceId === svc.id
+                                          ? { ...sl, adminPrice: e.target.value ? parseFloat(e.target.value) : null }
+                                          : sl
+                                      ),
+                                    }))}
+                                    placeholder="Price"
+                                    title="Admin-set fixed price (overrides discount)"
+                                    className="w-16 px-1 py-1 border border-gray-200 rounded text-xs"
+                                    min="0"
+                                  />
+                                </>
                               )}
                               <input
                                 type="number"
@@ -522,9 +570,9 @@ export default function SubscriptionsManagementPage() {
                                       : sl
                                   ),
                                 }))}
-                                placeholder="Limit/mo"
+                                placeholder="Lim"
                                 title="Monthly limit (-1 = unlimited, 0 = pay per use)"
-                                className="w-16 px-1.5 py-1 border border-gray-200 rounded text-xs"
+                                className="w-12 px-1 py-1 border border-gray-200 rounded text-xs text-center"
                                 min="-1"
                               />
                             </div>

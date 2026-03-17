@@ -43,6 +43,7 @@ export async function GET(
         planServices: {
           select: {
             isFree: true,
+            discountPercent: true,
             adminPrice: true,
             monthlyLimit: true,
             platformService: {

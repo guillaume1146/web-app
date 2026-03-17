@@ -234,6 +234,7 @@ const planServiceSchema = z.object({
   platformServiceId: z.string().min(1).optional(),
   serviceGroupId: z.string().min(1).optional(),
   isFree: z.boolean().default(false),
+  discountPercent: z.number().int().min(0).max(100).default(0),
   adminPrice: z.number().min(0).optional(),
   monthlyLimit: z.number().int().min(-1).default(0),
 })

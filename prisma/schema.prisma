@@ -1839,7 +1839,8 @@ model SubscriptionPlanService {
   serviceGroupId    String?          // OR a service group link
   serviceGroup      ServiceGroup?    @relation(fields: [serviceGroupId], references: [id], onDelete: Cascade)
   isFree            Boolean          @default(false) // true = included free in plan
-  adminPrice        Float?           // admin-set price (overrides service default); null = use default
+  discountPercent   Int              @default(0) // % discount off provider's market price (0-100)
+  adminPrice        Float?           // admin-set fixed price (overrides discount); null = use default
   monthlyLimit      Int              @default(0) // -1 = unlimited, 0 = pay-per-use, N = N per month
 
   @@index([planId])

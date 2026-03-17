@@ -102,16 +102,21 @@ export async function trackConsultationUsage(
 
 /**
  * Get the subscription discount for a service type.
- * Returns discount percentage (0-100) or 0 if no discount.
+ * Checks two sources:
+ * 1. Per-service discountPercent from SubscriptionPlanService (configured by regional admin)
+ * 2. Plan-level discounts JSON (e.g. {"specialist": 20, "lab": 15})
+ * Returns the highest discount found.
  */
 export async function getSubscriptionDiscount(
   userId: string,
-  serviceType: string
+  serviceType: string,
+  platformServiceId?: string
 ): Promise<{ discountPercent: number; message: string }> {
   const subscription = await prisma.userSubscription.findUnique({
     where: { userId },
     select: {
       status: true,
+      planId: true,
       plan: {
         select: { discounts: true, name: true },
       },
@@ -122,14 +127,41 @@ export async function getSubscriptionDiscount(
     return { discountPercent: 0, message: 'No active subscription.' }
   }
 
+  let bestDiscount = 0
+  let source = ''
+
+  // Source 1: Per-service discount from SubscriptionPlanService
+  if (platformServiceId) {
+    const planService = await prisma.subscriptionPlanService.findFirst({
+      where: {
+        planId: subscription.planId,
+        platformServiceId,
+      },
+      select: { discountPercent: true, isFree: true },
+    })
+    if (planService?.isFree) {
+      return { discountPercent: 100, message: `Service included free in ${subscription.plan.name} plan.` }
+    }
+    if (planService && planService.discountPercent > bestDiscount) {
+      bestDiscount = planService.discountPercent
+      source = 'plan service config'
+    }
+  }
+
+  // Source 2: Plan-level discounts JSON
   const discounts = subscription.plan.discounts as Record<string, number> | null
-  if (!discounts || !discounts[serviceType]) {
+  if (discounts && discounts[serviceType] && discounts[serviceType] > bestDiscount) {
+    bestDiscount = discounts[serviceType]
+    source = 'plan discount'
+  }
+
+  if (bestDiscount === 0) {
     return { discountPercent: 0, message: 'No discount for this service.' }
   }
 
   return {
-    discountPercent: discounts[serviceType],
-    message: `${discounts[serviceType]}% discount applied from ${subscription.plan.name} plan.`,
+    discountPercent: bestDiscount,
+    message: `${bestDiscount}% discount applied from ${subscription.plan.name} plan (${source}).`,
   }
 }
 

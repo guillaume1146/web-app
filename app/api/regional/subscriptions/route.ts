@@ -38,7 +38,11 @@ export async function GET(request: NextRequest) {
       },
       include: {
         planServices: {
-          include: {
+          select: {
+            isFree: true,
+            discountPercent: true,
+            adminPrice: true,
+            monthlyLimit: true,
             platformService: {
               select: { id: true, serviceName: true, category: true, defaultPrice: true, providerType: true },
             },
@@ -129,6 +133,7 @@ export async function POST(request: NextRequest) {
             platformServiceId: svc.platformServiceId ?? null,
             serviceGroupId: svc.serviceGroupId ?? null,
             isFree: svc.isFree ?? false,
+            discountPercent: svc.discountPercent ?? 0,
             adminPrice: svc.adminPrice ?? null,
             monthlyLimit: svc.monthlyLimit ?? 0,
           })),
