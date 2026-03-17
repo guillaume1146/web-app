@@ -13,7 +13,7 @@ export const useAppConfig = () => {
     appName: "MediWyz", // Default fallback
     appTagline: "Your trusted healthcare companion in Mauritius",
     heroTitle: "Your Health, Our Priority",
-    platformDescription: "Mauritius's Leading Healthcare Platform"
+    platformDescription: "Mauritius's Leading Digital Health Platform"
   })
   const [loading, setLoading] = useState(true)
 

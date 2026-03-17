@@ -1,7 +1,7 @@
 {
-  "name": "MediWyz - Healthcare Platform",
+  "name": "MediWyz - Digital Health Platform",
   "short_name": "MediWyz",
-  "description": "Connect with doctors, nurses, and healthcare providers. Book consultations, manage prescriptions, and access AI health insights.",
+  "description": "A digital health platform connecting patients with trusted healthcare providers — doctors, nurses, pharmacies, and emergency services.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

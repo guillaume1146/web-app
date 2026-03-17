@@ -65,7 +65,7 @@ const Footer: React.FC = () => {
                 <span className="text-2xl font-bold text-gray-900">MediWyz</span>
               </div>
               <p className="text-gray-600 mb-6 leading-relaxed">
-                Your trusted healthcare platform connecting patients with qualified doctors and providing 
+                Your trusted digital health platform connecting patients with qualified doctors and providing 
                 AI-powered health insights for better wellness in Mauritius.
               </p>
               <div className="flex items-center space-x-2 text-gray-500 mb-2">

@@ -19,11 +19,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: 'MediWyz - Healthcare Platform',
+    default: 'MediWyz - Digital Health Platform',
     template: '%s | MediWyz',
   },
   description:
-    'Connect with qualified doctors, nurses, and healthcare providers in Mauritius. Book video consultations, manage prescriptions, and access AI-powered health insights.',
+    'A digital health platform connecting patients in Mauritius with trusted healthcare providers — doctors, nurses, pharmacies, and emergency services — through one seamless app.',
   keywords: [
     'healthcare',
     'doctors',
@@ -48,23 +48,23 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_MU',
     siteName: 'MediWyz',
-    title: 'MediWyz - Healthcare Platform',
+    title: 'MediWyz - Digital Health Platform',
     description:
-      'Connect with qualified doctors, nurses, and healthcare providers in Mauritius. Book video consultations and manage your health online.',
+      'A digital health platform connecting patients in Mauritius with trusted healthcare providers — doctors, nurses, pharmacies, and emergency services.',
     images: [
       {
         url: '/images/og-banner.png',
         width: 1200,
         height: 630,
-        alt: 'MediWyz - Healthcare Platform',
+        alt: 'MediWyz - Digital Health Platform',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'MediWyz - Healthcare Platform',
+    title: 'MediWyz - Digital Health Platform',
     description:
-      'Connect with qualified doctors, nurses, and healthcare providers in Mauritius.',
+      'A digital health platform connecting patients in Mauritius with trusted healthcare providers.',
     images: ['/images/og-banner.png'],
   },
   robots: {
@@ -89,13 +89,13 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mediwyz.com'
 
 const jsonLd = {
   '@context': 'https://schema.org',
-  '@type': 'MedicalOrganization',
+  '@type': 'Organization',
   name: 'MediWyz',
   url: appUrl,
   logo: `${appUrl}/images/logo.png`,
   image: `${appUrl}/images/og-banner.png`,
   description:
-    'A full-stack healthcare platform for Mauritius connecting patients with doctors, nurses, pharmacists, and emergency services via video consultations and appointment booking.',
+    'A digital health platform connecting patients in Mauritius with trusted healthcare providers — doctors, nurses, pharmacies, and emergency services — through one seamless app.',
   address: {
     '@type': 'PostalAddress',
     addressCountry: 'MU',

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MediWyz — a full-stack healthcare platform for Mauritius built with Next.js 15 (App Router), TypeScript, PostgreSQL (Prisma ORM), Socket.IO, and WebRTC. Connects patients with doctors, nurses, nannies, pharmacists, lab technicians, and emergency workers via video consultations, appointment booking, and prescription management. Supports 11 user types.
+MediWyz — a digital health platform for Mauritius built with Next.js 15 (App Router), TypeScript, PostgreSQL (Prisma ORM), Socket.IO, and WebRTC. Connects patients with doctors, nurses, nannies, pharmacists, lab technicians, and emergency workers via video consultations, appointment booking, and prescription management. Supports 11 user types.
 
 ## Common Commands
 

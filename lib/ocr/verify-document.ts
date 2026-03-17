@@ -41,7 +41,7 @@ interface GroqVerificationResponse {
 
 function buildVerificationPrompt(fullName: string, documentType: string): string {
   const nameParts = fullName.trim().split(/\s+/)
-  return `You are an AI Document Compliance Analyst for MediWyz, a healthcare platform. Your task is to verify a document submitted during user registration.
+  return `You are an AI Document Compliance Analyst for MediWyz, a digital health platform. Your task is to verify a document submitted during user registration.
 
 Person's full name to verify: "${fullName}"
 Name parts to search for: ${JSON.stringify(nameParts)}

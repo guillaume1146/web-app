@@ -14,7 +14,7 @@ export async function seedCmsContent(prisma: PrismaClient) {
         mainTitle: "Your Health, Our Priority",
         highlightWord: "Health",
         subtitle: "Connect with qualified doctors, get AI-powered health insights, and access medicines across Mauritius. Your trusted healthcare companion.",
-        platformBadge: "Mauritius's Leading Healthcare Platform",
+        platformBadge: "Mauritius's Leading Digital Health Platform",
         searchPlaceholder: "Search doctors, diseases...",
         ctaButtons: [
           { icon: "👨‍⚕️", label: "Find Doctors", shortLabel: "Doctors" },

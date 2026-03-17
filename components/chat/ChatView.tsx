@@ -1,5 +1,5 @@
 // components/chat/ChatView.tsx
-// Shared chat component for the unified healthcare platform.
+// Shared chat component for the unified digital health platform.
 // Used by ALL user types — patients, doctors, nurses, nannies, pharmacists, etc.
 
 'use client'

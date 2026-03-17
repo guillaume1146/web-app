@@ -1,6 +1,6 @@
-# MediWyz - Healthcare Platform for Mauritius
+# MediWyz - Digital Health Platform for Mauritius
 
-A full-stack healthcare platform built with **Next.js 15**, **TypeScript**, **PostgreSQL**, **Socket.IO**, and **WebRTC**. It connects patients with doctors, nurses, nannies, pharmacists, lab technicians, and emergency responders through video consultations, appointment booking, prescription management, and more.
+A digital health platform built with **Next.js 15**, **TypeScript**, **PostgreSQL**, **Socket.IO**, and **WebRTC**. It connects patients with doctors, nurses, nannies, pharmacists, lab technicians, and emergency responders through video consultations, appointment booking, prescription management, and more.
 
 ---
 

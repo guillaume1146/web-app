@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       appTagline: APP_TAGLINE,
       appDomain: APP_DOMAIN,
       heroTitle: process.env.HERO_TITLE || 'Your Health, Our Priority',
-      platformDescription: process.env.PLATFORM_DESC || 'Your Leading Healthcare Platform',
+      platformDescription: process.env.PLATFORM_DESC || 'Your Leading Digital Health Platform',
     }
 
     return NextResponse.json(config)

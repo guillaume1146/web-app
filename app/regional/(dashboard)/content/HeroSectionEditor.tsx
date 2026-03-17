@@ -132,7 +132,7 @@ export default function HeroSectionEditor({ data, onSave }: HeroSectionEditorPro
           value={formData.platformBadge}
           onChange={(e) => handleChange('platformBadge', e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="e.g., #1 Healthcare Platform"
+          placeholder="e.g., #1 Digital Health Platform"
         />
       </div>
 
