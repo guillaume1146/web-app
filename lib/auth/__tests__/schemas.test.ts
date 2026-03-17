@@ -109,4 +109,56 @@ describe('registerSchema', () => {
     })
     expect(result.success).toBe(true)
   })
+
+  it('accepts registration with subscription plan selection', () => {
+    const result = registerSchema.safeParse({
+      ...validBase,
+      selectedPlanId: 'plan-essential-mu',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.selectedPlanId).toBe('plan-essential-mu')
+    }
+  })
+
+  it('accepts registration with both personal and business plan', () => {
+    const result = registerSchema.safeParse({
+      ...validBase,
+      userType: 'corporate',
+      companyName: 'Test Corp',
+      selectedPlanId: 'plan-premium-mu',
+      selectedBusinessPlanId: 'plan-corp-plus-mu',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts registration without plan (optional)', () => {
+    const result = registerSchema.safeParse(validBase)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.selectedPlanId).toBeUndefined()
+    }
+  })
+
+  it('accepts all user types', () => {
+    const types = ['patient', 'doctor', 'nurse', 'nanny', 'pharmacist', 'lab', 'emergency', 'insurance', 'corporate', 'referral-partner', 'regional-admin']
+    for (const userType of types) {
+      const result = registerSchema.safeParse({ ...validBase, userType })
+      expect(result.success).toBe(true)
+    }
+  })
+
+  it('rejects unknown user type', () => {
+    const result = registerSchema.safeParse({ ...validBase, userType: 'superadmin' })
+    expect(result.success).toBe(false)
+  })
+
+  it('accepts patient with corporate enrollment', () => {
+    const result = registerSchema.safeParse({
+      ...validBase,
+      enrolledInCompany: true,
+      companyId: 'CAPROF001',
+    })
+    expect(result.success).toBe(true)
+  })
 })
