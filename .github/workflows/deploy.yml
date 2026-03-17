@@ -80,11 +80,11 @@ jobs:
         run: |
           IMAGE_TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           IMAGE_TAG=$(echo "$IMAGE_TAG" | tr '[:upper:]' '[:lower:]')
-          DOMAIN="${{ secrets.VULTR_DOMAIN }}"
+          DOMAIN="${{ secrets.APP_DOMAIN || secrets.VULTR_DOMAIN }}"
           if [ -n "$DOMAIN" ]; then
             APP_URL="https://$DOMAIN"
           else
-            APP_URL="http://${{ secrets.VULTR_VM_IP }}"
+            APP_URL="http://${{ secrets.VPS_HOST || secrets.VULTR_VM_IP }}"
           fi
           docker build -t $IMAGE_TAG \
             --build-arg NEXT_PUBLIC_APP_URL=$APP_URL \
@@ -102,9 +102,10 @@ jobs:
       - name: Deploy on VPS
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VULTR_VM_IP }}
-          username: ${{ secrets.VULTR_VM_USER }}
-          key: ${{ secrets.VULTR_SSH_PRIVATE_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           command_timeout: 30m
           envs: GH_TOKEN,GH_ACTOR,IMAGE_TAG,APP_URL,DB_URL,JWT_SECRET,GROQ_API_KEY,POSTGRES_PASSWORD,SUPER_ADMIN_EMAIL,SUPER_ADMIN_PASSWORD,SUPER_ADMIN_FIRST_NAME,SUPER_ADMIN_LAST_NAME,DEPLOY_DIR,APP_DOMAIN
           script: |
@@ -193,7 +194,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_ACTOR: ${{ github.actor }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
-          APP_URL: ${{ secrets.VULTR_DOMAIN != '' && format('https://{0}', secrets.VULTR_DOMAIN) || format('http://{0}', secrets.VULTR_VM_IP) }}
+          APP_URL: ${{ secrets.APP_DOMAIN != '' && format('https://{0}', secrets.APP_DOMAIN) || secrets.VULTR_DOMAIN != '' && format('https://{0}', secrets.VULTR_DOMAIN) || format('http://{0}', secrets.VPS_HOST) }}
           DB_URL: ${{ secrets.DATABASE_URL || format('postgresql://healthwyz:{0}@db:5432/healthwyz', secrets.POSTGRES_PASSWORD) }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
@@ -208,9 +209,10 @@ jobs:
       - name: Setup HTTPS with Let's Encrypt
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VULTR_VM_IP }}
-          username: ${{ secrets.VULTR_VM_USER }}
-          key: ${{ secrets.VULTR_SSH_PRIVATE_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           command_timeout: 15m
           envs: VULTR_DOMAIN,DEPLOY_DIR
           script: |
@@ -254,9 +256,10 @@ jobs:
       - name: Verify deployment
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VULTR_VM_IP }}
-          username: ${{ secrets.VULTR_VM_USER }}
-          key: ${{ secrets.VULTR_SSH_PRIVATE_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           envs: VULTR_DOMAIN
           script: |
             DOMAIN="${VULTR_DOMAIN:-localhost}"
