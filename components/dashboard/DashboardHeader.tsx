@@ -278,8 +278,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       )}
       <div className="h-0.5 bg-gradient-to-r from-primary-blue via-primary-teal to-secondary-green" />
       <div className="bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100">
-      <div className="px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-3 md:py-2.5">
-        <div className="flex items-center justify-between">
+      <div className="px-2 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-3 md:py-2.5">
+        <div className="flex items-center justify-between gap-1 overflow-hidden">
           {/* Left: mobile toggle + logo + user info */}
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
             <button
@@ -438,17 +438,19 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               )}
             </div>
 
-            {/* Language switcher */}
-            <LanguageSwitcher variant="header" />
+            {/* Language switcher — hidden on small mobile to save space */}
+            <div className="hidden sm:block">
+              <LanguageSwitcher variant="header" />
+            </div>
 
             {/* Logout button */}
             <button
               onClick={onLogout}
-              className="bg-gradient-to-r from-red-500 to-red-600 text-white px-2.5 sm:px-3 md:px-3.5 py-2 sm:py-2 md:py-2 rounded-lg flex items-center gap-1.5 sm:gap-1.5 hover:from-red-600 hover:to-red-700 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="bg-gradient-to-r from-red-500 to-red-600 text-white p-2 sm:px-3 sm:py-2 rounded-lg flex items-center gap-1.5 hover:from-red-600 hover:to-red-700 transition flex-shrink-0"
               aria-label="Log out"
             >
-              <FaSignOutAlt className="text-xs sm:text-sm md:text-sm" aria-hidden="true" />
-              <span className="hidden sm:inline text-xs sm:text-xs md:text-sm">
+              <FaSignOutAlt className="text-sm" aria-hidden="true" />
+              <span className="hidden sm:inline text-xs">
                 {t('common.logout')}
               </span>
             </button>

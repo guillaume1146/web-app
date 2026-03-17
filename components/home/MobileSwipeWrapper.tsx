@@ -23,6 +23,14 @@ export default function MobileSwipeWrapper({ children, sectionLabels }: MobileSw
     return () => window.removeEventListener('resize', check)
   }, [])
 
+  // Prevent body scroll on mobile when swipe wrapper is active
+  useEffect(() => {
+    if (isMobile) {
+      document.body.style.overflow = 'hidden'
+      return () => { document.body.style.overflow = '' }
+    }
+  }, [isMobile])
+
   const handleTouchStart = (e: TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
   }
@@ -81,7 +89,7 @@ export default function MobileSwipeWrapper({ children, sectionLabels }: MobileSw
           {children.map((child, i) => (
             <div
               key={i}
-              className="w-full flex-shrink-0 min-h-[calc(100vh-64px)] overflow-y-auto pb-20"
+              className="w-full flex-shrink-0 h-[calc(100vh-64px)] overflow-hidden pb-16"
             >
               {child}
             </div>

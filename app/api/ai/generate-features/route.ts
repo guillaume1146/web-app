@@ -67,13 +67,18 @@ ${serviceList ? `Services included: ${serviceList}` : ''}
 Rules:
 - Return ONLY a JSON array of strings, each string is one feature line
 - Keep each feature short (under 60 characters)
-- Start with the most valuable features
-- Use clear, customer-facing language (not technical)
-- Include consultation quotas, discounts, and key benefits
-- For corporate plans, mention employee-specific benefits
-- 8-12 features maximum
+- Start with consultation quotas, then discounts, then services
+- IMPORTANT: Include EVERY service listed above — do NOT skip any
+- For FREE services, write "FREE [service name]"
+- For services with discount, write "[X]% [service name] discount"
+- Include ALL consultation quotas (GP, nurse, mental health, etc.)
+- Include ALL category discounts (lab, pharmacy, specialist, etc.)
+- Include ALL volume discounts if any
+- Use clear, customer-facing language
+- For corporate plans, add "per employee" where relevant
 - Do NOT include the price in the features
-- Example format: ["2 GP consultations/month", "20% specialist discount", "Priority booking"]`
+- No maximum limit — include everything configured
+- Example format: ["2 GP consultations/month", "FREE Annual Health Screening", "20% specialist discount", "FREE Thyroid Panel"]`
 
     const res = await fetch(GROQ_API_URL, {
       method: 'POST',
@@ -84,8 +89,8 @@ Rules:
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-        max_tokens: 500,
+        temperature: 0.2,
+        max_tokens: 1500,
       }),
     })
 

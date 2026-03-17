@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import {
   FaChartPie, FaUtensils, FaDumbbell, FaBed, FaRobot,
-  FaChartLine, FaCalendarAlt, FaUser,
+  FaChartLine, FaCalendarAlt, FaUser, FaHeartbeat,
 } from 'react-icons/fa'
 import { useCapacitor } from '@/hooks/useCapacitor'
 
@@ -15,6 +15,7 @@ import AiCoachTab from './tabs/AiCoachTab'
 import ProgressTab from './tabs/ProgressTab'
 import MealPlannerTab from './tabs/MealPlannerTab'
 import ProfileGoalsTab from './tabs/ProfileGoalsTab'
+import BloodPressureScanner from './BloodPressureScanner'
 
 interface HealthTrackerTabsProps {
   userName?: string
@@ -30,6 +31,7 @@ const TABS = [
   { id: 'progress', label: 'Progress', icon: FaChartLine },
   { id: 'meal-plan', label: 'Meal Plan', icon: FaCalendarAlt },
   { id: 'profile', label: 'Profile', icon: FaUser },
+  { id: 'bp-check', label: 'BP Check', icon: FaHeartbeat },
 ]
 
 export default function HealthTrackerTabs({ userName, healthScore }: HealthTrackerTabsProps) {
@@ -46,6 +48,7 @@ export default function HealthTrackerTabs({ userName, healthScore }: HealthTrack
       case 5: return <ProgressTab />
       case 6: return <MealPlannerTab />
       case 7: return <ProfileGoalsTab />
+      case 8: return <BloodPressureScanner />
       default: return <DashboardTab onNavigateToTab={setActiveTab} />
     }
   }
