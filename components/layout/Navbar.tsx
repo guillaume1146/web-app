@@ -30,19 +30,19 @@ import { useCapacitor } from '@/hooks/useCapacitor'
 
 const serviceCategories = {
   'Healthcare Services': [
-    { href: '/search/doctors', label: 'Find Doctors', icon: FaUserMd },
-    { href: '/search/nurses', label: 'Nursing Care', icon: FaUserNurse },
-    { href: '/search/childcare', label: 'Childcare Services', icon: FaBaby },
-    { href: '/search/emergency', label: 'Emergency Services', icon: FaAmbulance },
+    { href: '/search/doctors', label: 'Find Doctors', desc: 'Book GP & specialist consultations', icon: FaUserMd, color: 'from-blue-500 to-blue-600' },
+    { href: '/search/nurses', label: 'Nursing Care', desc: 'Home visits & health monitoring', icon: FaUserNurse, color: 'from-purple-500 to-purple-600' },
+    { href: '/search/childcare', label: 'Childcare', desc: 'Trusted nannies & child services', icon: FaBaby, color: 'from-pink-500 to-pink-600' },
+    { href: '/search/emergency', label: 'Emergency', desc: 'Ambulance & first response', icon: FaAmbulance, color: 'from-red-500 to-red-600' },
   ],
   'Medical Services': [
-    { href: '/search/medicines', label: 'Medicines', icon: FaPills },
-    { href: '/search/lab', label: 'Lab Testing', icon: FaFlask },
-    { href: '/search/insurance', label: 'Insurance', icon: FaShieldAlt },
+    { href: '/search/medicines', label: 'Medicines', desc: 'Order & get delivered', icon: FaPills, color: 'from-orange-500 to-orange-600' },
+    { href: '/search/lab', label: 'Lab Testing', desc: 'Book tests & view results', icon: FaFlask, color: 'from-cyan-500 to-cyan-600' },
+    { href: '/search/insurance', label: 'Insurance', desc: 'Health coverage plans', icon: FaShieldAlt, color: 'from-indigo-500 to-indigo-600' },
   ],
   'Digital Health': [
-    { href: '/search/ai', label: 'AI Support', icon: FaRobot }
-  ]
+    { href: '/search/ai', label: 'AI Support', desc: 'AI-powered health assistant', icon: FaRobot, color: 'from-green-500 to-green-600' },
+  ],
 }
 
 const COOKIE_TO_SLUG: Record<string, string> = {
@@ -159,20 +159,25 @@ const Navbar: React.FC = () => {
                   <FaChevronDown className="text-xs" aria-hidden="true" />
                 </button>
 
-                <div className="absolute top-full left-0 mt-1 w-80 bg-white rounded-xl shadow-xl border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                  <div className="p-4 grid grid-cols-1 gap-4">
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[580px] bg-white rounded-2xl shadow-2xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div className="p-5">
                     {Object.entries(serviceCategories).map(([category, services]) => (
-                      <div key={category}>
-                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{category}</h4>
-                        <div className="space-y-1">
+                      <div key={category} className="mb-4 last:mb-0">
+                        <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2.5 px-1">{category}</h4>
+                        <div className="grid grid-cols-2 gap-2">
                           {services.map((service) => (
                             <Link
                               key={service.href}
                               href={getServiceHref(service.href)}
-                              className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 transition-colors duration-200 group/item"
+                              className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-all duration-200 group/card"
                             >
-                              <service.icon className="text-blue-600 group-hover/item:text-green-600 transition-colors" />
-                              <span className="text-sm text-gray-700 group-hover/item:text-gray-900">{service.label}</span>
+                              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${service.color} flex items-center justify-center flex-shrink-0 shadow-sm group-hover/card:shadow-md transition-shadow`}>
+                                <service.icon className="text-white text-sm" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 group-hover/card:text-blue-600 transition-colors">{service.label}</p>
+                                <p className="text-[11px] text-gray-400 leading-tight">{service.desc}</p>
+                              </div>
                             </Link>
                           ))}
                         </div>
@@ -276,17 +281,19 @@ const Navbar: React.FC = () => {
 
                 {/* Mobile: Icon grid — hidden when logged in */}
                 {!isLoggedIn && (
-                  <div className="sm:hidden grid grid-cols-4 gap-2 mb-3 pb-3 border-b border-gray-100">
+                  <div className="sm:hidden grid grid-cols-3 gap-2 mb-3 pb-3 border-b border-gray-100">
                     {Object.values(serviceCategories).flat().map((service) => (
                       <Link
                         key={service.href}
                         href={getServiceHref(service.href)}
-                        className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                        className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-gray-50 hover:bg-blue-50 transition-colors"
                         onClick={() => setIsMenuOpen(false)}
                         aria-label={service.label}
                       >
-                        <service.icon className="text-blue-600 text-lg" />
-                        <span className="text-[10px] text-gray-600 text-center leading-tight">{service.label.split(' ')[0]}</span>
+                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${service.color} flex items-center justify-center shadow-sm`}>
+                          <service.icon className="text-white text-sm" />
+                        </div>
+                        <span className="text-[11px] font-medium text-gray-700 text-center leading-tight">{service.label}</span>
                       </Link>
                     ))}
                   </div>
