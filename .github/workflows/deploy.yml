@@ -106,6 +106,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           password: ${{ secrets.VPS_PASSWORD }}
+          timeout: 60s
           command_timeout: 30m
           envs: GH_TOKEN,GH_ACTOR,IMAGE_TAG,APP_URL,DB_URL,JWT_SECRET,GROQ_API_KEY,POSTGRES_PASSWORD,SUPER_ADMIN_EMAIL,SUPER_ADMIN_PASSWORD,SUPER_ADMIN_FIRST_NAME,SUPER_ADMIN_LAST_NAME,DEPLOY_DIR,APP_DOMAIN
           script: |
@@ -236,6 +237,7 @@ jobs:
           username: ${{ secrets.VPS_USER || 'root' }}
           key: ${{ secrets.VPS_SSH_KEY }}
           password: ${{ secrets.VPS_PASSWORD }}
+          timeout: 60s
           command_timeout: 15m
           envs: VULTR_DOMAIN,DEPLOY_DIR
           script: |
@@ -283,6 +285,7 @@ jobs:
           username: ${{ secrets.VPS_USER || 'root' }}
           key: ${{ secrets.VPS_SSH_KEY }}
           password: ${{ secrets.VPS_PASSWORD }}
+          timeout: 60s
           envs: VULTR_DOMAIN
           script: |
             DOMAIN="${VULTR_DOMAIN:-localhost}"
