@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { FaSpinner } from 'react-icons/fa'
 import { useDoctorData } from '../context'
 import BillingEarnings from '../components/BillingEarnings'
+import SubscriptionTab from '@/components/settings/tabs/SubscriptionTab'
 
 interface WalletTransaction {
   id: string
@@ -128,5 +129,14 @@ export default function BillingPage() {
     )
   }
 
-  return <BillingEarnings doctorData={billingData} />
+  return (
+    <div className="space-y-6">
+      {/* Subscription Plan */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+        <SubscriptionTab userId={user.id} />
+      </div>
+      {/* Earnings */}
+      <BillingEarnings doctorData={billingData} />
+    </div>
+  )
 }

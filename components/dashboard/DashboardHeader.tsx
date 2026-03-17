@@ -319,8 +319,14 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             </div>
           </div>
 
-          {/* Right: profile, notifications, language, logout */}
+          {/* Right: plan badge (mobile only) + profile, notifications, language, logout */}
           <div className="flex items-center gap-2 sm:gap-2 md:gap-3 lg:gap-4">
+            {/* Plan badge — mobile only (desktop shows it next to name) */}
+            {planLabel && (
+              <span className="sm:hidden text-[9px] px-1.5 py-0.5 rounded-full bg-gradient-to-r from-yellow-100 to-amber-100 text-amber-700 font-medium whitespace-nowrap border border-amber-200">
+                {planLabel}
+              </span>
+            )}
             {/* Profile avatar link */}
             <Link
               href={profileHref}
