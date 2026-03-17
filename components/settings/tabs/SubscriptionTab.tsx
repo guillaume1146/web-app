@@ -44,7 +44,8 @@ interface SubscriptionTabProps {
 
 const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
   const [current, setCurrent] = useState<CurrentSubscription | null>(null)
-  const [plans, setPlans] = useState<Plan[]>([])
+  const [individualPlans, setIndividualPlans] = useState<Plan[]>([])
+  const [corporatePlans, setCorporatePlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [changing, setChanging] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -53,15 +54,18 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
     if (!userId) return
     setLoading(true)
     try {
-      const [subRes, plansRes] = await Promise.all([
+      const [subRes, indRes, corpRes] = await Promise.all([
         fetch(`/api/users/${userId}/subscription`),
         fetch('/api/subscriptions?type=individual'),
+        fetch('/api/subscriptions?type=corporate'),
       ])
       const subJson = await subRes.json()
-      const plansJson = await plansRes.json()
+      const indJson = await indRes.json()
+      const corpJson = await corpRes.json()
 
       if (subJson.success) setCurrent(subJson.data)
-      if (plansJson.success) setPlans(plansJson.data)
+      if (indJson.success) setIndividualPlans(indJson.data)
+      if (corpJson.success) setCorporatePlans(corpJson.data)
     } catch {
       // silent
     } finally {
@@ -184,49 +188,88 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
         </div>
       )}
 
-      {/* Available plans */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {plans.map((plan) => {
-          const isCurrent = currentPlanId === plan.id
-          return (
-            <div
-              key={plan.id}
-              className={`border rounded-lg p-6 text-center transition-all ${
-                isCurrent ? 'border-blue-500 ring-2 ring-blue-500 bg-blue-50' : 'hover:shadow-lg'
-              }`}
-            >
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-              <p className="text-3xl font-bold mb-4">
-                {plan.price > 0 ? `${getCurrencySymbol(plan.currency)} ${plan.price.toLocaleString()}` : 'Free'}
-                <span className="text-base font-normal text-gray-500">/month</span>
-              </p>
-              <ul className="space-y-2 text-gray-600 mb-6 text-sm text-left">
-                {(plan.features as string[]).map((feature) => (
-                  <li key={feature} className="flex items-start gap-2">
-                    <FaCheckCircle className="text-green-500 flex-shrink-0 mt-0.5" /> {feature}
-                  </li>
-                ))}
-              </ul>
-              {isCurrent ? (
-                <div className="w-full py-2.5 rounded-lg font-semibold bg-blue-600 text-white">
-                  Current Plan
-                </div>
-              ) : (
-                <button
-                  onClick={() => handleChangePlan(plan.id)}
-                  disabled={changing}
-                  className="w-full py-2.5 rounded-lg font-semibold bg-gray-200 text-gray-800 hover:bg-gray-300 transition flex items-center justify-center gap-2"
-                >
-                  {changing ? <FaSpinner className="animate-spin" /> : <FaExchangeAlt />}
-                  {current?.hasSubscription ? 'Switch Plan' : 'Subscribe'}
-                </button>
-              )}
-            </div>
-          )
-        })}
-      </div>
+      {/* MediWyz For You — Individual Plans */}
+      {individualPlans.length > 0 && (
+        <div className="mb-8">
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-sm">
+                <FaCrown />
+              </span>
+              MediWyz For You
+            </h3>
+            <p className="text-sm text-gray-500 mt-1">Personal health plans for individuals</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {individualPlans.map((plan) => renderPlanCard(plan, currentPlanId))}
+          </div>
+        </div>
+      )}
+
+      {/* MediWyz For Business — Corporate Plans */}
+      {corporatePlans.length > 0 && (
+        <div>
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-sm">
+                <FaCrown />
+              </span>
+              MediWyz For Business
+            </h3>
+            <p className="text-sm text-gray-500 mt-1">Corporate wellness plans — employer pays per employee</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {corporatePlans.map((plan) => renderPlanCard(plan, currentPlanId))}
+          </div>
+        </div>
+      )}
     </div>
   )
+
+  function renderPlanCard(plan: Plan, activePlanId?: string) {
+    const isCurrent = activePlanId === plan.id
+    const sym = getCurrencySymbol(plan.currency)
+    return (
+      <div
+        key={plan.id}
+        className={`border rounded-xl p-5 transition-all ${
+          isCurrent ? 'border-blue-500 ring-2 ring-blue-500 bg-blue-50' : 'hover:shadow-lg'
+        }`}
+      >
+        <h4 className="text-lg font-bold text-gray-900 mb-1">{plan.name}</h4>
+        <p className="text-2xl font-bold mb-3">
+          {plan.price > 0 ? `${sym} ${plan.price.toLocaleString()}` : 'Free'}
+          <span className="text-sm font-normal text-gray-500">
+            {plan.type === 'corporate' ? '/employee/mo' : '/month'}
+          </span>
+        </p>
+        <ul className="space-y-1.5 text-gray-600 mb-5 text-sm">
+          {(plan.features as string[]).slice(0, 6).map((feature) => (
+            <li key={feature} className="flex items-start gap-2">
+              <FaCheckCircle className="text-green-500 flex-shrink-0 mt-0.5 text-xs" /> {feature}
+            </li>
+          ))}
+          {(plan.features as string[]).length > 6 && (
+            <li className="text-xs text-gray-400">+{(plan.features as string[]).length - 6} more</li>
+          )}
+        </ul>
+        {isCurrent ? (
+          <div className="w-full py-2 rounded-lg font-semibold bg-blue-600 text-white text-center text-sm">
+            Current Plan
+          </div>
+        ) : (
+          <button
+            onClick={() => handleChangePlan(plan.id)}
+            disabled={changing}
+            className="w-full py-2 rounded-lg font-semibold bg-gray-200 text-gray-800 hover:bg-gray-300 transition flex items-center justify-center gap-2 text-sm"
+          >
+            {changing ? <FaSpinner className="animate-spin" /> : <FaExchangeAlt className="text-xs" />}
+            {current?.hasSubscription ? 'Switch Plan' : 'Subscribe'}
+          </button>
+        )}
+      </div>
+    )
+  }
 }
 
 export default SubscriptionTab

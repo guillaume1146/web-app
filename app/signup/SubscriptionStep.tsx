@@ -169,7 +169,7 @@ export default function SubscriptionStep({
           corporatePlans,
           selectedBusinessPlanId,
           onSelectBusinessPlan,
-          'Business Plan for Employees'
+          'MediWyz For Business'
         )}
 
       {/* Skip option */}

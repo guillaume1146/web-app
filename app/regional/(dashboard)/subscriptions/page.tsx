@@ -324,8 +324,8 @@ export default function SubscriptionsManagementPage() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
-          {renderPlanTable(individualPlans, 'Individual Plans')}
-          {renderPlanTable(corporatePlans, 'Corporate Plans')}
+          {renderPlanTable(individualPlans, 'MediWyz For You — Individual Plans')}
+          {renderPlanTable(corporatePlans, 'MediWyz For Business — Corporate Plans')}
         </div>
       )}
 
