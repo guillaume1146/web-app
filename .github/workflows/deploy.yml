@@ -174,24 +174,28 @@ jobs:
               docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>&1 || true
             fi
 
-            # Apply schema changes
+            # Always sync schema with code
+            echo "=== Pushing schema changes ==="
             docker compose exec -T app npx prisma db push --accept-data-loss
 
             # Ensure uploads directory exists and is writable inside the volume
             docker compose exec -T -u root app sh -c "mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app/public/uploads" || true
 
-            # Seed only on first deploy or when FORCE_SEED=true
-            # Check if users table has data (skip seed if already populated)
-            HAS_DATA=$(docker compose exec -T app sh -c "node -e \"const p=require('@prisma/client');const c=new p.PrismaClient();c.user.count().then(n=>{console.log(n);c.\\\$disconnect()}).catch(()=>{console.log(0)})\"" 2>/dev/null | tail -1)
-            echo "Users in database: $HAS_DATA"
-            if [ "${HAS_DATA:-0}" = "0" ] || [ "${FORCE_SEED}" = "true" ]; then
-              echo "Starting database seed..."
-              docker compose exec -T app sh -c "npx ts-node --skipProject --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\",\"esModuleInterop\":true}' prisma/seed.ts 2>&1" || echo "WARNING: Seed exited with code $?"
-              echo "Seed completed — restarting app..."
-              docker compose restart app
-              sleep 10
+            # Always seed — keeps deployed DB in sync with code
+            echo "=== Seeding database ==="
+            docker compose exec -T app sh -c "npx ts-node --skipProject --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\",\"esModuleInterop\":true}' prisma/seed.ts 2>&1" || echo "WARNING: Seed exited with code $?"
+            echo "Seed completed"
+
+            # Restart app after seed to clear stale DB connections
+            echo "Restarting app after seed..."
+            docker compose restart app
+            sleep 15
+            if curl -s http://localhost:3000 > /dev/null 2>&1; then
+              echo "App is healthy after seed + restart"
             else
-              echo "Database already has $HAS_DATA users — skipping seed"
+              echo "Waiting for app..."
+              sleep 15
+              curl -s http://localhost:3000 > /dev/null 2>&1 && echo "App is ready" || echo "App still starting"
             fi
 
             # Verify env vars are loaded in the container
