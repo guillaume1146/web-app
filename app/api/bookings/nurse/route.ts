@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
         reason: reason?.trim() || null,
         notes: notes?.trim() || null,
         serviceName: serviceName || null,
-        servicePrice: servicePrice ?? null,
+        servicePrice: costCheck.adjustedFee,
         status: 'pending',
       },
       select: {

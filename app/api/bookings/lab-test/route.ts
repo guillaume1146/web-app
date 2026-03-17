@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         scheduledAt,
         sampleType: sampleType?.trim() || null,
         notes: notes?.trim() || null,
-        price: fee,
+        price: costCheck.adjustedFee,
         status: 'pending',
       },
       select: {

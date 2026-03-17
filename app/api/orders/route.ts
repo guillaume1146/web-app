@@ -4,6 +4,7 @@ import { validateRequest } from '@/lib/auth/validate'
 import { rateLimitPublic } from '@/lib/rate-limit'
 import { createOrderSchema } from '@/lib/validations/api'
 import { ensurePatientProfile } from '@/lib/bookings/ensure-patient-profile'
+import { getSubscriptionDiscount } from '@/lib/subscription/usage'
 
 // ─── POST — Create a medicine order ────────────────────────────────────────────
 
@@ -97,9 +98,15 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Calculate total
+      // Check subscription pharmacy discount
+      const pharmacyDiscount = await getSubscriptionDiscount(auth.sub, 'pharmacy')
+      const discountPercent = pharmacyDiscount.discountPercent
+
+      // Calculate total with subscription discount applied
       const total = items.reduce((sum, item, i) => {
-        return sum + medicines[i]!.price * item.quantity
+        const basePrice = medicines[i]!.price * item.quantity
+        const discount = discountPercent > 0 ? Math.round(basePrice * discountPercent / 100) : 0
+        return sum + (basePrice - discount)
       }, 0)
 
       // Check wallet balance
@@ -127,7 +134,7 @@ export async function POST(request: NextRequest) {
           walletId: wallet.id,
           type: 'debit',
           amount: total,
-          description: `Medicine order: ${items.length} item(s)`,
+          description: `Medicine order: ${items.length} item(s)${discountPercent > 0 ? ` (${discountPercent}% pharmacy discount)` : ''}`,
           serviceType: 'medicine',
           balanceBefore: wallet.balance,
           balanceAfter: wallet.balance - total,

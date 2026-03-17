@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
         roomId,
         notes: notes?.trim() || null,
         serviceName: serviceName || null,
-        servicePrice: servicePrice ?? null,
+        servicePrice: costCheck.adjustedFee,
       },
       select: {
         id: true,

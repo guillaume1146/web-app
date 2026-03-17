@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
         specialInstructions: notes?.trim() || null,
         reason: reason?.trim() || null,
         serviceName: serviceName || null,
-        servicePrice: servicePrice ?? null,
+        servicePrice: costCheck.adjustedFee,
         status: 'pending',
       },
       select: {
