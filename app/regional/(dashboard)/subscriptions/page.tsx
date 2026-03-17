@@ -115,7 +115,13 @@ export default function SubscriptionsManagementPage() {
         'Nutrition consultations': form.nutritionConsultsPerMonth,
         'Ambulance calls': form.ambulanceFreePerMonth,
       }
-      const selectedServices = form.serviceLinks.map(sl => sl.serviceName)
+      // Include service details (free, discount %, name)
+      const serviceDetails = form.serviceLinks.map(sl => {
+        if (sl.isFree) return `${sl.serviceName} (FREE — included)`
+        if (sl.discountPercent > 0) return `${sl.serviceName} (${sl.discountPercent}% discount)`
+        if (sl.adminPrice) return `${sl.serviceName} (fixed price: ${sl.adminPrice})`
+        return sl.serviceName
+      })
 
       const res = await fetch('/api/ai/generate-features', {
         method: 'POST',
@@ -127,7 +133,7 @@ export default function SubscriptionsManagementPage() {
           currency: form.currency,
           quotas,
           discounts: form.discounts,
-          services: selectedServices,
+          services: serviceDetails,
           targetAudience: form.targetAudience,
         }),
       })
@@ -563,46 +569,6 @@ export default function SubscriptionsManagementPage() {
                 )}
               </div>
 
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold text-gray-800">Features (Display Text)</h4>
-                  <button
-                    type="button"
-                    onClick={generateFeatures}
-                    disabled={generatingFeatures || !form.name}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-200 disabled:opacity-50 transition"
-                  >
-                    {generatingFeatures ? <FaSpinner className="animate-spin text-xs" /> : <FaMagic className="text-xs" />}
-                    {generatingFeatures ? 'Generating...' : 'Generate with AI'}
-                  </button>
-                </div>
-                <p className="text-xs text-gray-400 mb-2">Auto-generate from plan config or type manually.</p>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={featureInput}
-                    onChange={(e) => setFeatureInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addFeature())}
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                    placeholder="Add a feature..."
-                  />
-                  <button onClick={addFeature} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">
-                    Add
-                  </button>
-                </div>
-                <div className="space-y-1">
-                  {form.features.map((feat, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm text-gray-700">
-                      <FaCheckCircle className="text-green-500 text-xs flex-shrink-0" />
-                      <span className="flex-1">{feat}</span>
-                      <button onClick={() => removeFeature(i)} className="text-red-400 hover:text-red-600 text-xs">
-                        <FaTimes />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* Services to include in plan */}
               <div className="border-t pt-4">
                 <h4 className="text-sm font-semibold text-gray-800 mb-3">Included Services & Discounts</h4>
@@ -721,6 +687,47 @@ export default function SubscriptionsManagementPage() {
                 ) : (
                   <p className="text-xs text-gray-400">No services loaded. Services will be available after platform services are seeded.</p>
                 )}
+              </div>
+
+              {/* Features — generated from all config above */}
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-gray-800">Features (Display Text)</h4>
+                  <button
+                    type="button"
+                    onClick={generateFeatures}
+                    disabled={generatingFeatures || !form.name}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-200 disabled:opacity-50 transition"
+                  >
+                    {generatingFeatures ? <FaSpinner className="animate-spin text-xs" /> : <FaMagic className="text-xs" />}
+                    {generatingFeatures ? 'Generating...' : 'Generate with AI'}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mb-2">Click &quot;Generate with AI&quot; to create feature text from quotas, discounts, and selected services above.</p>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={featureInput}
+                    onChange={(e) => setFeatureInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addFeature())}
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    placeholder="Add a feature..."
+                  />
+                  <button onClick={addFeature} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">
+                    Add
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {form.features.map((feat, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm text-gray-700">
+                      <FaCheckCircle className="text-green-500 text-xs flex-shrink-0" />
+                      <span className="flex-1">{feat}</span>
+                      <button onClick={() => removeFeature(i)} className="text-red-400 hover:text-red-600 text-xs">
+                        <FaTimes />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {error && <p className="text-sm text-red-500">{error}</p>}
