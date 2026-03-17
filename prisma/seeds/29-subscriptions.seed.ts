@@ -259,4 +259,94 @@ export async function seedSubscriptions(prisma: PrismaClient) {
   }
 
   console.log(`  ✓ ${totalSeeded} subscription plans seeded (${allPlans.length} plans × ${Object.keys(REGION_CURRENCIES).length} regions)`)
+
+  // ── Enroll all seeded users in subscription plans ──────────────────────
+  console.log('  Enrolling users in subscription plans...')
+
+  const planAssignment: Record<string, string> = {
+    PATIENT: 'essential',
+    DOCTOR: 'plus',
+    NURSE: 'essential',
+    NANNY: 'essential',
+    PHARMACIST: 'essential',
+    LAB_TECHNICIAN: 'essential',
+    EMERGENCY_WORKER: 'essential',
+    INSURANCE_REP: 'plus',
+    REFERRAL_PARTNER: 'plus',
+    REGIONAL_ADMIN: 'premium',
+  }
+
+  const users = await prisma.user.findMany({
+    select: { id: true, userType: true, regionId: true },
+  })
+
+  let enrolled = 0
+  for (const user of users) {
+    // Skip users who already have a subscription
+    const existing = await prisma.userSubscription.findUnique({ where: { userId: user.id } })
+    if (existing) continue
+
+    // Find the plan slug based on user type and region
+    const planBase = planAssignment[user.userType]
+    if (!planBase) continue
+
+    // Get region country code
+    let cc = 'mu'
+    if (user.regionId) {
+      const region = await prisma.region.findUnique({
+        where: { id: user.regionId },
+        select: { countryCode: true },
+      })
+      if (region) cc = region.countryCode.toLowerCase()
+    }
+
+    const slug = `${planBase}-${cc}`
+    const plan = await prisma.subscriptionPlan.findUnique({ where: { slug } })
+    if (!plan) continue
+
+    await prisma.userSubscription.create({
+      data: {
+        userId: user.id,
+        planId: plan.id,
+        status: 'active',
+        startDate: new Date(),
+        autoRenew: true,
+      },
+    })
+    enrolled++
+  }
+
+  // Enroll corporate employees via their admin
+  const corpAdmin = await prisma.user.findFirst({
+    where: { userType: 'CORPORATE_ADMIN' },
+    select: { id: true, regionId: true },
+  })
+  if (corpAdmin) {
+    let cc = 'mu'
+    if (corpAdmin.regionId) {
+      const region = await prisma.region.findUnique({
+        where: { id: corpAdmin.regionId },
+        select: { countryCode: true },
+      })
+      if (region) cc = region.countryCode.toLowerCase()
+    }
+    const corpPlan = await prisma.subscriptionPlan.findUnique({ where: { slug: `corp-plus-${cc}` } })
+    if (corpPlan) {
+      const employees = await prisma.corporateEmployee.findMany({
+        where: { corporateAdminId: corpAdmin.id, status: 'active' },
+        select: { userId: true },
+      })
+      for (const emp of employees) {
+        const existing = await prisma.userSubscription.findUnique({ where: { userId: emp.userId } })
+        if (existing) {
+          await prisma.userSubscription.update({
+            where: { userId: emp.userId },
+            data: { planId: corpPlan.id, corporateAdminId: corpAdmin.id },
+          })
+        }
+      }
+    }
+  }
+
+  console.log(`  ✓ ${enrolled} users enrolled in subscription plans`)
 }

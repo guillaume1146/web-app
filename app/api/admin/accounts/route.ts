@@ -60,6 +60,12 @@ export async function GET(request: NextRequest) {
         profileImage: true,
         verified: true,
         createdAt: true,
+        subscription: {
+          select: {
+            status: true,
+            plan: { select: { name: true, slug: true, type: true } },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     })

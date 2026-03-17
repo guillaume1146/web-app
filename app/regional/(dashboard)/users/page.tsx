@@ -18,6 +18,10 @@ interface UserRecord {
   verified: boolean
   profileImage: string | null
   createdAt: string
+  subscription?: {
+    status: string
+    plan: { name: string; slug: string; type: string }
+  } | null
 }
 
 const userTypeLabels: Record<string, string> = {
@@ -221,6 +225,16 @@ export default function RegionalUsersPage() {
                       {user.verified && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
                           Verified
+                        </span>
+                      )}
+                      {user.subscription?.plan && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-medium">
+                          {user.subscription.plan.name}
+                        </span>
+                      )}
+                      {!user.subscription && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                          No plan
                         </span>
                       )}
                       <span className="text-xs text-gray-400">

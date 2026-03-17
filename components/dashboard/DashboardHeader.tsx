@@ -146,7 +146,21 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const [showDropdown, setShowDropdown] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [loadingNotifs, setLoadingNotifs] = useState(false)
+  const [planName, setPlanName] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Fetch user's subscription plan name
+  useEffect(() => {
+    if (!userId) return
+    fetch(`/api/users/${userId}/subscription`)
+      .then(r => r.json())
+      .then(json => {
+        if (json.success && json.data?.hasSubscription && json.data.plan?.name) {
+          setPlanName(json.data.plan.name)
+        }
+      })
+      .catch(() => {})
+  }, [userId])
 
   const fetchNotifications = useCallback(async () => {
     if (!userId) return
@@ -289,9 +303,16 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 <h1 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 truncate max-w-[150px] sm:max-w-[200px] md:max-w-none">
                   {userName}
                 </h1>
-                <p className="text-[10px] sm:text-xs text-gray-500">
-                  {userSubtitle}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[10px] sm:text-xs text-gray-500">
+                    {userSubtitle}
+                  </p>
+                  {planName && (
+                    <span className="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-medium whitespace-nowrap">
+                      {planName}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
