@@ -121,7 +121,7 @@ export default function SuperAdminSecurityPage() {
                     <p className="text-sm text-gray-900">{event.message}</p>
                     <div className="flex items-center gap-3 mt-1">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getSeverityBadge(event.severity)}`}>
-                        {event.severity.toUpperCase()}
+                        {(event.severity ?? 'info').toUpperCase()}
                       </span>
                       <span className="text-xs text-gray-500">{event.ip}</span>
                       <span className="text-xs text-gray-500">{new Date(event.timestamp).toLocaleString()}</span>

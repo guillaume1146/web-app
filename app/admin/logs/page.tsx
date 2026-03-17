@@ -167,7 +167,7 @@ export default function AdminLogsPage() {
                   </td>
                   <td className="p-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getLevelBadge(log.level)}`}>
-                      {log.level.toUpperCase()}
+                      {(log.level ?? 'info').toUpperCase()}
                     </span>
                   </td>
                   <td className="p-3 font-medium text-gray-900">{log.action}</td>

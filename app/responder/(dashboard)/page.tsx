@@ -173,7 +173,7 @@ export default function ResponderDashboardPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <span className={`px-3 py-1 rounded-full text-sm font-bold ${req.urgency === 'critical' ? 'bg-red-600 text-white' : 'bg-orange-500 text-white'}`}>
-                        {req.urgency.toUpperCase()}
+                        {(req.urgency ?? 'medium').toUpperCase()}
                       </span>
                       <div className="font-semibold text-lg text-gray-800 flex items-center gap-2"><FaUserInjured /> {req.incident}</div>
                     </div>

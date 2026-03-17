@@ -108,7 +108,7 @@ export default function PlatformHealth() {
                   <Icon className="text-2xl" />
                 </div>
                 <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(metric.status)}`}>
-                  {metric.status.toUpperCase()}
+                  {(metric.status ?? 'unknown').toUpperCase()}
                 </span>
               </div>
 
