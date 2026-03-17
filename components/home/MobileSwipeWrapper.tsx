@@ -66,18 +66,18 @@ export default function MobileSwipeWrapper({ children, sectionLabels }: MobileSw
 
   // Mobile: horizontal swipe with full-screen sections
   return (
-    <div className="relative">
+    <div className="fixed inset-0 top-[64px] z-30 bg-white">
       {/* Skip button — top right */}
       <button
         onClick={() => router.push('/login')}
-        className="fixed top-[72px] right-4 z-50 text-xs text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 shadow-sm"
+        className="absolute top-2 right-3 z-50 text-xs text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 shadow-sm"
       >
         Skip
       </button>
 
       {/* Swipeable container */}
       <div
-        className="overflow-hidden"
+        className="w-full h-full overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -89,7 +89,7 @@ export default function MobileSwipeWrapper({ children, sectionLabels }: MobileSw
           {children.map((child, i) => (
             <div
               key={i}
-              className="w-full flex-shrink-0 h-[calc(100vh-64px)] overflow-hidden pb-16"
+              className="w-full flex-shrink-0 h-full overflow-hidden flex flex-col items-center justify-center px-4 pb-14"
             >
               {child}
             </div>
@@ -98,7 +98,7 @@ export default function MobileSwipeWrapper({ children, sectionLabels }: MobileSw
       </div>
 
       {/* Bottom bar: dots + next/get started button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 px-4 py-3 z-50 flex items-center justify-between safe-area-bottom">
+      <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 px-4 py-3 z-50 flex items-center justify-between safe-area-bottom">
         {/* Dot indicators */}
         <div className="flex gap-1.5">
           {children.map((_, i) => (
@@ -135,7 +135,7 @@ export default function MobileSwipeWrapper({ children, sectionLabels }: MobileSw
 
       {/* Section label badge */}
       {sectionLabels && sectionLabels[currentIndex] && (
-        <div className="fixed top-[72px] left-4 z-40 pointer-events-none">
+        <div className="absolute top-2 left-3 z-40 pointer-events-none">
           <span className="bg-white/90 backdrop-blur-sm text-[10px] font-medium text-gray-500 px-2.5 py-1 rounded-full shadow-sm border border-gray-100">
             {currentIndex + 1}/{children.length} — {sectionLabels[currentIndex]}
           </span>

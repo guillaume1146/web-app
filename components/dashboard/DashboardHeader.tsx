@@ -319,14 +319,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             </div>
           </div>
 
-          {/* Right: plan badge (mobile only) + profile, notifications, language, logout */}
-          <div className="flex items-center gap-2 sm:gap-2 md:gap-3 lg:gap-4">
-            {/* Plan badge — mobile only (desktop shows it next to name) */}
-            {planLabel && (
-              <span className="sm:hidden text-[9px] px-1.5 py-0.5 rounded-full bg-gradient-to-r from-yellow-100 to-amber-100 text-amber-700 font-medium whitespace-nowrap border border-amber-200">
-                {planLabel}
-              </span>
-            )}
+          {/* Right: profile, notifications, logout */}
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 lg:gap-4 flex-shrink min-w-0">
             {/* Profile avatar link */}
             <Link
               href={profileHref}
@@ -346,11 +340,11 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               )}
             </Link>
 
-            {/* Network / Connections */}
+            {/* Network / Connections — hidden on very small mobile */}
             {networkHref && (
               <Link
                 href={networkHref}
-                className="relative p-2.5 sm:p-2.5 md:p-3 text-gray-600 hover:text-blue-600 bg-gray-100 rounded-lg hover:bg-blue-100 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="hidden sm:flex relative p-2.5 md:p-3 text-gray-600 hover:text-blue-600 bg-gray-100 rounded-lg hover:bg-blue-100 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 aria-label={`My Network${pendingConnectionCount > 0 ? `, ${pendingConnectionCount} pending requests` : ''}`}
               >
                 <FaUserFriends className="text-base sm:text-base md:text-lg" aria-hidden="true" />
