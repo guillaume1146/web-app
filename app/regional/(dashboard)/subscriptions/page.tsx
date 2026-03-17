@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { FaCrown, FaPlus, FaEdit, FaToggleOn, FaToggleOff, FaSpinner, FaCheckCircle, FaTimes } from 'react-icons/fa'
+import { FaCrown, FaPlus, FaEdit, FaToggleOn, FaToggleOff, FaSpinner, FaCheckCircle, FaTimes, FaMagic } from 'react-icons/fa'
 import { useDashboardUser } from '@/hooks/useDashboardUser'
 import { getCurrencySymbol } from '@/lib/currency'
 
@@ -100,8 +100,49 @@ export default function SubscriptionsManagementPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [featureInput, setFeatureInput] = useState('')
   const [saving, setSaving] = useState(false)
+  const [generatingFeatures, setGeneratingFeatures] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [services, setServices] = useState<ServiceCategory[]>([])
+
+  const generateFeatures = async () => {
+    setGeneratingFeatures(true)
+    try {
+      const quotas: Record<string, number> = {
+        'GP consultations': form.gpConsultsPerMonth,
+        'Specialist consultations': form.specialistConsultsPerMonth,
+        'Nurse consultations': form.nurseConsultsPerMonth,
+        'Mental health consultations': form.mentalHealthConsultsPerMonth,
+        'Nutrition consultations': form.nutritionConsultsPerMonth,
+        'Ambulance calls': form.ambulanceFreePerMonth,
+      }
+      const selectedServices = form.serviceLinks.map(sl => sl.serviceName)
+
+      const res = await fetch('/api/ai/generate-features', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planName: form.name,
+          planType: form.type,
+          price: form.price,
+          currency: form.currency,
+          quotas,
+          discounts: form.discounts,
+          services: selectedServices,
+          targetAudience: form.targetAudience,
+        }),
+      })
+      const json = await res.json()
+      if (json.success && Array.isArray(json.data)) {
+        setForm(prev => ({ ...prev, features: json.data }))
+      } else {
+        setError(json.message || 'Failed to generate features')
+      }
+    } catch {
+      setError('Failed to generate features')
+    } finally {
+      setGeneratingFeatures(false)
+    }
+  }
 
   const fetchPlans = useCallback(async () => {
     try {
@@ -523,7 +564,19 @@ export default function SubscriptionsManagementPage() {
               </div>
 
               <div className="border-t pt-4">
-                <h4 className="text-sm font-semibold text-gray-800 mb-3">Features (Display Text)</h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-gray-800">Features (Display Text)</h4>
+                  <button
+                    type="button"
+                    onClick={generateFeatures}
+                    disabled={generatingFeatures || !form.name}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-200 disabled:opacity-50 transition"
+                  >
+                    {generatingFeatures ? <FaSpinner className="animate-spin text-xs" /> : <FaMagic className="text-xs" />}
+                    {generatingFeatures ? 'Generating...' : 'Generate with AI'}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mb-2">Auto-generate from plan config or type manually.</p>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
