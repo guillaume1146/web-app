@@ -54,10 +54,23 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
     if (!userId) return
     setLoading(true)
     try {
+      // Step 1: Get user's region to filter plans
+      const userRes = await fetch(`/api/users/${userId}`)
+      const userJson = await userRes.json()
+      let countryParam = ''
+      if (userJson.success && userJson.data?.regionId) {
+        const regionRes = await fetch(`/api/regions/${userJson.data.regionId}`)
+        const regionJson = await regionRes.json()
+        if (regionJson.success && regionJson.data?.countryCode) {
+          countryParam = `&countryCode=${regionJson.data.countryCode}`
+        }
+      }
+
+      // Step 2: Fetch subscription + plans for user's region only
       const [subRes, indRes, corpRes] = await Promise.all([
         fetch(`/api/users/${userId}/subscription`),
-        fetch('/api/subscriptions?type=individual'),
-        fetch('/api/subscriptions?type=corporate'),
+        fetch(`/api/subscriptions?type=individual${countryParam}`),
+        fetch(`/api/subscriptions?type=corporate${countryParam}`),
       ])
       const subJson = await subRes.json()
       const indJson = await indRes.json()
