@@ -75,18 +75,18 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             className={`block w-full text-left rounded-lg md:rounded-xl transition-all transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
               isCollapsedDesktop
                 ? 'px-0 py-2.5 flex items-center justify-center'
-                : 'px-3 md:px-4 lg:px-5 py-2.5 md:py-3.5'
+                : 'px-4 md:px-4 lg:px-5 py-3.5 md:py-3.5'
             } ${
               isActive
                 ? `${item.bgColor} ${item.color} shadow-md`
                 : 'hover:bg-gray-100 text-gray-700'
             }`}
           >
-            <div className={`flex items-center ${isCollapsedDesktop ? 'justify-center' : 'gap-2.5 md:gap-3.5'}`}>
-              <Icon className="text-base md:text-xl lg:text-2xl flex-shrink-0" aria-hidden="true" />
+            <div className={`flex items-center ${isCollapsedDesktop ? 'justify-center' : 'gap-3 md:gap-3.5'}`}>
+              <Icon className="text-lg md:text-xl lg:text-2xl flex-shrink-0" aria-hidden="true" />
               {!isCollapsedDesktop && (
                 <>
-                  <span className="font-medium text-sm md:text-base lg:text-lg">
+                  <span className="font-medium text-base md:text-base lg:text-lg">
                     {label}
                   </span>
                   {item.count != null && item.count > 0 && (
@@ -114,9 +114,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         aria-label="Dashboard sidebar navigation"
         className={`
           fixed inset-y-0 left-0 z-[60]
-          ${isOpen ? 'w-full sm:w-72' : 'w-0'}
+          ${isOpen ? 'w-[85%] sm:w-72' : 'w-0'}
           bg-white shadow-2xl
-          transform transition-all duration-300 ease-in-out
+          transform transition-all duration-150 ease-out
           overflow-hidden
         `}
       >
