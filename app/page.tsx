@@ -5,6 +5,7 @@ import ServicesSection from '@/components/home/ServicesSection'
 import SpecialtiesSection from '@/components/home/SpecialtiesSection'
 import WhyChooseSection from '@/components/home/WhyChooseSection'
 import FaqSection from '@/components/home/FaqSection'
+import LandingPageContent from '@/components/home/LandingPageContent'
 import { HeroContent, HeroSlide } from '@/types'
 
 export const revalidate = 60
@@ -50,26 +51,18 @@ export default async function HomePage() {
     sortOrder: s.sortOrder,
   }))
 
+  const sections = [
+    <HeroSection key="hero" content={heroContent} slides={slides.length > 0 ? slides : undefined} />,
+    <StatsSection key="stats" />,
+    <ServicesSection key="services" title={servicesContent?.title} subtitle={servicesContent?.subtitle} items={servicesContent?.items} />,
+    <SpecialtiesSection key="specialties" title={specialtiesContent?.title} subtitle={specialtiesContent?.subtitle} items={specialtiesContent?.items} />,
+    <WhyChooseSection key="why" title={whyChooseContent?.title} subtitle={whyChooseContent?.subtitle} items={whyChooseContent?.items} />,
+    <FaqSection key="faq" />,
+  ]
+
+  const labels = ['Welcome', 'Our Impact', 'Services', 'Specialties', 'Why MediWyz', 'FAQ']
+
   return (
-    <>
-      <HeroSection content={heroContent} slides={slides.length > 0 ? slides : undefined} />
-      <StatsSection />
-      <ServicesSection
-        title={servicesContent?.title}
-        subtitle={servicesContent?.subtitle}
-        items={servicesContent?.items}
-      />
-      <SpecialtiesSection
-        title={specialtiesContent?.title}
-        subtitle={specialtiesContent?.subtitle}
-        items={specialtiesContent?.items}
-      />
-      <WhyChooseSection
-        title={whyChooseContent?.title}
-        subtitle={whyChooseContent?.subtitle}
-        items={whyChooseContent?.items}
-      />
-      <FaqSection />
-    </>
+    <LandingPageContent sections={sections} labels={labels} />
   )
 }
