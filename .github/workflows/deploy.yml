@@ -136,22 +136,23 @@ jobs:
             sed -i 's/^[[:space:]]*//' .env
             echo ".env written with $(wc -l < .env) variables"
 
-            # Stop old containers if they exist (handles rename from healthwyz/omd → mediwyz)
-            docker stop healthwyz-app healthwyz-db omd-app omd-db mediwyz-app mediwyz-db 2>/dev/null || true
+            # Clean up legacy container names (one-time)
+            docker stop healthwyz-app healthwyz-db omd-app omd-db 2>/dev/null || true
             docker rm healthwyz-app healthwyz-db omd-app omd-db 2>/dev/null || true
 
-            # Remove dangling images
-            docker image prune -f 2>/dev/null || true
-
-            # Login to GHCR and pull the image
+            # Login to GHCR and pull the new image
             echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
             docker pull "$IMAGE_TAG"
 
             # Tag as mediwyz-app:latest for docker-compose
             docker tag "$IMAGE_TAG" mediwyz-app:latest
 
-            # Restart with the pre-built image
-            docker compose up -d --no-build
+            # Ensure DB is running first (never stop the DB)
+            docker compose up -d db
+            sleep 5
+
+            # Restart only the app container with the new image
+            docker compose up -d --no-build --force-recreate app
 
             # Wait for app to be ready
             echo "Waiting for app to start..."
