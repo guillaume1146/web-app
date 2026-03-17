@@ -46,6 +46,8 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
   const [current, setCurrent] = useState<CurrentSubscription | null>(null)
   const [individualPlans, setIndividualPlans] = useState<Plan[]>([])
   const [corporatePlans, setCorporatePlans] = useState<Plan[]>([])
+  const [isCorporateAdmin, setIsCorporateAdmin] = useState(false)
+  const [isCorporateEmployee, setIsCorporateEmployee] = useState(false)
   const [loading, setLoading] = useState(true)
   const [changing, setChanging] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -54,10 +56,14 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
     if (!userId) return
     setLoading(true)
     try {
-      // Step 1: Get user's region to filter plans
+      // Step 1: Get user info (region + type)
       const userRes = await fetch(`/api/users/${userId}`)
       const userJson = await userRes.json()
       let countryParam = ''
+      const userType = userJson.success ? userJson.data?.userType : ''
+      const isCorpAdmin = userType === 'CORPORATE_ADMIN'
+      setIsCorporateAdmin(isCorpAdmin)
+
       if (userJson.success && userJson.data?.regionId) {
         const regionRes = await fetch(`/api/regions/${userJson.data.regionId}`)
         const regionJson = await regionRes.json()
@@ -66,19 +72,29 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
         }
       }
 
-      // Step 2: Fetch subscription + plans for user's region only
-      const [subRes, indRes, corpRes] = await Promise.all([
+      // Step 2: Fetch subscription + individual plans (always)
+      const [subRes, indRes] = await Promise.all([
         fetch(`/api/users/${userId}/subscription`),
         fetch(`/api/subscriptions?type=individual${countryParam}`),
-        fetch(`/api/subscriptions?type=corporate${countryParam}`),
       ])
       const subJson = await subRes.json()
       const indJson = await indRes.json()
-      const corpJson = await corpRes.json()
 
-      if (subJson.success) setCurrent(subJson.data)
+      if (subJson.success) {
+        setCurrent(subJson.data)
+        // Check if user is a corporate employee (subscription paid by employer)
+        if (subJson.data?.hasSubscription && subJson.data?.plan?.type === 'corporate') {
+          setIsCorporateEmployee(true)
+        }
+      }
       if (indJson.success) setIndividualPlans(indJson.data)
-      if (corpJson.success) setCorporatePlans(corpJson.data)
+
+      // Step 3: Only fetch corporate plans for corporate admins
+      if (isCorpAdmin) {
+        const corpRes = await fetch(`/api/subscriptions?type=corporate${countryParam}`)
+        const corpJson = await corpRes.json()
+        if (corpJson.success) setCorporatePlans(corpJson.data)
+      }
     } catch {
       // silent
     } finally {
@@ -163,13 +179,19 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
                 {current.status === 'active' && <span className="ml-2 text-green-600 font-medium">Active</span>}
               </p>
             </div>
-            <button
-              onClick={handleCancel}
-              disabled={changing}
-              className="text-sm text-red-500 hover:text-red-700 underline"
-            >
-              Cancel Plan
-            </button>
+            {isCorporateEmployee ? (
+              <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">
+                Managed by employer
+              </span>
+            ) : (
+              <button
+                onClick={handleCancel}
+                disabled={changing}
+                className="text-sm text-red-500 hover:text-red-700 underline"
+              >
+                Cancel Plan
+              </button>
+            )}
           </div>
 
           {/* Usage summary */}
@@ -219,7 +241,7 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
         </div>
       )}
 
-      {/* MediWyz For Business — Corporate Plans */}
+      {/* MediWyz For Business — only visible to Corporate Admins */}
       {corporatePlans.length > 0 && (
         <div>
           <div className="mb-4">
@@ -269,6 +291,10 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
         {isCurrent ? (
           <div className="w-full py-2 rounded-lg font-semibold bg-blue-600 text-white text-center text-sm">
             Current Plan
+          </div>
+        ) : isCorporateEmployee ? (
+          <div className="w-full py-2 rounded-lg font-semibold bg-gray-100 text-gray-400 text-center text-sm">
+            Managed by employer
           </div>
         ) : (
           <button
