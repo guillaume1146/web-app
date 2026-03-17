@@ -49,7 +49,7 @@ describe('GET /api/subscriptions', () => {
 
     expect(prisma.subscriptionPlan.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { isActive: true, type: 'corporate' },
+        where: { AND: [{ isActive: true }, { type: 'corporate' }] },
       })
     )
   })

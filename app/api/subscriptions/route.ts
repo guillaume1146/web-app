@@ -15,14 +15,15 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') // 'individual' | 'corporate' | null (all)
     const countryCode = searchParams.get('countryCode') // 'MU', 'MG', etc.
 
-    const where: Record<string, unknown> = { isActive: true }
+    // Build where clause — AND all conditions together
+    const conditions: Record<string, unknown>[] = [{ isActive: true }]
     if (type === 'individual' || type === 'corporate') {
-      where.type = type
+      conditions.push({ type })
     }
     if (countryCode) {
-      // Return plans for this country + global plans (countryCode: null)
-      where.OR = [{ countryCode }, { countryCode: null }]
+      conditions.push({ OR: [{ countryCode }, { countryCode: null }] })
     }
+    const where = conditions.length === 1 ? conditions[0] : { AND: conditions }
 
     const plans = await prisma.subscriptionPlan.findMany({
       where,

@@ -98,6 +98,7 @@ export async function GET(
         address: true,
         verified: true,
         accountStatus: true,
+        regionId: true,
         createdAt: true,
       },
     })
