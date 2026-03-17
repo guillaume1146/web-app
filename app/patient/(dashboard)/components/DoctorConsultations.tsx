@@ -313,7 +313,7 @@ const DoctorConsultations: React.FC<Props> = ({ patientData, onVideoCall }) => {
                         >
                           <div className="flex items-center justify-between mb-1">
                             <span className="font-medium text-sm text-gray-900">{s.serviceName}</span>
-                            <span className="text-sm font-bold text-blue-600">{s.currency} {s.price.toLocaleString()}</span>
+                            <span className="text-sm font-bold text-blue-600">{s.currency} {(s.price ?? 0).toLocaleString()}</span>
                           </div>
                           <p className="text-xs text-gray-500 line-clamp-1">{s.description}</p>
                           <div className="flex items-center gap-2 mt-1">

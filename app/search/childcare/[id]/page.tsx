@@ -413,12 +413,12 @@ export default function NannyDetailsPage() {
               <div className="space-y-3 mb-6">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Hourly Rate</span>
-                  <span className="text-lg font-bold text-green-600">Rs {nanny.hourlyRate.toLocaleString()}/hr</span>
+                  <span className="text-lg font-bold text-green-600">Rs {(nanny.hourlyRate ?? 0).toLocaleString()}/hr</span>
                 </div>
-                {nanny.overnightRate > 0 && (
+                {(nanny.overnightRate ?? 0) > 0 && (
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Overnight Rate</span>
-                    <span className="text-lg font-bold text-green-600">Rs {nanny.overnightRate.toLocaleString()}</span>
+                    <span className="text-lg font-bold text-green-600">Rs {(nanny.overnightRate ?? 0).toLocaleString()}</span>
                   </div>
                 )}
               </div>

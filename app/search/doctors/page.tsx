@@ -112,11 +112,11 @@ const DoctorCard = ({ doctor }: DoctorProps) => {
         <div className="flex flex-col items-stretch sm:items-end gap-2 flex-shrink-0 sm:border-l sm:border-gray-100 sm:pl-4 border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0">
           <div className="sm:text-right">
             <p className="text-sm font-bold text-gray-900 whitespace-nowrap">
-              Rs {doctor.consultationFee.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">/session</span>
+              Rs {(doctor.consultationFee ?? 0).toLocaleString()} <span className="text-[10px] font-normal text-gray-400">/session</span>
             </p>
-            {doctor.videoConsultationFee > 0 && (
+            {(doctor.videoConsultationFee ?? 0) > 0 && (
               <p className="text-[10px] text-gray-400 whitespace-nowrap">
-                Video: Rs {doctor.videoConsultationFee.toLocaleString()}
+                Video: Rs {(doctor.videoConsultationFee ?? 0).toLocaleString()}
               </p>
             )}
           </div>

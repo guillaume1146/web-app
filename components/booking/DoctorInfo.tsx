@@ -49,11 +49,11 @@ export default function DoctorInfo({ doctor, onNext }: DoctorInfoProps) {
                 <h4 className="font-semibold text-gray-900 mb-2">Consultation Fees</h4>
                 <div className="space-y-1">
                   <p className="text-lg font-bold text-green-600">
-                    In-Person: Rs {doctor.consultationFee.toLocaleString()}
+                    In-Person: Rs {(doctor.consultationFee ?? 0).toLocaleString()}
                   </p>
-                  {doctor.videoConsultationFee > 0 && (
+                  {(doctor.videoConsultationFee ?? 0) > 0 && (
                     <p className="text-lg font-bold text-green-600">
-                      Video: Rs {doctor.videoConsultationFee.toLocaleString()}
+                      Video: Rs {(doctor.videoConsultationFee ?? 0).toLocaleString()}
                     </p>
                   )}
                 </div>

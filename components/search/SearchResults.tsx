@@ -194,13 +194,13 @@ function ResultCard({ result }: { result: UnifiedSearchResult }) {
           <div className="sm:text-right">
             {result.consultationFee !== null && result.consultationFee > 0 && (
               <p className="text-sm font-bold text-gray-900 whitespace-nowrap">
-                Rs {result.consultationFee.toLocaleString()}
+                Rs {(result.consultationFee ?? 0).toLocaleString()}
                 {result.type === 'medicine' ? '' : <span className="text-[10px] font-normal text-gray-400"> /session</span>}
               </p>
             )}
-            {result.videoConsultationFee !== null && result.videoConsultationFee > 0 && (
+            {result.videoConsultationFee != null && result.videoConsultationFee > 0 && (
               <p className="text-[10px] text-gray-400 whitespace-nowrap">
-                Video: Rs {result.videoConsultationFee.toLocaleString()}
+                Video: Rs {(result.videoConsultationFee ?? 0).toLocaleString()}
               </p>
             )}
           </div>

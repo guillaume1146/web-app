@@ -257,7 +257,7 @@ export default function ServiceCatalogManager({ config }: { config: ServiceCatal
               <p className="text-sm text-gray-600 mb-3 line-clamp-2">{service.description}</p>
               <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                 <span className="text-lg font-bold text-gray-900">
-                  {service.currency || 'MUR'} {service.price.toLocaleString()}
+                  {service.currency || 'MUR'} {(service.price ?? 0).toLocaleString()}
                 </span>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${service.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                   {service.isActive ? 'Active' : 'Inactive'}

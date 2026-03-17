@@ -289,18 +289,18 @@ export default function DoctorDetailsPage() {
               <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
                 <div className="flex items-center justify-between">
                   <span className="text-sm sm:text-base text-gray-600">In-Person</span>
-                  <span className="text-base sm:text-lg font-bold text-green-600">Rs {doctor.consultationFee.toLocaleString()}</span>
+                  <span className="text-base sm:text-lg font-bold text-green-600">Rs {(doctor.consultationFee ?? 0).toLocaleString()}</span>
                 </div>
-                {doctor.videoConsultationFee > 0 && (
+                {(doctor.videoConsultationFee ?? 0) > 0 && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm sm:text-base text-gray-600">Video Call</span>
-                    <span className="text-base sm:text-lg font-bold text-green-600">Rs {doctor.videoConsultationFee.toLocaleString()}</span>
+                    <span className="text-base sm:text-lg font-bold text-green-600">Rs {(doctor.videoConsultationFee ?? 0).toLocaleString()}</span>
                   </div>
                 )}
-                {doctor.emergencyConsultationFee && doctor.emergencyConsultationFee > 0 && (
+                {(doctor.emergencyConsultationFee ?? 0) > 0 && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm sm:text-base text-gray-600">Emergency</span>
-                    <span className="text-base sm:text-lg font-bold text-red-600">Rs {doctor.emergencyConsultationFee.toLocaleString()}</span>
+                    <span className="text-base sm:text-lg font-bold text-red-600">Rs {(doctor.emergencyConsultationFee ?? 0).toLocaleString()}</span>
                   </div>
                 )}
               </div>

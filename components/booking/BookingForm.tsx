@@ -530,7 +530,7 @@ export default function BookingForm({
                         </div>
                         <div className="flex-shrink-0 text-right">
                           <p className={`font-bold text-sm ${isSelected ? 'text-green-600' : 'text-gray-700'}`}>
-                            Rs {svc.price.toLocaleString()}
+                            Rs {(svc.price ?? 0).toLocaleString()}
                           </p>
                           {svc.duration && (
                             <p className="text-xs text-gray-400">{svc.duration} min</p>
