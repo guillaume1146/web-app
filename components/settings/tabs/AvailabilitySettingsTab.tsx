@@ -195,7 +195,7 @@ export default function AvailabilitySettingsTab({ userId }: AvailabilitySettings
       if (data.success) {
         setFeedback({ type: 'success', message: 'Availability schedule saved successfully.' })
       } else {
-        setFeedback({ type: 'error', message: data.message || data.error || 'Failed to save availability.' })
+        setFeedback({ type: 'error', message: data.message || 'Failed to save availability.' })
       }
     } catch {
       setFeedback({ type: 'error', message: 'Network error. Please try again.' })

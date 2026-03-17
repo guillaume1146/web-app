@@ -314,12 +314,12 @@ export default function DynamicAvailabilityPage() {
           }
         } else {
           setSaveStatus('error')
-          setSaveError(json.error || 'Failed to save schedule')
+          setSaveError(json.message || 'Failed to save schedule')
         }
       } else {
         const json = await res.json().catch(() => ({}))
         setSaveStatus('error')
-        setSaveError((json as { error?: string }).error || `Server error (${res.status})`)
+        setSaveError((json as { message?: string }).message || `Server error (${res.status})`)
       }
     } catch {
       setSaveStatus('error')

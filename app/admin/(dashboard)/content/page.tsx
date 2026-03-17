@@ -193,7 +193,7 @@ export default function AdminContentManagementPage() {
         showMessage('success', `${sectionType.replace(/_/g, ' ')} section saved successfully!`)
       } else {
         const err = await res.json().catch(() => ({}))
-        showMessage('error', err.error || 'Failed to save section')
+        showMessage('error', err.message || 'Failed to save section')
       }
     } catch (err) {
       console.error('Save error:', err)

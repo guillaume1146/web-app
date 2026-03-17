@@ -483,12 +483,12 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
       })
       if (!res.ok) {
         const json = await res.json()
-        throw new Error(json.message || json.error || 'Failed to save')
+        throw new Error(json.message || 'Failed to save')
       }
       // Re-fetch profile
       const profileRes = await fetch(`/api/users/${userId}`)
       const profileJson = await profileRes.json()
-      if (profileJson.data) {
+      if (profileJson.success && profileJson.data) {
         setUserData(profileJson.data)
         // Update cached user so sidebar/header reflect changes
         updateUser({

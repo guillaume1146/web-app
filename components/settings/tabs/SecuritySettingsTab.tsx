@@ -44,7 +44,7 @@ const SecuritySettingsTab: React.FC = () => {
       const data = await res.json()
 
       if (!res.ok) {
-        setMessage({ type: 'error', text: data.message || data.error || 'Failed to update password' })
+        setMessage({ type: 'error', text: data.message || 'Failed to update password' })
         return
       }
 
