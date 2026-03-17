@@ -1,10 +1,10 @@
-import { 
-  FaUser, 
-  FaUserMd, 
-  FaUserNurse, 
-  FaPills, 
-  FaFlask, 
-  FaAmbulance, 
+import {
+  FaUser,
+  FaUserMd,
+  FaUserNurse,
+  FaPills,
+  FaFlask,
+  FaAmbulance,
   FaShieldAlt,
   FaBaby,
   FaUpload,
@@ -12,7 +12,8 @@ import {
   FaFileAlt,
   FaBuilding,
   FaGlobe,
-  FaHandshake
+  FaHandshake,
+  FaCrown
 } from 'react-icons/fa'
 import { UserType, Document } from './types'
 
@@ -184,5 +185,6 @@ export const steps = [
   { number: 1, title: 'Account Type', icon: FaUser },
   { number: 2, title: 'Basic Info', icon: FaFileAlt },
   { number: 3, title: 'Documents', icon: FaUpload },
-  { number: 4, title: 'Verification', icon: FaCheck }
+  { number: 4, title: 'Plan', icon: FaCrown },
+  { number: 5, title: 'Verification', icon: FaCheck }
 ]

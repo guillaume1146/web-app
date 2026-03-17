@@ -5,7 +5,7 @@ import { createNotification } from '@/lib/notifications'
 import { createNurseBookingSchema } from '@/lib/validations/api'
 import { rateLimitPublic } from '@/lib/rate-limit'
 import { validateSlotAvailability } from '@/lib/booking/validate-availability'
-import { checkPatientBalance } from '@/lib/booking/check-balance'
+import { checkBookingCost } from '@/lib/booking/check-balance'
 import { ensurePatientProfile } from '@/lib/bookings/ensure-patient-profile'
 
 const DEFAULT_NURSE_FEE = 500 // Fallback when no service price specified
@@ -76,14 +76,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check patient wallet balance before creating the booking
+    // Check patient wallet balance with subscription benefits
     const bookingFee = servicePrice ?? DEFAULT_NURSE_FEE
-    const balanceCheck = await checkPatientBalance(auth.sub, bookingFee)
-    if (!balanceCheck.sufficient) {
+    const costCheck = await checkBookingCost({
+      patientUserId: auth.sub,
+      baseFee: bookingFee,
+      consultType: 'nurse',
+      serviceType: 'nurse',
+    })
+    if (!costCheck.sufficient) {
       return NextResponse.json(
         {
           success: false,
-          message: `Insufficient balance. You need Rs ${bookingFee} but only have Rs ${balanceCheck.balance?.toFixed(2) ?? '0'}. Please top up your wallet.`,
+          message: `Insufficient balance. You need ${costCheck.adjustedFee} but only have ${costCheck.balance?.toFixed(2) ?? '0'}. Please top up your wallet.`,
+          costBreakdown: {
+            originalFee: bookingFee,
+            adjustedFee: costCheck.adjustedFee,
+            discount: costCheck.discount,
+            coveredBySubscription: costCheck.coveredBySubscription,
+          },
         },
         { status: 400 }
       )

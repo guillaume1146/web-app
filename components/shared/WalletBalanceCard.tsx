@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { FaWallet, FaArrowDown, FaArrowUp, FaChevronDown, FaChevronUp, FaRedo } from 'react-icons/fa'
+import { getCurrencySymbol } from '@/lib/currency'
 import WalletTransactionHistory from './WalletTransactionHistory'
 import WalletTopUp from './WalletTopUp'
 
@@ -101,6 +102,8 @@ const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({ userId }) => {
 
   if (!wallet) return null
 
+  const symbol = getCurrencySymbol(wallet.currency)
+
   const percentage = wallet.initialCredit > 0
     ? Math.round((wallet.balance / wallet.initialCredit) * 100)
     : 0
@@ -122,7 +125,7 @@ const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({ userId }) => {
         </div>
 
         <p className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
-          Rs {wallet.balance.toLocaleString()}
+          {symbol} {wallet.balance.toLocaleString()}
         </p>
 
         {/* Progress Bar */}
@@ -134,11 +137,11 @@ const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({ userId }) => {
         </div>
         <div className="flex items-center justify-between">
           <p className="text-xs sm:text-sm text-white/80">
-            {percentage}% remaining of Rs {wallet.initialCredit.toLocaleString()}
+            {percentage}% remaining of {symbol} {wallet.initialCredit.toLocaleString()}
           </p>
           <button
             onClick={handleResetTrial}
-            disabled={resetting || wallet.balance === wallet.initialCredit}
+            disabled={resetting}
             className="text-xs px-3 py-1 bg-white/20 hover:bg-white/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors flex items-center gap-1.5"
           >
             <FaRedo className={`text-[10px] ${resetting ? 'animate-spin' : ''}`} />
@@ -169,7 +172,7 @@ const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({ userId }) => {
                     </p>
                   </div>
                   <p className={`text-xs sm:text-sm font-semibold whitespace-nowrap ${isCredit ? 'text-green-300' : 'text-red-300'}`}>
-                    {isCredit ? '+' : '-'}Rs {Math.abs(tx.amount).toLocaleString()}
+                    {isCredit ? '+' : '-'}{symbol} {Math.abs(tx.amount).toLocaleString()}
                   </p>
                 </div>
               )
@@ -197,11 +200,11 @@ const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({ userId }) => {
       </div>
 
       {/* Wallet Top-Up */}
-      <WalletTopUp userId={userId} onSuccess={fetchWallet} />
+      <WalletTopUp userId={userId} currency={wallet.currency} onSuccess={fetchWallet} />
 
       {/* Full Transaction History */}
       {showAllTransactions && wallet.transactions.length > 0 && (
-        <WalletTransactionHistory transactions={wallet.transactions} />
+        <WalletTransactionHistory transactions={wallet.transactions} currency={wallet.currency} />
       )}
     </div>
   )

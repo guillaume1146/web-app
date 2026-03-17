@@ -1,5 +1,17 @@
 import prisma from '@/lib/db'
 
+export type ConsultType = 'gp' | 'specialist' | 'nurse' | 'mental_health' | 'nutrition' | 'ambulance'
+
+/** Maps consult type to plan limit field and usage counter field. */
+const CONSULT_FIELD_MAP: Record<ConsultType, { limitField: string; usageField: string }> = {
+  gp:            { limitField: 'gpConsultsPerMonth',           usageField: 'gpConsultsUsed' },
+  specialist:    { limitField: 'specialistConsultsPerMonth',   usageField: 'specialistConsultsUsed' },
+  nurse:         { limitField: 'nurseConsultsPerMonth',        usageField: 'nurseConsultsUsed' },
+  mental_health: { limitField: 'mentalHealthConsultsPerMonth', usageField: 'mentalHealthConsultsUsed' },
+  nutrition:     { limitField: 'nutritionConsultsPerMonth',    usageField: 'nutritionConsultsUsed' },
+  ambulance:     { limitField: 'ambulanceFreePerMonth',        usageField: 'ambulanceUsed' },
+}
+
 /**
  * Get or create the current month's usage record for a subscription.
  */
@@ -24,8 +36,13 @@ export async function getOrCreateUsage(subscriptionId: string) {
  */
 export async function trackConsultationUsage(
   userId: string,
-  consultType: 'gp' | 'specialist'
-): Promise<{ allowed: boolean; remaining: number; message: string }> {
+  consultType: ConsultType
+): Promise<{ allowed: boolean; remaining: number; covered: boolean; message: string }> {
+  const fieldMap = CONSULT_FIELD_MAP[consultType]
+  if (!fieldMap) {
+    return { allowed: true, remaining: 0, covered: false, message: 'Unknown consultation type — full price applies.' }
+  }
+
   const subscription = await prisma.userSubscription.findUnique({
     where: { userId },
     select: {
@@ -33,9 +50,13 @@ export async function trackConsultationUsage(
       status: true,
       plan: {
         select: {
+          name: true,
           gpConsultsPerMonth: true,
           specialistConsultsPerMonth: true,
-          name: true,
+          nurseConsultsPerMonth: true,
+          mentalHealthConsultsPerMonth: true,
+          nutritionConsultsPerMonth: true,
+          ambulanceFreePerMonth: true,
         },
       },
     },
@@ -43,44 +64,73 @@ export async function trackConsultationUsage(
 
   // No active subscription — allow but charge full price
   if (!subscription || subscription.status !== 'active') {
-    return { allowed: true, remaining: 0, message: 'No active subscription — full price applies.' }
+    return { allowed: true, remaining: 0, covered: false, message: 'No active subscription — full price applies.' }
   }
 
   const usage = await getOrCreateUsage(subscription.id)
-  const plan = subscription.plan
+  const plan = subscription.plan as Record<string, unknown>
+  const limit = plan[fieldMap.limitField] as number
+  const used = (usage as Record<string, unknown>)[fieldMap.usageField] as number
 
-  if (consultType === 'gp') {
-    const limit = plan.gpConsultsPerMonth
-    // -1 = unlimited
-    if (limit === -1) {
-      return { allowed: true, remaining: -1, message: 'Unlimited GP consultations included in your plan.' }
-    }
-    const used = usage.gpConsultsUsed
-    if (used < limit) {
-      // Increment usage
-      await prisma.subscriptionUsage.update({
-        where: { id: usage.id },
-        data: { gpConsultsUsed: { increment: 1 } },
-      })
-      return { allowed: true, remaining: limit - used - 1, message: `Free GP consultation (${limit - used - 1} remaining this month).` }
-    }
-    return { allowed: true, remaining: 0, message: 'Monthly GP consultations used — standard rate applies.' }
-  }
+  const label = consultType.replace('_', ' ')
 
-  // Specialist
-  const limit = plan.specialistConsultsPerMonth
+  // -1 = unlimited
   if (limit === -1) {
-    return { allowed: true, remaining: -1, message: 'Unlimited specialist consultations included in your plan.' }
+    return { allowed: true, remaining: -1, covered: true, message: `Unlimited ${label} consultations included in your plan.` }
   }
-  const used = usage.specialistConsultsUsed
+
+  if (limit === 0) {
+    return { allowed: true, remaining: 0, covered: false, message: `${label} consultations not included — standard rate applies.` }
+  }
+
   if (used < limit) {
+    // Increment usage
     await prisma.subscriptionUsage.update({
       where: { id: usage.id },
-      data: { specialistConsultsUsed: { increment: 1 } },
+      data: { [fieldMap.usageField]: { increment: 1 } },
     })
-    return { allowed: true, remaining: limit - used - 1, message: `Free specialist consultation (${limit - used - 1} remaining this month).` }
+    return {
+      allowed: true,
+      remaining: limit - used - 1,
+      covered: true, // This consultation was covered by the plan (free slot used)
+      message: `Free ${label} consultation (${limit - used - 1} remaining this month).`,
+    }
   }
-  return { allowed: true, remaining: 0, message: 'Monthly specialist consultations used — standard rate applies.' }
+
+  return { allowed: true, remaining: 0, covered: false, message: `Monthly ${label} consultations used — standard rate applies.` }
+}
+
+/**
+ * Get the subscription discount for a service type.
+ * Returns discount percentage (0-100) or 0 if no discount.
+ */
+export async function getSubscriptionDiscount(
+  userId: string,
+  serviceType: string
+): Promise<{ discountPercent: number; message: string }> {
+  const subscription = await prisma.userSubscription.findUnique({
+    where: { userId },
+    select: {
+      status: true,
+      plan: {
+        select: { discounts: true, name: true },
+      },
+    },
+  })
+
+  if (!subscription || subscription.status !== 'active') {
+    return { discountPercent: 0, message: 'No active subscription.' }
+  }
+
+  const discounts = subscription.plan.discounts as Record<string, number> | null
+  if (!discounts || !discounts[serviceType]) {
+    return { discountPercent: 0, message: 'No discount for this service.' }
+  }
+
+  return {
+    discountPercent: discounts[serviceType],
+    message: `${discounts[serviceType]}% discount applied from ${subscription.plan.name} plan.`,
+  }
 }
 
 /**
@@ -105,6 +155,11 @@ export async function getUsageSummary(userId: string) {
           currency: true,
           gpConsultsPerMonth: true,
           specialistConsultsPerMonth: true,
+          nurseConsultsPerMonth: true,
+          mentalHealthConsultsPerMonth: true,
+          nutritionConsultsPerMonth: true,
+          ambulanceFreePerMonth: true,
+          discounts: true,
           features: true,
         },
       },
@@ -133,8 +188,16 @@ export async function getUsageSummary(userId: string) {
       month,
       gpConsultsUsed: usage?.gpConsultsUsed ?? 0,
       specialistConsultsUsed: usage?.specialistConsultsUsed ?? 0,
+      nurseConsultsUsed: usage?.nurseConsultsUsed ?? 0,
+      mentalHealthConsultsUsed: usage?.mentalHealthConsultsUsed ?? 0,
+      nutritionConsultsUsed: usage?.nutritionConsultsUsed ?? 0,
+      ambulanceUsed: usage?.ambulanceUsed ?? 0,
       gpConsultsLimit: subscription.plan.gpConsultsPerMonth,
       specialistConsultsLimit: subscription.plan.specialistConsultsPerMonth,
+      nurseConsultsLimit: subscription.plan.nurseConsultsPerMonth,
+      mentalHealthConsultsLimit: subscription.plan.mentalHealthConsultsPerMonth,
+      nutritionConsultsLimit: subscription.plan.nutritionConsultsPerMonth,
+      ambulanceLimit: subscription.plan.ambulanceFreePerMonth,
     },
   }
 }

@@ -30,7 +30,7 @@ export default function NavigationButtons({
         </button>
       )}
 
-      {currentStep < 4 ? (
+      {currentStep < 5 ? (
         <button
           onClick={onNext}
           disabled={!canProceed}

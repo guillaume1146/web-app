@@ -106,15 +106,18 @@ enum DoctorCategory {
 // ─── Region Model ────────────────────────────────────────────────────────────
 
 model Region {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  countryCode String   @unique
-  language    String   @default("en")
-  flag        String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  users       User[]
+  id             String   @id @default(uuid())
+  name           String   @unique
+  countryCode    String   @unique
+  language       String   @default("en")
+  flag           String?
+  currency       String   @default("MUR")
+  currencySymbol String   @default("Rs")
+  trialCredit    Float    @default(4500)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  users          User[]
 }
 
 // ─── Base User Model (auth + shared fields) ──────────────────────────────────
@@ -1559,8 +1562,8 @@ model ProviderReview {
 
 model PlatformConfig {
   id                     String   @id @default(uuid())
-  platformCommissionRate Float    @default(5) // % to platform
-  regionalCommissionRate Float    @default(10) // % default to regional admin
+  platformCommissionRate Float    @default(15) // % to platform
+  regionalCommissionRate Float    @default(0) // % default to regional admin (earns from subscriptions, not transactions)
   providerCommissionRate Float    @default(85) // % to service provider
   currency               String   @default("MUR")
   trialWalletAmount      Float    @default(4500)
@@ -1658,23 +1661,35 @@ model UserConnection {
 // ─── Subscription Models ──────────────────────────────────────────────────────
 
 model SubscriptionPlan {
-  id                         String               @id @default(uuid())
-  name                       String
-  slug                       String               @unique
-  type                       SubscriptionPlanType
-  price                      Float
-  currency                   String               @default("MUR")
-  gpConsultsPerMonth         Int // -1 = unlimited
-  specialistConsultsPerMonth Int // -1 = unlimited
-  features                   Json // Array of feature strings
-  isActive                   Boolean              @default(true)
-  createdAt                  DateTime             @default(now())
-  updatedAt                  DateTime             @updatedAt
+  id                           String               @id @default(uuid())
+  name                         String
+  slug                         String               @unique
+  type                         SubscriptionPlanType
+  price                        Float
+  currency                     String               @default("MUR")
+  countryCode                  String?              // null = global, "MU" = region-specific
+  targetAudience               String?              // "students & young adults", "families", etc.
+  gpConsultsPerMonth           Int                  // -1 = unlimited
+  specialistConsultsPerMonth   Int                  // -1 = unlimited
+  nurseConsultsPerMonth        Int                  @default(0) // -1 = unlimited
+  mentalHealthConsultsPerMonth Int                  @default(0) // -1 = unlimited
+  nutritionConsultsPerMonth    Int                  @default(0) // -1 = unlimited
+  ambulanceFreePerMonth        Int                  @default(0) // -1 = unlimited
+  discounts                    Json?                // {"lab":10,"pharmacy":5,"specialist":20}
+  paidServices                 Json?                // services NOT included, with default prices
+  features                     Json                 // Array of feature strings
+  isActive                     Boolean              @default(true)
+  createdByAdminId             String?              // regional admin who created/manages this
+  createdAt                    DateTime             @default(now())
+  updatedAt                    DateTime             @updatedAt
 
   subscriptions UserSubscription[]
+  planServices  SubscriptionPlanService[]
 
   @@index([type])
   @@index([isActive])
+  @@index([countryCode])
+  @@index([countryCode, type])
 }
 
 model UserSubscription {
@@ -1699,14 +1714,18 @@ model UserSubscription {
 }
 
 model SubscriptionUsage {
-  id                     String           @id @default(uuid())
-  subscriptionId         String
-  subscription           UserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  month                  String // "2026-03"
-  gpConsultsUsed         Int              @default(0)
-  specialistConsultsUsed Int              @default(0)
-  createdAt              DateTime         @default(now())
-  updatedAt              DateTime         @updatedAt
+  id                       String           @id @default(uuid())
+  subscriptionId           String
+  subscription             UserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  month                    String // "2026-03"
+  gpConsultsUsed           Int              @default(0)
+  specialistConsultsUsed   Int              @default(0)
+  nurseConsultsUsed        Int              @default(0)
+  mentalHealthConsultsUsed Int              @default(0)
+  nutritionConsultsUsed    Int              @default(0)
+  ambulanceUsed            Int              @default(0)
+  createdAt                DateTime         @default(now())
+  updatedAt                DateTime         @updatedAt
 
   @@unique([subscriptionId, month])
   @@index([month])
@@ -1728,4 +1747,102 @@ model CorporateEmployee {
   @@index([corporateAdminId])
   @@index([userId])
   @@index([status])
+}
+
+// ─── Platform Service Catalog (unified service definitions) ─────────────────
+
+model PlatformService {
+  id                  String    @id @default(uuid())
+  providerType        UserType  // DOCTOR, NURSE, NANNY, PHARMACIST, LAB_TECHNICIAN, EMERGENCY_WORKER
+  serviceName         String
+  category            String    // Consultation, Screening, Wound Care, etc.
+  description         String
+  defaultPrice        Float     @default(0)
+  currency            String    @default("MUR")
+  duration            Int?      // minutes
+  isDefault           Boolean   @default(true)  // true = auto-assigned to new providers on registration
+  countryCode         String?   // null = all regions, "MU" = region-specific
+  createdByProviderId String?   // null = platform default; set = provider-created custom service
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  providerConfigs ProviderServiceConfig[]
+  planServices    SubscriptionPlanService[]
+  groupItems      ServiceGroupItem[]
+
+  @@index([providerType])
+  @@index([providerType, serviceName])
+  @@index([category])
+  @@index([countryCode])
+  @@index([isDefault])
+}
+
+// ─── Provider Service Config (provider's instance + price override) ──────────
+
+model ProviderServiceConfig {
+  id                String          @id @default(uuid())
+  platformServiceId String
+  platformService   PlatformService @relation(fields: [platformServiceId], references: [id], onDelete: Cascade)
+  providerUserId    String          // User ID of the provider
+  priceOverride     Float?          // null = use admin/default price; set = provider's custom price
+  isActive          Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([platformServiceId, providerUserId])
+  @@index([providerUserId])
+  @@index([platformServiceId])
+}
+
+// ─── Service Groups (regional admin groups services for plans) ───────────────
+
+model ServiceGroup {
+  id               String   @id @default(uuid())
+  name             String
+  description      String?
+  countryCode      String
+  createdByAdminId String
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  items        ServiceGroupItem[]
+  planServices SubscriptionPlanService[]
+
+  @@index([countryCode])
+  @@index([createdByAdminId])
+}
+
+// ─── Service Group Items (services within a group) ──────────────────────────
+
+model ServiceGroupItem {
+  id                String          @id @default(uuid())
+  serviceGroupId    String
+  serviceGroup      ServiceGroup    @relation(fields: [serviceGroupId], references: [id], onDelete: Cascade)
+  platformServiceId String
+  platformService   PlatformService @relation(fields: [platformServiceId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceGroupId, platformServiceId])
+  @@index([serviceGroupId])
+  @@index([platformServiceId])
+}
+
+// ─── Subscription Plan Services (links plans to services/groups) ────────────
+
+model SubscriptionPlanService {
+  id                String           @id @default(uuid())
+  planId            String
+  plan              SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  platformServiceId String?          // direct service link
+  platformService   PlatformService? @relation(fields: [platformServiceId], references: [id], onDelete: Cascade)
+  serviceGroupId    String?          // OR a service group link
+  serviceGroup      ServiceGroup?    @relation(fields: [serviceGroupId], references: [id], onDelete: Cascade)
+  isFree            Boolean          @default(false) // true = included free in plan
+  adminPrice        Float?           // admin-set price (overrides service default); null = use default
+  monthlyLimit      Int              @default(0) // -1 = unlimited, 0 = pay-per-use, N = N per month
+
+  @@index([planId])
+  @@index([platformServiceId])
+  @@index([serviceGroupId])
 }

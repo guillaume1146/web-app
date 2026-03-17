@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { FaUsers, FaFileAlt, FaShieldAlt, FaToggleOn, FaClipboardList, FaBell } from 'react-icons/fa'
+import { FaUsers, FaFileAlt, FaShieldAlt, FaToggleOn, FaClipboardList, FaBell, FaCrown } from 'react-icons/fa'
 
 const UsersContent = dynamic(() => import('../users/page'), { ssr: false, loading: () => <TabLoading /> })
 const ContentContent = dynamic(() => import('../content/page'), { ssr: false, loading: () => <TabLoading /> })
@@ -10,6 +10,7 @@ const SecurityContent = dynamic(() => import('../security/page'), { ssr: false, 
 const RoleConfigContent = dynamic(() => import('../role-config/page'), { ssr: false, loading: () => <TabLoading /> })
 const DocumentsContent = dynamic(() => import('../required-documents/page'), { ssr: false, loading: () => <TabLoading /> })
 const NotificationsContent = dynamic(() => import('../notifications/page'), { ssr: false, loading: () => <TabLoading /> })
+const SubscriptionsContent = dynamic(() => import('../subscriptions/page'), { ssr: false, loading: () => <TabLoading /> })
 
 function TabLoading() {
   return (
@@ -26,6 +27,7 @@ const TABS = [
   { id: 'roles', label: 'Roles', icon: FaToggleOn },
   { id: 'documents', label: 'Docs', icon: FaClipboardList },
   { id: 'notifications', label: 'Alerts', icon: FaBell },
+  { id: 'subscriptions', label: 'Plans', icon: FaCrown },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -65,6 +67,7 @@ export default function RegionalAdministrationPage() {
         {activeTab === 'roles' && <RoleConfigContent />}
         {activeTab === 'documents' && <DocumentsContent />}
         {activeTab === 'notifications' && <NotificationsContent />}
+        {activeTab === 'subscriptions' && <SubscriptionsContent />}
       </div>
 
       <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center py-2 px-1 z-50 shadow-lg">

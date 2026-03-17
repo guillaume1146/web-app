@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto'
 import { createDoctorBookingSchema } from '@/lib/validations/api'
 import { rateLimitPublic } from '@/lib/rate-limit'
 import { validateSlotAvailability } from '@/lib/booking/validate-availability'
-import { checkPatientBalance } from '@/lib/booking/check-balance'
+import { checkBookingCost } from '@/lib/booking/check-balance'
 import { ensurePatientProfile } from '@/lib/bookings/ensure-patient-profile'
 
 export async function POST(request: NextRequest) {
@@ -53,15 +53,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check patient wallet balance before creating the booking
+    // Check patient wallet balance with subscription benefits
     const fee = servicePrice
       ?? (consultationType === 'video' ? doctorProfile.videoConsultationFee : doctorProfile.consultationFee)
-    const balanceCheck = await checkPatientBalance(auth.sub, fee)
-    if (!balanceCheck.sufficient) {
+    // Determine consult type for subscription quota check
+    const consultType = doctorProfile.specialty?.[0]?.toLowerCase().includes('general') || !doctorProfile.specialty?.length
+      ? 'gp' as const
+      : 'specialist' as const
+    const costCheck = await checkBookingCost({
+      patientUserId: auth.sub,
+      baseFee: fee,
+      consultType,
+      serviceType: consultType === 'specialist' ? 'specialist' : 'gp',
+    })
+    if (!costCheck.sufficient) {
       return NextResponse.json(
         {
           success: false,
-          message: `Insufficient balance. You need Rs ${fee} but only have Rs ${balanceCheck.balance?.toFixed(2) ?? '0'}. Please top up your wallet.`,
+          message: `Insufficient balance. You need ${costCheck.adjustedFee} but only have ${costCheck.balance?.toFixed(2) ?? '0'}. Please top up your wallet.`,
+          costBreakdown: {
+            originalFee: fee,
+            adjustedFee: costCheck.adjustedFee,
+            discount: costCheck.discount,
+            discountPercent: costCheck.discountPercent,
+            coveredBySubscription: costCheck.coveredBySubscription,
+          },
         },
         { status: 400 }
       )

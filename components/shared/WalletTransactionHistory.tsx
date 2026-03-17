@@ -1,6 +1,7 @@
 'use client'
 
 import { FaArrowDown, FaArrowUp } from 'react-icons/fa'
+import { getCurrencySymbol } from '@/lib/currency'
 
 interface Transaction {
   id: string
@@ -16,9 +17,11 @@ interface Transaction {
 
 interface WalletTransactionHistoryProps {
   transactions: Transaction[]
+  currency?: string
 }
 
-const WalletTransactionHistory: React.FC<WalletTransactionHistoryProps> = ({ transactions }) => {
+const WalletTransactionHistory: React.FC<WalletTransactionHistoryProps> = ({ transactions, currency = 'MUR' }) => {
+  const symbol = getCurrencySymbol(currency)
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -101,10 +104,10 @@ const WalletTransactionHistory: React.FC<WalletTransactionHistoryProps> = ({ tra
                     {getServiceTypeBadge(tx.serviceType)}
                   </td>
                   <td className={`p-3 text-right font-semibold ${isCredit ? 'text-green-600' : 'text-red-600'}`}>
-                    {isCredit ? '+' : '-'}Rs {Math.abs(tx.amount).toLocaleString()}
+                    {isCredit ? '+' : '-'}{symbol} {Math.abs(tx.amount).toLocaleString()}
                   </td>
                   <td className="p-3 text-right text-gray-700 font-medium">
-                    Rs {tx.balanceAfter.toLocaleString()}
+                    {symbol} {tx.balanceAfter.toLocaleString()}
                   </td>
                 </tr>
               )
@@ -131,7 +134,7 @@ const WalletTransactionHistory: React.FC<WalletTransactionHistoryProps> = ({ tra
                   <p className="text-sm font-medium text-gray-900 truncate">{tx.description}</p>
                 </div>
                 <p className={`text-sm font-bold whitespace-nowrap ${isCredit ? 'text-green-600' : 'text-red-600'}`}>
-                  {isCredit ? '+' : '-'}Rs {Math.abs(tx.amount).toLocaleString()}
+                  {isCredit ? '+' : '-'}{symbol} {Math.abs(tx.amount).toLocaleString()}
                 </p>
               </div>
               <div className="flex items-center justify-between ml-8">
@@ -142,7 +145,7 @@ const WalletTransactionHistory: React.FC<WalletTransactionHistoryProps> = ({ tra
                   </span>
                 </div>
                 <span className="text-xs text-gray-500">
-                  Bal: Rs {tx.balanceAfter.toLocaleString()}
+                  Bal: {symbol} {tx.balanceAfter.toLocaleString()}
                 </span>
               </div>
             </div>

@@ -1,40 +1,53 @@
 import { PrismaClient } from '@prisma/client'
 
 export async function seedWallets(prisma: PrismaClient) {
-  console.log('🏦 Seeding wallets...')
+  console.log('  Seeding wallets...')
 
-  // Get all users
-  const users = await prisma.user.findMany({ select: { id: true } })
+  // Get all users with their region data for currency-aware wallet creation
+  const users = await prisma.user.findMany({
+    select: { id: true, regionId: true },
+  })
+
+  // Cache region data to avoid repeated queries
+  const regionCache: Record<string, { currency: string; trialCredit: number }> = {}
+  const regions = await prisma.region.findMany({
+    select: { id: true, currency: true, trialCredit: true },
+  })
+  for (const r of regions) {
+    regionCache[r.id] = { currency: r.currency, trialCredit: r.trialCredit }
+  }
 
   for (const user of users) {
+    const region = user.regionId ? regionCache[user.regionId] : null
+    const currency = region?.currency ?? 'MUR'
+    const trialCredit = region?.trialCredit ?? 4500
+
     await prisma.userWallet.upsert({
       where: { userId: user.id },
       update: {},
       create: {
         userId: user.id,
-        balance: 4500,
-        currency: 'MUR',
-        initialCredit: 4500,
+        balance: trialCredit,
+        currency,
+        initialCredit: trialCredit,
       },
     })
   }
 
   // Add sample transactions for first patient and first doctor
-  // Find them by looking up users
   const patient = await prisma.user.findFirst({
     where: { userType: 'PATIENT' },
     select: { id: true, wallet: { select: { id: true, balance: true } } },
-    orderBy: { createdAt: 'asc' }
+    orderBy: { createdAt: 'asc' },
   })
 
   const doctor = await prisma.user.findFirst({
     where: { userType: 'DOCTOR' },
     select: { id: true, wallet: { select: { id: true, balance: true } } },
-    orderBy: { createdAt: 'asc' }
+    orderBy: { createdAt: 'asc' },
   })
 
   if (patient?.wallet) {
-    // Create sample debit transactions for patient
     const transactions = [
       { description: 'Video consultation with Dr. Sarah Johnson', serviceType: 'consultation', amount: 1500 },
       { description: 'Paracetamol 500mg x2 boxes', serviceType: 'medicine', amount: 90 },
@@ -42,7 +55,7 @@ export async function seedWallets(prisma: PrismaClient) {
       { description: 'Monthly subscription - Premium Care', serviceType: 'subscription', amount: 250 },
     ]
 
-    let balance = 4500
+    let balance = patient.wallet.balance
     for (const tx of transactions) {
       const balanceBefore = balance
       balance -= tx.amount
@@ -60,7 +73,6 @@ export async function seedWallets(prisma: PrismaClient) {
       })
     }
 
-    // Update patient wallet balance
     await prisma.userWallet.update({
       where: { id: patient.wallet.id },
       data: { balance },
@@ -68,12 +80,11 @@ export async function seedWallets(prisma: PrismaClient) {
   }
 
   if (doctor?.wallet) {
-    // Doctor transactions (mostly subscription)
     const txs = [
       { description: 'Professional subscription plan', serviceType: 'subscription', amount: 1999 },
     ]
 
-    let balance = 4500
+    let balance = doctor.wallet.balance
     for (const tx of txs) {
       const balanceBefore = balance
       balance -= tx.amount
@@ -97,5 +108,5 @@ export async function seedWallets(prisma: PrismaClient) {
     })
   }
 
-  console.log(`  ✅ Created wallets for ${users.length} users with sample transactions`)
+  console.log(`  Wallets created for ${users.length} users with sample transactions`)
 }

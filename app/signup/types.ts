@@ -80,6 +80,10 @@ export interface SignupFormData {
   // Skipped Documents (document IDs the user chose to provide later)
   skippedDocuments?: string[];
 
+  // Subscription plan selection
+  selectedPlanId?: string;
+  selectedBusinessPlanId?: string; // Corporate admin: plan for employees
+
   // Terms and Privacy Agreement (mandatory)
   agreeToTerms?: boolean;
   agreeToPrivacy?: boolean;

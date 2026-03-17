@@ -111,8 +111,11 @@ describe('POST /api/auth/register — corporate enrollment', () => {
             return { id: 'doc-prof-1', ...args.data }
           }),
         },
-        userWallet: { create: vi.fn() },
+        userWallet: { create: vi.fn(), findUnique: vi.fn() },
         document: { createMany: vi.fn() },
+        platformService: { findMany: vi.fn().mockResolvedValue([]) },
+        providerServiceConfig: { createMany: vi.fn() },
+        region: { findUnique: vi.fn() },
       }
       return (fn as (tx: Record<string, unknown>) => Promise<unknown>)(tx)
     })
@@ -145,8 +148,11 @@ describe('POST /api/auth/register — corporate enrollment', () => {
             return { id: 'doc-prof-2', ...args.data }
           }),
         },
-        userWallet: { create: vi.fn() },
+        userWallet: { create: vi.fn(), findUnique: vi.fn() },
         document: { createMany: vi.fn() },
+        platformService: { findMany: vi.fn().mockResolvedValue([]) },
+        providerServiceConfig: { createMany: vi.fn() },
+        region: { findUnique: vi.fn() },
       }
       return (fn as (tx: Record<string, unknown>) => Promise<unknown>)(tx)
     })

@@ -9,6 +9,7 @@ import ProgressSteps from './ProgressSteps'
 import AccountTypeStep from './AccountTypeStep'
 import BasicInfoStep from './BasicInfoStep'
 import DocumentUploadStep from './DocumentUploadStep'
+import SubscriptionStep from './SubscriptionStep'
 import VerificationStep from './VerificationStep'
 import NavigationButtons from './NavigationButtons'
 import LegalModals from './LegalModals'
@@ -160,30 +161,33 @@ export default function RegistrationForm() {
         return selectedUserType !== ''
       case 2:
         // Base validation for all users
-        const baseValid = !!(formData.fullName && formData.email && formData.password && 
-               formData.confirmPassword && formData.phone && formData.dateOfBirth && 
+        const baseValid = !!(formData.fullName && formData.email && formData.password &&
+               formData.confirmPassword && formData.phone && formData.dateOfBirth &&
                formData.gender && formData.address)
-        
+
         if (!baseValid) return false
 
         // Additional validation for specific user types
         if (formData.userType === 'corporate') {
           return !!(formData.companyName && formData.jobTitle && formData.companyAddress)
         }
-        
+
         if (formData.userType === 'regional-admin') {
           return !!(formData.targetCountry && formData.businessPlan)
         }
-        
+
         return true
       case 3:
         const requiredDocs = documents.filter(doc => doc.required)
         return requiredDocs.every(doc => doc.uploaded || doc.skipped)
       case 4:
-        // For step 4, we just need the required documents uploaded or skipped
+        // Plan selection is optional — always valid
+        return true
+      case 5:
+        // For step 5, we just need the required documents uploaded or skipped
         // The checkboxes will be validated in handleSubmit
-        const step4RequiredDocs = documents.filter(doc => doc.required)
-        return step4RequiredDocs.every(doc => doc.uploaded || doc.skipped)
+        const step5RequiredDocs = documents.filter(doc => doc.required)
+        return step5RequiredDocs.every(doc => doc.uploaded || doc.skipped)
       default:
         return true
     }
@@ -191,7 +195,7 @@ export default function RegistrationForm() {
 
   const nextStep = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, 4))
+      setCurrentStep(prev => Math.min(prev + 1, 5))
     }
   }
 
@@ -376,8 +380,20 @@ export default function RegistrationForm() {
                     />
                   )}
 
-                  {/* Step 4: Verification */}
+                  {/* Step 4: Plan Selection */}
                   {currentStep === 4 && (
+                    <SubscriptionStep
+                      regionId={formData.regionId}
+                      userType={formData.userType}
+                      selectedPlanId={formData.selectedPlanId}
+                      selectedBusinessPlanId={formData.selectedBusinessPlanId}
+                      onSelectPlan={(id) => setFormData(prev => ({ ...prev, selectedPlanId: id }))}
+                      onSelectBusinessPlan={(id) => setFormData(prev => ({ ...prev, selectedBusinessPlanId: id }))}
+                    />
+                  )}
+
+                  {/* Step 5: Verification */}
+                  {currentStep === 5 && (
                     <VerificationStep
                       formData={formData}
                       selectedType={selectedType}

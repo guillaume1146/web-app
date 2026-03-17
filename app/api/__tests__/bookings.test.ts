@@ -36,6 +36,16 @@ vi.mock('@/lib/booking/validate-availability', () => ({
 
 vi.mock('@/lib/booking/check-balance', () => ({
   checkPatientBalance: vi.fn(() => ({ sufficient: true, balance: 5000 })),
+  checkBookingCost: vi.fn(() => ({
+    coveredBySubscription: false,
+    discount: 0,
+    discountPercent: 0,
+    adjustedFee: 500,
+    sufficient: true,
+    balance: 5000,
+    isCorporate: false,
+    message: 'Full price applies.',
+  })),
 }))
 
 vi.mock('@/lib/booking-actions', () => ({

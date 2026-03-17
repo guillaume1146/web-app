@@ -28,6 +28,7 @@ import { seedHealthTrackerDemo } from './seeds/25-health-tracker-demo.seed'
 import { seedMultiCountryUsers } from './seeds/27-multi-country-users.seed'
 import { seedDocumentsAndFiles } from './seeds/28-seed-documents.seed'
 import { seedSubscriptions } from './seeds/29-subscriptions.seed'
+import { seedPlatformServices } from './seeds/30-platform-services.seed'
 
 const prisma = new PrismaClient()
 
@@ -35,11 +36,16 @@ async function main() {
   console.log('Cleaning database...')
 
   // Delete in reverse dependency order
-  // 0. Subscription + Corporate Employee tables
+  // 0. Subscription + Corporate Employee + Service tables
   await prisma.subscriptionUsage.deleteMany()
   await prisma.userSubscription.deleteMany()
+  await prisma.subscriptionPlanService.deleteMany()
   await prisma.subscriptionPlan.deleteMany()
   await prisma.corporateEmployee.deleteMany()
+  await prisma.serviceGroupItem.deleteMany()
+  await prisma.serviceGroup.deleteMany()
+  await prisma.providerServiceConfig.deleteMany()
+  await prisma.platformService.deleteMany()
 
   // 0. Config + Reviews tables (no FK dependencies)
   await prisma.roleFeatureConfig.deleteMany()
@@ -61,6 +67,9 @@ async function main() {
   await prisma.cmsTestimonial.deleteMany()
   await prisma.cmsHeroSlide.deleteMany()
   await prisma.cmsSection.deleteMany()
+  await prisma.doctorServiceCatalog.deleteMany()
+  await prisma.nurseServiceCatalog.deleteMany()
+  await prisma.nannyServiceCatalog.deleteMany()
   await prisma.pharmacyMedicine.deleteMany()
   await prisma.labTestCatalog.deleteMany()
   await prisma.emergencyServiceListing.deleteMany()
@@ -172,6 +181,7 @@ async function main() {
   await seedMultiCountryUsers(prisma)
   await seedDocumentsAndFiles(prisma)
   await seedSubscriptions(prisma)
+  await seedPlatformServices(prisma)
 
   console.log('Database seeded successfully!')
 }

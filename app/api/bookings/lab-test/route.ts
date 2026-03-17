@@ -5,7 +5,7 @@ import { createNotification } from '@/lib/notifications'
 import { createLabTestBookingSchema } from '@/lib/validations/api'
 import { rateLimitPublic } from '@/lib/rate-limit'
 import { validateSlotAvailability } from '@/lib/booking/validate-availability'
-import { checkPatientBalance } from '@/lib/booking/check-balance'
+import { checkBookingCost } from '@/lib/booking/check-balance'
 import { ensurePatientProfile } from '@/lib/bookings/ensure-patient-profile'
 
 const DEFAULT_LAB_TEST_PRICE = 500
@@ -60,13 +60,24 @@ export async function POST(request: NextRequest) {
 
     const fee = price && price > 0 ? price : DEFAULT_LAB_TEST_PRICE
 
-    // Check patient wallet balance before creating the booking
-    const balanceCheck = await checkPatientBalance(auth.sub, fee)
-    if (!balanceCheck.sufficient) {
+    // Check patient wallet balance with subscription benefits
+    const costCheck = await checkBookingCost({
+      patientUserId: auth.sub,
+      baseFee: fee,
+      consultType: 'gp', // lab tests don't have own quota type, use gp as fallback
+      serviceType: 'lab',
+    })
+    if (!costCheck.sufficient) {
       return NextResponse.json(
         {
           success: false,
-          message: `Insufficient balance. You need Rs ${balanceCheck.required} but only have Rs ${balanceCheck.balance?.toFixed(2) ?? '0'}. Please top up your wallet.`,
+          message: `Insufficient balance. You need ${costCheck.adjustedFee} but only have ${costCheck.balance?.toFixed(2) ?? '0'}. Please top up your wallet.`,
+          costBreakdown: {
+            originalFee: fee,
+            adjustedFee: costCheck.adjustedFee,
+            discount: costCheck.discount,
+            coveredBySubscription: costCheck.coveredBySubscription,
+          },
         },
         { status: 400 }
       )

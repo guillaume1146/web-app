@@ -1,8 +1,8 @@
 import prisma from '@/lib/db'
 
 // Env var fallbacks (used only if DB config not yet created)
-const ENV_PLATFORM_RATE = parseFloat(process.env.PLATFORM_COMMISSION_RATE || '5')
-const ENV_REGIONAL_RATE = parseFloat(process.env.REGIONAL_COMMISSION_RATE || '10')
+const ENV_PLATFORM_RATE = parseFloat(process.env.PLATFORM_COMMISSION_RATE || '15')
+const ENV_REGIONAL_RATE = parseFloat(process.env.REGIONAL_COMMISSION_RATE || '0')
 
 interface CommissionRates {
   platformRate: number
@@ -39,8 +39,7 @@ async function loadRates(): Promise<CommissionRates> {
 
 /**
  * Calculate commission split for a transaction.
- * Rates are loaded from the database (PlatformConfig table).
- * Regional admin's individual commissionRate overrides the default if set.
+ * Platform takes 15%, Provider gets 85%. Regional admins earn from subscription revenue, not per-transaction.
  */
 export async function calculateCommission(
   totalAmount: number,
@@ -48,7 +47,7 @@ export async function calculateCommission(
 ): Promise<CommissionSplit> {
   const rates = await loadRates()
 
-  // Find the regional admin for this provider's region
+  // Find the regional admin for this provider's region (kept for audit trail)
   const provider = await prisma.user.findUnique({
     where: { id: providerUserId },
     select: { address: true },
@@ -65,7 +64,7 @@ export async function calculateCommission(
           { country: { contains: provider.address, mode: 'insensitive' } },
         ],
       },
-      select: { id: true, userId: true, commissionRate: true },
+      select: { id: true, userId: true },
     })
   }
 
@@ -73,25 +72,19 @@ export async function calculateCommission(
   if (!regionalAdmin) {
     regionalAdmin = await prisma.regionalAdminProfile.findFirst({
       where: { user: { accountStatus: 'active' } },
-      select: { id: true, userId: true, commissionRate: true },
+      select: { id: true, userId: true },
     })
   }
 
   const platformRate = rates.platformRate / 100
-  // Regional admin's own rate overrides the platform default
-  const regionalRate = regionalAdmin
-    ? (regionalAdmin.commissionRate ?? rates.regionalRate) / 100
-    : rates.regionalRate / 100
+  const providerRate = rates.providerRate / 100
 
   const platformCommission = Math.round(totalAmount * platformRate * 100) / 100
-  const regionalCommission = regionalAdmin
-    ? Math.round(totalAmount * regionalRate * 100) / 100
-    : 0
-  const providerAmount = Math.round((totalAmount - platformCommission - regionalCommission) * 100) / 100
+  const providerAmount = Math.round(totalAmount * providerRate * 100) / 100
 
   return {
     platformCommission,
-    regionalCommission,
+    regionalCommission: 0, // Regional admins earn from subscriptions, not per-transaction
     providerAmount,
     regionalAdminId: regionalAdmin?.userId ?? null,
   }
@@ -143,7 +136,7 @@ export async function processServicePayment(params: {
           balanceAfter: patientBalanceAfter,
           status: 'completed',
           platformCommission: commission.platformCommission,
-          regionalCommission: commission.regionalCommission,
+          regionalCommission: 0,
           providerAmount: commission.providerAmount,
           regionalAdminId: commission.regionalAdminId,
         },
@@ -175,50 +168,10 @@ export async function processServicePayment(params: {
             balanceAfter: providerBalanceAfter,
             status: 'completed',
             platformCommission: commission.platformCommission,
-            regionalCommission: commission.regionalCommission,
+            regionalCommission: 0,
             providerAmount: commission.providerAmount,
             regionalAdminId: commission.regionalAdminId,
           },
-        })
-      }
-
-      // 3. Credit regional admin wallet
-      if (commission.regionalAdminId && commission.regionalCommission > 0) {
-        const adminWallet = await tx.userWallet.findUnique({
-          where: { userId: commission.regionalAdminId },
-          select: { id: true, balance: true },
-        })
-
-        if (adminWallet) {
-          const adminBalanceAfter = adminWallet.balance + commission.regionalCommission
-
-          await tx.userWallet.update({
-            where: { id: adminWallet.id },
-            data: { balance: adminBalanceAfter },
-          })
-
-          await tx.walletTransaction.create({
-            data: {
-              walletId: adminWallet.id,
-              type: 'credit',
-              amount: commission.regionalCommission,
-              description: `Regional commission: ${description}`,
-              serviceType,
-              referenceId,
-              balanceBefore: adminWallet.balance,
-              balanceAfter: adminBalanceAfter,
-              status: 'completed',
-              platformCommission: commission.platformCommission,
-              regionalCommission: commission.regionalCommission,
-              providerAmount: commission.providerAmount,
-              regionalAdminId: commission.regionalAdminId,
-            },
-          })
-        }
-
-        await tx.regionalAdminProfile.updateMany({
-          where: { userId: commission.regionalAdminId },
-          data: { totalCommission: { increment: commission.regionalCommission } },
         })
       }
     })

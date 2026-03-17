@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import { FaCrown, FaCheckCircle } from 'react-icons/fa'
+import { getCurrencySymbol } from '@/lib/currency'
 
 export interface SubscriptionPlan {
   id: string
   name: string
   price: number
+  currency?: string
   period: 'monthly' | 'yearly'
   features: string[]
   isCurrent?: boolean
@@ -37,7 +39,7 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ plans, currentPlanId:
             >
               <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
               <p className="text-3xl font-bold mb-4">
-                {plan.price > 0 ? `Rs ${plan.price.toLocaleString()}` : 'Free'}
+                {plan.price > 0 ? `${getCurrencySymbol(plan.currency || 'MUR')} ${plan.price.toLocaleString()}` : 'Free'}
                 <span className="text-base font-normal text-gray-500">/{plan.period}</span>
               </p>
               <ul className="space-y-2 text-gray-600 mb-6">

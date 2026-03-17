@@ -268,15 +268,95 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Create trial wallet
+      // Create trial wallet with region-specific currency and credit
+      let walletCurrency = 'MUR'
+      let walletCredit = 4500
+      if (data.regionId) {
+        const region = await tx.region.findUnique({
+          where: { id: data.regionId },
+          select: { currency: true, trialCredit: true },
+        })
+        if (region) {
+          walletCurrency = region.currency
+          walletCredit = region.trialCredit
+        }
+      }
+
       await tx.userWallet.create({
         data: {
           userId: newUser.id,
-          balance: 4500,
-          currency: 'MUR',
-          initialCredit: 4500,
+          balance: walletCredit,
+          currency: walletCurrency,
+          initialCredit: walletCredit,
         },
       })
+
+      // Auto-assign default platform services for provider types
+      const providerTypes: string[] = ['DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER']
+      if (providerTypes.includes(prismaUserType)) {
+        const defaultServices = await tx.platformService.findMany({
+          where: { providerType: prismaUserType as UserType, isDefault: true, isActive: true },
+          select: { id: true },
+        })
+        if (defaultServices.length > 0) {
+          await tx.providerServiceConfig.createMany({
+            data: defaultServices.map(svc => ({
+              platformServiceId: svc.id,
+              providerUserId: newUser.id,
+              priceOverride: null,
+              isActive: true,
+            })),
+            skipDuplicates: true,
+          })
+        }
+      }
+
+      // Subscribe to selected plan if provided
+      if (data.selectedPlanId) {
+        const plan = await tx.subscriptionPlan.findUnique({
+          where: { id: data.selectedPlanId },
+          select: { id: true, price: true },
+        })
+        if (plan) {
+          await tx.userSubscription.create({
+            data: {
+              userId: newUser.id,
+              planId: plan.id,
+              status: 'active',
+              startDate: new Date(),
+              autoRenew: true,
+            },
+          })
+
+          // Debit wallet for first month if plan has a price
+          if (plan.price > 0) {
+            const wallet = await tx.userWallet.findUnique({
+              where: { userId: newUser.id },
+              select: { id: true, balance: true },
+            })
+            if (wallet && wallet.balance >= plan.price) {
+              const newBalance = wallet.balance - plan.price
+              await tx.userWallet.update({
+                where: { id: wallet.id },
+                data: { balance: newBalance },
+              })
+              await tx.walletTransaction.create({
+                data: {
+                  walletId: wallet.id,
+                  type: 'debit',
+                  amount: plan.price,
+                  description: 'Subscription — first month',
+                  serviceType: 'subscription',
+                  referenceId: plan.id,
+                  balanceBefore: wallet.balance,
+                  balanceAfter: newBalance,
+                  status: 'completed',
+                },
+              })
+            }
+          }
+        }
+      }
 
       // Create Document records for uploaded files
       if (data.documentUrls.length > 0) {

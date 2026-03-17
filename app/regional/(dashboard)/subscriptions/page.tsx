@@ -1,0 +1,565 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { FaCrown, FaPlus, FaEdit, FaToggleOn, FaToggleOff, FaSpinner, FaCheckCircle, FaTimes } from 'react-icons/fa'
+import { useDashboardUser } from '@/hooks/useDashboardUser'
+import { getCurrencySymbol } from '@/lib/currency'
+
+interface Plan {
+  id: string
+  name: string
+  slug: string
+  type: string
+  price: number
+  currency: string
+  countryCode: string | null
+  targetAudience: string | null
+  gpConsultsPerMonth: number
+  specialistConsultsPerMonth: number
+  nurseConsultsPerMonth: number
+  mentalHealthConsultsPerMonth: number
+  nutritionConsultsPerMonth: number
+  ambulanceFreePerMonth: number
+  discounts: Record<string, number> | null
+  features: string[]
+  isActive: boolean
+  createdByAdminId: string | null
+}
+
+interface CatalogService {
+  id: string
+  serviceName: string
+  defaultPrice: number
+  description: string
+  duration: number | null
+  isDefault: boolean
+}
+
+interface ServiceCategory {
+  category: string
+  services: CatalogService[]
+}
+
+interface PlanServiceLink {
+  platformServiceId: string
+  serviceName: string
+  isFree: boolean
+  adminPrice: number | null
+  monthlyLimit: number
+}
+
+const EMPTY_FORM: {
+  name: string
+  type: 'individual' | 'corporate'
+  price: number
+  currency: string
+  targetAudience: string
+  gpConsultsPerMonth: number
+  specialistConsultsPerMonth: number
+  nurseConsultsPerMonth: number
+  mentalHealthConsultsPerMonth: number
+  nutritionConsultsPerMonth: number
+  ambulanceFreePerMonth: number
+  discounts: Record<string, number>
+  features: string[]
+  serviceLinks: PlanServiceLink[]
+} = {
+  name: '',
+  type: 'individual',
+  price: 0,
+  currency: 'MUR',
+  targetAudience: '',
+  gpConsultsPerMonth: 0,
+  specialistConsultsPerMonth: 0,
+  nurseConsultsPerMonth: 0,
+  mentalHealthConsultsPerMonth: 0,
+  nutritionConsultsPerMonth: 0,
+  ambulanceFreePerMonth: 0,
+  discounts: {},
+  features: [],
+  serviceLinks: [],
+}
+
+export default function SubscriptionsManagementPage() {
+  const user = useDashboardUser()
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [featureInput, setFeatureInput] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [services, setServices] = useState<ServiceCategory[]>([])
+
+  const fetchPlans = useCallback(async () => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/regional/subscriptions')
+      const json = await res.json()
+      if (json.success) {
+        setPlans(json.data)
+      }
+    } catch {
+      setError('Failed to load plans')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const fetchServices = useCallback(async () => {
+    try {
+      const res = await fetch('/api/services/catalog')
+      const json = await res.json()
+      if (json.success) {
+        setServices(json.data)
+      }
+    } catch {
+      // Services list optional
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchPlans()
+    fetchServices()
+  }, [fetchPlans, fetchServices])
+
+  const handleEdit = (plan: Plan) => {
+    setEditingPlan(plan)
+    setForm({
+      name: plan.name,
+      type: plan.type as 'individual' | 'corporate',
+      price: plan.price,
+      currency: plan.currency,
+      targetAudience: plan.targetAudience || '',
+      gpConsultsPerMonth: plan.gpConsultsPerMonth,
+      specialistConsultsPerMonth: plan.specialistConsultsPerMonth,
+      nurseConsultsPerMonth: plan.nurseConsultsPerMonth,
+      mentalHealthConsultsPerMonth: plan.mentalHealthConsultsPerMonth,
+      nutritionConsultsPerMonth: plan.nutritionConsultsPerMonth,
+      ambulanceFreePerMonth: plan.ambulanceFreePerMonth,
+      discounts: (plan.discounts || {}) as Record<string, number>,
+      features: plan.features,
+      serviceLinks: [],
+    })
+    setShowForm(true)
+  }
+
+  const handleCreate = () => {
+    setEditingPlan(null)
+    setForm(EMPTY_FORM)
+    setShowForm(true)
+  }
+
+  const handleSubmit = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      const url = editingPlan
+        ? `/api/regional/subscriptions/${editingPlan.id}`
+        : '/api/regional/subscriptions'
+      const method = editingPlan ? 'PATCH' : 'POST'
+
+      const payload = {
+        ...form,
+        services: form.serviceLinks.map(sl => ({
+          platformServiceId: sl.platformServiceId,
+          isFree: sl.isFree,
+          adminPrice: sl.adminPrice,
+          monthlyLimit: sl.monthlyLimit,
+        })),
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json()
+      if (json.success) {
+        setShowForm(false)
+        setEditingPlan(null)
+        fetchPlans()
+      } else {
+        setError(json.message || 'Failed to save plan')
+      }
+    } catch {
+      setError('Failed to save plan')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const toggleActive = async (plan: Plan) => {
+    try {
+      const res = await fetch(`/api/regional/subscriptions/${plan.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !plan.isActive }),
+      })
+      const json = await res.json()
+      if (json.success) fetchPlans()
+    } catch {
+      // silently fail
+    }
+  }
+
+  const addFeature = () => {
+    if (featureInput.trim()) {
+      setForm(prev => ({ ...prev, features: [...prev.features, featureInput.trim()] }))
+      setFeatureInput('')
+    }
+  }
+
+  const removeFeature = (index: number) => {
+    setForm(prev => ({ ...prev, features: prev.features.filter((_, i) => i !== index) }))
+  }
+
+  if (!user) return null
+
+  const individualPlans = plans.filter(p => p.type === 'individual')
+  const corporatePlans = plans.filter(p => p.type === 'corporate')
+
+  const renderPlanRow = (plan: Plan) => {
+    const sym = getCurrencySymbol(plan.currency)
+    return (
+      <tr key={plan.id} className={`border-b border-gray-100 ${!plan.isActive ? 'opacity-50' : ''}`}>
+        <td className="p-3">
+          <div className="font-medium text-gray-900">{plan.name}</div>
+          {plan.targetAudience && <div className="text-xs text-gray-500">{plan.targetAudience}</div>}
+        </td>
+        <td className="p-3 font-semibold text-gray-900">{sym} {plan.price.toLocaleString()}/mo</td>
+        <td className="p-3 text-sm text-gray-600">
+          GP: {plan.gpConsultsPerMonth === -1 ? '∞' : plan.gpConsultsPerMonth},
+          Nurse: {plan.nurseConsultsPerMonth === -1 ? '∞' : plan.nurseConsultsPerMonth},
+          Mental: {plan.mentalHealthConsultsPerMonth === -1 ? '∞' : plan.mentalHealthConsultsPerMonth}
+        </td>
+        <td className="p-3">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${plan.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+            {plan.isActive ? 'Active' : 'Inactive'}
+          </span>
+        </td>
+        <td className="p-3">
+          <div className="flex items-center gap-2">
+            <button onClick={() => handleEdit(plan)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded">
+              <FaEdit className="text-sm" />
+            </button>
+            <button onClick={() => toggleActive(plan)} className="p-1.5 text-gray-500 hover:bg-gray-50 rounded">
+              {plan.isActive ? <FaToggleOn className="text-green-600 text-lg" /> : <FaToggleOff className="text-gray-400 text-lg" />}
+            </button>
+          </div>
+        </td>
+      </tr>
+    )
+  }
+
+  const renderPlanTable = (planList: Plan[], title: string) => (
+    <div className="mb-8">
+      <h3 className="text-lg font-semibold text-gray-800 mb-3">{title}</h3>
+      {planList.length === 0 ? (
+        <p className="text-gray-500 text-sm">No plans yet.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="p-3 text-left font-medium text-gray-600">Plan</th>
+                <th className="p-3 text-left font-medium text-gray-600">Price</th>
+                <th className="p-3 text-left font-medium text-gray-600">Consults</th>
+                <th className="p-3 text-left font-medium text-gray-600">Status</th>
+                <th className="p-3 text-left font-medium text-gray-600">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {planList.map(renderPlanRow)}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FaCrown className="text-yellow-500 text-xl" />
+          <h2 className="text-xl font-bold text-gray-800">Subscription Plans</h2>
+        </div>
+        <button
+          onClick={handleCreate}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+        >
+          <FaPlus className="text-xs" /> New Plan
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <FaSpinner className="animate-spin text-blue-500 text-xl" />
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+          {renderPlanTable(individualPlans, 'Individual Plans')}
+          {renderPlanTable(corporatePlans, 'Corporate Plans')}
+        </div>
+      )}
+
+      {/* Available Services Reference */}
+      {services.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">Available Provider Services</h3>
+          <p className="text-sm text-gray-500 mb-4">Reference list of services from providers in your region. Use these when configuring plan features and discounts.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {services.map((cat) => (
+              <div key={cat.category} className="border border-gray-100 rounded-lg p-3">
+                <h4 className="text-sm font-medium text-gray-800 mb-2">{cat.category}</h4>
+                <ul className="space-y-1">
+                  {cat.services.map((svc) => (
+                    <li key={svc.serviceName} className="text-xs text-gray-600 flex justify-between">
+                      <span>{svc.serviceName}</span>
+                      <span className="text-gray-400">{svc.defaultPrice > 0 ? svc.defaultPrice.toLocaleString() : 'Free'}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Create / Edit Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-gray-900">
+                {editingPlan ? 'Edit Plan' : 'Create New Plan'}
+              </h3>
+              <button onClick={() => setShowForm(false)} className="p-2 text-gray-400 hover:text-gray-600">
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Plan Name</label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    placeholder="e.g. Premium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <select
+                    value={form.type}
+                    onChange={(e) => setForm(prev => ({ ...prev, type: e.target.value as 'individual' | 'corporate' }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  >
+                    <option value="individual">Individual</option>
+                    <option value="corporate">Corporate</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Price/month</label>
+                  <input
+                    type="number"
+                    value={form.price}
+                    onChange={(e) => setForm(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Target Audience</label>
+                  <input
+                    type="text"
+                    value={form.targetAudience}
+                    onChange={(e) => setForm(prev => ({ ...prev, targetAudience: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    placeholder="e.g. families"
+                  />
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold text-gray-800 mb-3">Monthly Consultation Limits (-1 = unlimited)</h4>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { key: 'gpConsultsPerMonth', label: 'GP' },
+                    { key: 'specialistConsultsPerMonth', label: 'Specialist' },
+                    { key: 'nurseConsultsPerMonth', label: 'Nurse' },
+                    { key: 'mentalHealthConsultsPerMonth', label: 'Mental Health' },
+                    { key: 'nutritionConsultsPerMonth', label: 'Nutrition' },
+                    { key: 'ambulanceFreePerMonth', label: 'Ambulance' },
+                  ].map(({ key, label }) => (
+                    <div key={key}>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+                      <input
+                        type="number"
+                        value={(form as Record<string, unknown>)[key] as number}
+                        onChange={(e) => setForm(prev => ({ ...prev, [key]: parseInt(e.target.value) || 0 }))}
+                        className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm"
+                        min="-1"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold text-gray-800 mb-3">Features</h4>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={featureInput}
+                    onChange={(e) => setFeatureInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addFeature())}
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    placeholder="Add a feature..."
+                  />
+                  <button onClick={addFeature} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">
+                    Add
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {form.features.map((feat, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm text-gray-700">
+                      <FaCheckCircle className="text-green-500 text-xs flex-shrink-0" />
+                      <span className="flex-1">{feat}</span>
+                      <button onClick={() => removeFeature(i)} className="text-red-400 hover:text-red-600 text-xs">
+                        <FaTimes />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Services to include in plan */}
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold text-gray-800 mb-3">Included Services</h4>
+                <p className="text-xs text-gray-500 mb-3">Select platform services to include in this plan. Mark as free or set an admin price.</p>
+                {services.length > 0 ? (
+                  <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+                    {services.flatMap(cat => cat.services).map(svc => {
+                      const linked = form.serviceLinks.find(sl => sl.platformServiceId === svc.id)
+                      return (
+                        <div key={svc.id} className="flex items-center gap-3 p-2 text-sm hover:bg-gray-50">
+                          <input
+                            type="checkbox"
+                            checked={!!linked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setForm(prev => ({
+                                  ...prev,
+                                  serviceLinks: [...prev.serviceLinks, {
+                                    platformServiceId: svc.id,
+                                    serviceName: svc.serviceName,
+                                    isFree: false,
+                                    adminPrice: null,
+                                    monthlyLimit: 0,
+                                  }],
+                                }))
+                              } else {
+                                setForm(prev => ({
+                                  ...prev,
+                                  serviceLinks: prev.serviceLinks.filter(sl => sl.platformServiceId !== svc.id),
+                                }))
+                              }
+                            }}
+                            className="rounded text-blue-600"
+                          />
+                          <span className="flex-1 text-gray-700">{svc.serviceName}</span>
+                          <span className="text-xs text-gray-400">{svc.defaultPrice.toLocaleString()}</span>
+                          {linked && (
+                            <div className="flex items-center gap-2">
+                              <label className="flex items-center gap-1 text-xs">
+                                <input
+                                  type="checkbox"
+                                  checked={linked.isFree}
+                                  onChange={(e) => setForm(prev => ({
+                                    ...prev,
+                                    serviceLinks: prev.serviceLinks.map(sl =>
+                                      sl.platformServiceId === svc.id ? { ...sl, isFree: e.target.checked } : sl
+                                    ),
+                                  }))}
+                                  className="rounded text-green-600"
+                                />
+                                Free
+                              </label>
+                              {!linked.isFree && (
+                                <input
+                                  type="number"
+                                  value={linked.adminPrice ?? ''}
+                                  onChange={(e) => setForm(prev => ({
+                                    ...prev,
+                                    serviceLinks: prev.serviceLinks.map(sl =>
+                                      sl.platformServiceId === svc.id
+                                        ? { ...sl, adminPrice: e.target.value ? parseFloat(e.target.value) : null }
+                                        : sl
+                                    ),
+                                  }))}
+                                  placeholder="Admin price"
+                                  className="w-20 px-1.5 py-1 border border-gray-200 rounded text-xs"
+                                  min="0"
+                                />
+                              )}
+                              <input
+                                type="number"
+                                value={linked.monthlyLimit}
+                                onChange={(e) => setForm(prev => ({
+                                  ...prev,
+                                  serviceLinks: prev.serviceLinks.map(sl =>
+                                    sl.platformServiceId === svc.id
+                                      ? { ...sl, monthlyLimit: parseInt(e.target.value) || 0 }
+                                      : sl
+                                  ),
+                                }))}
+                                placeholder="Limit/mo"
+                                title="Monthly limit (-1 = unlimited, 0 = pay per use)"
+                                className="w-16 px-1.5 py-1 border border-gray-200 rounded text-xs"
+                                min="-1"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400">No services loaded. Services will be available after platform services are seeded.</p>
+                )}
+              </div>
+
+              {error && <p className="text-sm text-red-500">{error}</p>}
+
+              <div className="flex justify-end gap-3 border-t pt-4">
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="px-4 py-2 text-gray-600 border border-gray-200 rounded-lg text-sm hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={saving || !form.name || form.features.length === 0}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {saving && <FaSpinner className="animate-spin" />}
+                  {editingPlan ? 'Save Changes' : 'Create Plan'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

@@ -228,6 +228,51 @@ export const adminAccountActionSchema = z.object({
   action: z.enum(['approve', 'reject', 'suspend']),
 })
 
+// ─── Subscription Plans ─────────────────────────────────────────────────────
+
+const planServiceSchema = z.object({
+  platformServiceId: z.string().min(1).optional(),
+  serviceGroupId: z.string().min(1).optional(),
+  isFree: z.boolean().default(false),
+  adminPrice: z.number().min(0).optional(),
+  monthlyLimit: z.number().int().min(-1).default(0),
+})
+
+export const createSubscriptionPlanSchema = z.object({
+  name: z.string().min(1, 'Plan name is required').max(100),
+  type: z.enum(['individual', 'corporate']),
+  price: z.number().min(0, 'Price must be non-negative'),
+  currency: z.string().length(3, 'Currency code must be 3 characters').default('MUR'),
+  targetAudience: z.string().max(200).optional(),
+  gpConsultsPerMonth: z.number().int().min(-1),
+  specialistConsultsPerMonth: z.number().int().min(-1),
+  nurseConsultsPerMonth: z.number().int().min(-1).optional(),
+  mentalHealthConsultsPerMonth: z.number().int().min(-1).optional(),
+  nutritionConsultsPerMonth: z.number().int().min(-1).optional(),
+  ambulanceFreePerMonth: z.number().int().min(-1).optional(),
+  discounts: z.record(z.string(), z.number()).optional(),
+  paidServices: z.record(z.string(), z.number()).optional(),
+  features: z.array(z.string()).min(1, 'At least one feature is required'),
+  // Service links — services and groups included in this plan
+  services: z.array(planServiceSchema).optional(),
+})
+
+export const updateSubscriptionPlanSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  price: z.number().min(0).optional(),
+  targetAudience: z.string().max(200).nullable().optional(),
+  gpConsultsPerMonth: z.number().int().min(-1).optional(),
+  specialistConsultsPerMonth: z.number().int().min(-1).optional(),
+  nurseConsultsPerMonth: z.number().int().min(-1).optional(),
+  mentalHealthConsultsPerMonth: z.number().int().min(-1).optional(),
+  nutritionConsultsPerMonth: z.number().int().min(-1).optional(),
+  ambulanceFreePerMonth: z.number().int().min(-1).optional(),
+  discounts: z.record(z.string(), z.number()).nullable().optional(),
+  paidServices: z.record(z.string(), z.number()).nullable().optional(),
+  features: z.array(z.string()).optional(),
+  isActive: z.boolean().optional(),
+})
+
 // ─── Regions ───────────────────────────────────────────────────────────────
 
 export const createRegionSchema = z.object({

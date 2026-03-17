@@ -98,6 +98,10 @@ export const registerSchema = z.object({
 
   // Referral click tracking ID (from referral-tracking API)
   trackingId: z.string().optional(),
+
+  // Subscription plan selection (optional)
+  selectedPlanId: z.string().optional(),
+  selectedBusinessPlanId: z.string().optional(),
 }).refine(data => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
