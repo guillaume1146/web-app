@@ -103,7 +103,7 @@ jobs:
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER || 'root' }}
+          username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           password: ${{ secrets.VPS_PASSWORD }}
           command_timeout: 30m
@@ -155,14 +155,23 @@ jobs:
 
             # Wait for app to be ready
             echo "Waiting for app to start..."
+            APP_READY=false
             for i in $(seq 1 24); do
               sleep 5
               if curl -s http://localhost:3000 > /dev/null 2>&1; then
                 echo "App is ready after $((i * 5)) seconds"
+                APP_READY=true
                 break
               fi
               echo "Still waiting... ($((i * 5))s)"
             done
+
+            if [ "$APP_READY" = "false" ]; then
+              echo "=== APP FAILED TO START — Container logs ==="
+              docker compose logs --tail=50 app 2>&1 || true
+              echo "=== Container status ==="
+              docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>&1 || true
+            fi
 
             # Apply schema changes
             docker compose exec -T app npx prisma db push --accept-data-loss
