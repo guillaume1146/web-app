@@ -184,6 +184,17 @@ jobs:
             docker compose exec -T app sh -c "npx ts-node --skipProject --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\",\"esModuleInterop\":true}' prisma/seed.ts 2>&1" || echo "WARNING: Seed exited with code $?"
             echo "Seed step completed"
 
+            # Restart app after seed to ensure clean DB connections
+            echo "Restarting app after seed..."
+            docker compose restart app
+            sleep 10
+            if curl -s http://localhost:3000 > /dev/null 2>&1; then
+              echo "App is healthy after restart"
+            else
+              echo "App not responding after restart — checking logs..."
+              docker compose logs --tail=20 app 2>&1 || true
+            fi
+
             # Verify env vars are loaded in the container
             echo "=== Verifying container env ==="
             docker compose exec -T app sh -c 'echo "DB_URL set: $([ -n \"$DATABASE_URL\" ] && echo YES || echo NO)"'
