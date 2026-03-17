@@ -439,7 +439,91 @@ export default function SubscriptionsManagementPage() {
               </div>
 
               <div className="border-t pt-4">
-                <h4 className="text-sm font-semibold text-gray-800 mb-3">Features</h4>
+                <h4 className="text-sm font-semibold text-gray-800 mb-3">Service Category Discounts (%)</h4>
+                <p className="text-xs text-gray-500 mb-3">Set discount % off provider market price for each service category. These apply when quota is exhausted.</p>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {[
+                    { key: 'gp', label: 'GP' },
+                    { key: 'specialist', label: 'Specialist' },
+                    { key: 'nurse', label: 'Nurse' },
+                    { key: 'lab', label: 'Lab Tests' },
+                    { key: 'pharmacy', label: 'Pharmacy' },
+                    { key: 'childcare', label: 'Childcare' },
+                    { key: 'emergency', label: 'Emergency' },
+                    { key: 'mental_health', label: 'Mental Health' },
+                  ].map(({ key, label }) => (
+                    <div key={key}>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          value={form.discounts[key] ?? ''}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value)
+                            setForm(prev => {
+                              const newDiscounts = { ...prev.discounts }
+                              if (isNaN(val) || val <= 0) {
+                                delete newDiscounts[key]
+                              } else {
+                                newDiscounts[key] = Math.min(val, 100)
+                              }
+                              return { ...prev, discounts: newDiscounts }
+                            })
+                          }}
+                          placeholder="0"
+                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-center"
+                          min="0"
+                          max="100"
+                        />
+                        <span className="text-xs text-gray-400">%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {form.type === 'corporate' && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <h5 className="text-xs font-semibold text-gray-700 mb-2">Volume Discounts (Corporate)</h5>
+                    <div className="grid grid-cols-4 gap-3">
+                      {[
+                        { key: 'volume_50', label: '50+ emp' },
+                        { key: 'volume_100', label: '100+ emp' },
+                        { key: 'volume_300', label: '300+ emp' },
+                        { key: 'volume_1000', label: '1000+ emp' },
+                      ].map(({ key, label }) => (
+                        <div key={key}>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              value={form.discounts[key] ?? ''}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value)
+                                setForm(prev => {
+                                  const newDiscounts = { ...prev.discounts }
+                                  if (isNaN(val) || val <= 0) {
+                                    delete newDiscounts[key]
+                                  } else {
+                                    newDiscounts[key] = Math.min(val, 100)
+                                  }
+                                  return { ...prev, discounts: newDiscounts }
+                                })
+                              }}
+                              placeholder="0"
+                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-center"
+                              min="0"
+                              max="100"
+                            />
+                            <span className="text-xs text-gray-400">%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold text-gray-800 mb-3">Features (Display Text)</h4>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
