@@ -12,11 +12,11 @@ export async function GET(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
   if (auth.userType === 'patient' && auth.sub !== id) {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
   }
 
   const { searchParams } = new URL(request.url)
@@ -26,7 +26,7 @@ export async function GET(
   try {
     const profile = await prisma.patientProfile.findUnique({ where: { userId: id } })
     if (!profile) {
-      return NextResponse.json({ message: 'Patient profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Patient profile not found' }, { status: 404 })
     }
 
     const where = { patientId: profile.id, ...(status ? { status } : {}) }
@@ -45,6 +45,6 @@ export async function GET(
     return NextResponse.json({ success: true, data: tests, total, limit, offset })
   } catch (error) {
     console.error('Lab tests fetch error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

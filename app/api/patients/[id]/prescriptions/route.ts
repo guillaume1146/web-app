@@ -27,11 +27,11 @@ export async function GET(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
   if (auth.userType === 'patient' && auth.sub !== id) {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
   }
 
   const { searchParams } = new URL(request.url)
@@ -41,7 +41,7 @@ export async function GET(
   try {
     const profile = await prisma.patientProfile.findUnique({ where: { userId: id } })
     if (!profile) {
-      return NextResponse.json({ message: 'Patient profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Patient profile not found' }, { status: 404 })
     }
 
     const where = {
@@ -77,7 +77,7 @@ export async function GET(
     return NextResponse.json({ success: true, data: prescriptions, total, limit, offset })
   } catch (error) {
     console.error('Prescriptions fetch error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
 
@@ -89,11 +89,11 @@ export async function POST(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   // Only doctors can create prescriptions
   if (auth.userType !== 'doctor') {
-    return NextResponse.json({ message: 'Only doctors can create prescriptions' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Only doctors can create prescriptions' }, { status: 403 })
   }
 
   const { id } = await params
@@ -107,12 +107,12 @@ export async function POST(
 
     const patientProfile = await prisma.patientProfile.findUnique({ where: { userId: id }, select: { id: true, userId: true } })
     if (!patientProfile) {
-      return NextResponse.json({ message: 'Patient not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Patient not found' }, { status: 404 })
     }
 
     const doctorProfile = await prisma.doctorProfile.findUnique({ where: { userId: auth.sub }, select: { id: true } })
     if (!doctorProfile) {
-      return NextResponse.json({ message: 'Doctor profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Doctor profile not found' }, { status: 404 })
     }
 
     const prescription = await prisma.prescription.create({
@@ -155,6 +155,6 @@ export async function POST(
     return NextResponse.json({ success: true, data: prescription }, { status: 201 })
   } catch (error) {
     console.error('POST /api/patients/[id]/prescriptions error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

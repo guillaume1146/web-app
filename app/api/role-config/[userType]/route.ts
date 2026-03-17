@@ -31,6 +31,6 @@ export async function GET(
     return NextResponse.json({ success: true, data: { allEnabled: false, features } })
   } catch (error) {
     console.error('Role config fetch error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

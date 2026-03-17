@@ -68,7 +68,7 @@ export async function GET(
     })
 
     if (!post) {
-      return NextResponse.json({ message: 'Post not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Post not found' }, { status: 404 })
     }
 
     // Check if current user liked this post (if authenticated)
@@ -87,7 +87,7 @@ export async function GET(
     })
   } catch (error) {
     console.error('Post fetch error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
 
@@ -100,7 +100,7 @@ export async function PUT(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
 
@@ -112,18 +112,18 @@ export async function PUT(
     })
 
     if (!post) {
-      return NextResponse.json({ message: 'Post not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Post not found' }, { status: 404 })
     }
 
     if (auth.sub !== post.authorId) {
-      return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
     }
 
     const body = await request.json()
     const parsed = updatePostSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.issues[0].message },
+        { success: false, message: parsed.error.issues[0].message },
         { status: 400 }
       )
     }
@@ -175,7 +175,7 @@ export async function PUT(
     return NextResponse.json({ success: true, data: updatedPost })
   } catch (error) {
     console.error('Post update error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
 
@@ -188,7 +188,7 @@ export async function DELETE(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
 
@@ -200,11 +200,11 @@ export async function DELETE(
     })
 
     if (!post) {
-      return NextResponse.json({ message: 'Post not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Post not found' }, { status: 404 })
     }
 
     if (auth.sub !== post.authorId) {
-      return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
     }
 
     await prisma.doctorPost.delete({ where: { id } })
@@ -212,6 +212,6 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Post delete error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

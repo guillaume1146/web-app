@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, data: grouped, raw: configs })
   } catch (error) {
     console.error('Required documents fetch error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
 
@@ -37,13 +37,13 @@ export async function GET(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   try {
     const { configs } = await request.json()
 
     if (!Array.isArray(configs)) {
-      return NextResponse.json({ message: 'configs must be an array' }, { status: 400 })
+      return NextResponse.json({ success: false, message: 'configs must be an array' }, { status: 400 })
     }
 
     const results = await prisma.$transaction(
@@ -59,6 +59,6 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ success: true, data: results })
   } catch (error) {
     console.error('Required documents update error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

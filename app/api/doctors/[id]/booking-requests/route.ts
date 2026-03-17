@@ -48,6 +48,6 @@ export async function GET(
     return NextResponse.json({ success: true, data: bookings })
   } catch (error) {
     console.error('GET /api/doctors/[id]/booking-requests error:', error)
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 })
   }
 }

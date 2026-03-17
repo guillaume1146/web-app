@@ -11,7 +11,7 @@ export async function GET(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
 
@@ -23,7 +23,7 @@ export async function GET(
     })
 
     if (!doctorProfile) {
-      return NextResponse.json({ message: 'Doctor profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Doctor profile not found' }, { status: 404 })
     }
 
     const slots = await prisma.scheduleSlot.findMany({
@@ -34,6 +34,6 @@ export async function GET(
     return NextResponse.json({ success: true, data: slots })
   } catch (error) {
     console.error('Schedule fetch error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

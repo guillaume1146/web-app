@@ -70,14 +70,14 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Posts feed fetch error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
 
 // POST /api/posts — Create post (doctors only)
 export async function POST(request: NextRequest) {
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   try {
     // Verify the user is a verified doctor
@@ -87,18 +87,18 @@ export async function POST(request: NextRequest) {
     })
 
     if (!user || user.userType !== 'DOCTOR') {
-      return NextResponse.json({ message: 'Only doctors can create posts' }, { status: 403 })
+      return NextResponse.json({ success: false, message: 'Only doctors can create posts' }, { status: 403 })
     }
 
     if (!user.verified) {
-      return NextResponse.json({ message: 'Account must be verified to create posts' }, { status: 403 })
+      return NextResponse.json({ success: false, message: 'Account must be verified to create posts' }, { status: 403 })
     }
 
     const body = await request.json()
     const parsed = createPostSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.issues[0].message },
+        { success: false, message: parsed.error.issues[0].message },
         { status: 400 }
       )
     }
@@ -143,6 +143,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, data: post }, { status: 201 })
   } catch (error) {
     console.error('Post creation error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

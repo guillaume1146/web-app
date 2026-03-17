@@ -17,14 +17,14 @@ export async function POST(request: NextRequest) {
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   try {
     const body = await request.json()
     const parsed = createVideoRoomSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.issues[0].message },
+        { success: false, message: parsed.error.issues[0].message },
         { status: 400 }
       )
     }
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     if (creatorId !== auth.sub) {
       return NextResponse.json(
-        { success: false, error: 'creatorId must match authenticated user' },
+        { success: false, message: 'creatorId must match authenticated user' },
         { status: 403 }
       )
     }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating video room:', error)
     return NextResponse.json(
-      { success: false, error: 'Failed to create video room' },
+      { success: false, message: 'Failed to create video room' },
       { status: 500 }
     )
   }
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
 
   if (!roomId) {
     return NextResponse.json(
-      { success: false, error: 'Room ID is required' },
+      { success: false, message: 'Room ID is required' },
       { status: 400 }
     )
   }
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
 
     if (!room) {
       return NextResponse.json(
-        { success: false, error: 'Room not found' },
+        { success: false, message: 'Room not found' },
         { status: 404 }
       )
     }
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching video room:', error)
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch video room' },
+      { success: false, message: 'Failed to fetch video room' },
       { status: 500 }
     )
   }

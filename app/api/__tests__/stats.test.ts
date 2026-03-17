@@ -92,43 +92,15 @@ describe('GET /api/stats', () => {
     expect(data.data[3].number).toBe(0)
   })
 
-  it('returns zero stats on database error', async () => {
+  it('returns 500 with error on database failure', async () => {
     vi.mocked(prisma.user.count).mockRejectedValue(new Error('DB connection failed'))
 
     const res = await GET()
     const data = await res.json()
 
-    // The error handler returns success: true with zero values
-    expect(res.status).toBe(200)
-    expect(data.success).toBe(true)
-    expect(data.data).toHaveLength(4)
-    expect(data.data[0].number).toBe(0)
-    expect(data.data[1].number).toBe(0)
-    expect(data.data[2].number).toBe(0)
-    expect(data.data[3].number).toBe(0)
-  })
-
-  it('returns correct labels and colors in fallback data', async () => {
-    vi.mocked(prisma.user.count).mockRejectedValue(new Error('fail'))
-
-    const res = await GET()
-    const data = await res.json()
-
-    const labels = data.data.map((d: { label: string }) => d.label)
-    expect(labels).toEqual([
-      'Qualified Doctors',
-      'Happy Patients',
-      'Consultations',
-      'Cities Covered',
-    ])
-
-    const colors = data.data.map((d: { color: string }) => d.color)
-    expect(colors).toEqual([
-      'text-blue-500',
-      'text-green-500',
-      'text-purple-500',
-      'text-orange-500',
-    ])
+    expect(res.status).toBe(500)
+    expect(data.success).toBe(false)
+    expect(data.message).toBe('Failed to fetch statistics')
   })
 
   it('queries distinct clinic affiliations for city count', async () => {

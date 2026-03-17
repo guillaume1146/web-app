@@ -90,7 +90,7 @@ export async function GET(
     })
   } catch (error) {
     console.error('Provider reviews fetch error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
 
@@ -107,7 +107,7 @@ export async function POST(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
 
@@ -119,16 +119,16 @@ export async function POST(
     })
 
     if (!provider) {
-      return NextResponse.json({ message: 'Provider not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Provider not found' }, { status: 404 })
     }
 
     if (!REVIEWABLE_TYPES.includes(provider.userType)) {
-      return NextResponse.json({ message: 'This user type cannot receive reviews' }, { status: 400 })
+      return NextResponse.json({ success: false, message: 'This user type cannot receive reviews' }, { status: 400 })
     }
 
     // Prevent self-review
     if (auth.sub === id) {
-      return NextResponse.json({ message: 'Cannot review yourself' }, { status: 400 })
+      return NextResponse.json({ success: false, message: 'Cannot review yourself' }, { status: 400 })
     }
 
     const body = await request.json()
@@ -160,6 +160,6 @@ export async function POST(
     return NextResponse.json({ success: true, data: review }, { status: 201 })
   } catch (error) {
     console.error('Provider review create error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

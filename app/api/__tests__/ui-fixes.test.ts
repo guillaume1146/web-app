@@ -57,20 +57,16 @@ describe('Fix 1: Stats API', () => {
     expect(patientStat.number).toBe(5)
   })
 
-  it('returns fallback numbers when DB query fails', async () => {
+  it('returns 500 error when DB query fails', async () => {
     const { GET } = await import('../stats/route')
 
     vi.mocked(prisma.user.count).mockRejectedValue(new Error('DB down'))
 
     const res = await GET()
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(500)
     const data = await res.json()
-
-    // Should return zeros on error (no fake data)
-    const stats = data.data
-    for (const stat of stats) {
-      expect(stat.number).toBe(0)
-    }
+    expect(data.success).toBe(false)
+    expect(data.message).toBe('Failed to fetch statistics')
   })
 })
 

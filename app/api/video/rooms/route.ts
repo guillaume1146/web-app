@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const userId = auth.sub
 
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       where: { id: userId },
       select: { id: true, userType: true, firstName: true, lastName: true }
     })
-    if (!user) return NextResponse.json({ message: 'User not found' }, { status: 404 })
+    if (!user) return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 })
 
     // Collect video rooms from multiple sources
     // Any user can book services (ensurePatientProfile creates a PatientProfile for them),
@@ -271,6 +271,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Video rooms list error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

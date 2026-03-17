@@ -12,7 +12,7 @@ export async function POST(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
 
@@ -24,7 +24,7 @@ export async function POST(
     })
 
     if (!post) {
-      return NextResponse.json({ message: 'Post not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Post not found' }, { status: 404 })
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -60,6 +60,6 @@ export async function POST(
     return NextResponse.json({ success: true, data: result })
   } catch (error) {
     console.error('Like toggle error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

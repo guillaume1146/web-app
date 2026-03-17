@@ -38,7 +38,7 @@ npx tsc --noEmit
 ```
 prisma/
   schema.prisma          → Normalized schema: User + 11 profile tables + 30+ domain tables
-  seeds/                 → 13 modular seed files (01-medicines through 13-billing-video)
+  seeds/                 → 31 modular seed files (00-regions through 30-platform-services)
   seed.ts                → Orchestrator: clean + seed in dependency order
 
 lib/
@@ -55,7 +55,7 @@ components/
   shared/                → PaymentMethodForm, DashboardStatCard, StatCard, PageHeader
   video/                 → VideoConsultation (generic, any user type) + VideoCallRoom
 
-hooks/                   → useWebRTC, useSocket, useAuth
+hooks/                   → useWebRTC, useSocket, useAuth, useCurrency, useDashboardUser
 
 app/
   api/                   → API routes (auth, patients, doctors, users, video, webrtc)
@@ -125,16 +125,49 @@ Next.js wrapped by Node.js server co-hosting Socket.IO. Dev runs `node server.js
 - `GET /api/auth/me` — returns current user from JWT
 - Middleware checks `mediwyz_userType` cookie for route protection
 
+### Subscription & Billing System
+
+```
+PlatformService        → Unified service catalog (defaults + custom, per provider type)
+ProviderServiceConfig  → Provider's instance of a service with optional priceOverride
+ServiceGroup           → Regional admin groups services for plan building
+SubscriptionPlan       → Individual/corporate plans with quotas, discounts, features
+SubscriptionPlanService→ Links plans to services (free/paid, admin price, monthly limit)
+UserSubscription       → User's active plan (corporateAdminId for employer-paid)
+SubscriptionUsage      → Monthly usage tracking per consultation type
+```
+
+Commission model: Platform 15% / Provider 85% / Regional 0% (earns from subscriptions).
+
+Corporate billing: employer pays for all employees via `enrollEmployeesInPlan()` with volume discounts. Individual users cannot subscribe to corporate plans.
+
+Booking flow: check subscription quota → apply discount off provider market price → charge wallet.
+
 ### API Routes
 
 ```
 /api/auth/login           — Login (any user type)
-/api/auth/register        — Register (any user type)
+/api/auth/register        — Register (any user type + plan selection + auto-assign services)
 /api/auth/me              — Current user from JWT
 /api/users/[id]           — Generic user profile
 /api/users/[id]/notifications — User notifications (GET, PATCH mark-read)
+/api/users/[id]/subscription — GET usage summary, POST subscribe/cancel/change
+/api/users/[id]/wallet    — GET balance + transactions
+/api/users/[id]/wallet/topup — POST top-up (MCB Juice / card, simulated)
+/api/users/[id]/wallet/reset — POST reset trial (infinite, custom amount)
+/api/subscriptions        — GET all plans (filter by type, countryCode)
+/api/subscriptions/[id]   — GET single plan with linked services
+/api/regions/[id]         — GET region with currency data
+/api/services/catalog     — GET unified service catalog (grouped by provider type)
+/api/services/custom      — POST create custom service (providers)
+/api/services/my-services — GET/PATCH provider service configs (price overrides)
+/api/regional/subscriptions — GET/POST regional admin plan CRUD
+/api/regional/subscriptions/[id] — GET/PATCH/DELETE single plan
+/api/regional/service-groups — GET/POST service group management
+/api/corporate/enroll     — GET preview / POST enroll employees in plan
 /api/patients/[id]/...    — Patient-specific (appointments, prescriptions, health-records, etc.)
 /api/doctors/[id]/...     — Doctor-specific (appointments, patients, schedule, notifications)
+/api/bookings/doctor|nurse|nanny|lab-test|emergency — Booking with subscription cost check
 /api/video/room           — Video room management
 /api/webrtc/session       — WebRTC session CRUD
 /api/webrtc/recovery      — Session recovery
@@ -169,5 +202,5 @@ Next.js wrapped by Node.js server co-hosting Socket.IO. Dev runs `node server.js
 | INSURANCE_REP | /insurance/ | insurance | 2 users |
 | CORPORATE_ADMIN | /corporate/ | corporate | 1 user |
 | REFERRAL_PARTNER | /referral-partner/ | referral-partner | 1 user |
-| REGIONAL_ADMIN | /regional/ | regional-admin | 3 users |
+| REGIONAL_ADMIN | /regional/ | regional-admin | 7 users (MU×2, MG, KE, TG, BJ, RW) |
 | Super Admin (env) | /admin/ | admin | 1 user (auto-created) |

@@ -38,6 +38,7 @@ export async function GET(
     ])
 
     return NextResponse.json({
+      success: true,
       data: notifications,
       meta: { total, unreadCount: unreadOnly ? total : undefined },
     })

@@ -74,7 +74,7 @@ export async function GET(
     })
   } catch (error) {
     console.error('Doctor reviews fetch error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
 
@@ -92,7 +92,7 @@ export async function POST(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
 
@@ -104,7 +104,7 @@ export async function POST(
     })
 
     if (!doctorProfile) {
-      return NextResponse.json({ message: 'Doctor profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Doctor profile not found' }, { status: 404 })
     }
 
     const body = await request.json()
@@ -123,7 +123,7 @@ export async function POST(
     })
 
     if (!user) {
-      return NextResponse.json({ message: 'User not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 })
     }
 
     const patientName = `${user.firstName} ${user.lastName}`
@@ -147,6 +147,6 @@ export async function POST(
     return NextResponse.json({ success: true, data: review }, { status: 201 })
   } catch (error) {
     console.error('Doctor review create error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

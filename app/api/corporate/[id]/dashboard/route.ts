@@ -11,10 +11,10 @@ export async function GET(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  if (auth.sub !== id) return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+  if (auth.sub !== id) return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
 
   try {
     const [corporateProfile, wallet, billingRecords, walletTx, notifications] = await Promise.all([
@@ -42,7 +42,7 @@ export async function GET(
       }),
     ])
 
-    if (!corporateProfile) return NextResponse.json({ message: 'Corporate profile not found' }, { status: 404 })
+    if (!corporateProfile) return NextResponse.json({ success: false, message: 'Corporate profile not found' }, { status: 404 })
 
     // Compute claim stats from the corporate user's wallet transactions tagged as insurance
     // and from InsuranceClaims related to patients who have this corporate user as referrer.
@@ -107,6 +107,6 @@ export async function GET(
     })
   } catch (error) {
     console.error('Corporate dashboard error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

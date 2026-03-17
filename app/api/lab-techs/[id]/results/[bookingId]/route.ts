@@ -18,10 +18,10 @@ export async function PATCH(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id, bookingId } = await params
-  if (auth.sub !== id) return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+  if (auth.sub !== id) return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
 
   try {
     const body = await request.json()

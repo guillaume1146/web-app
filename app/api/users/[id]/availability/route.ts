@@ -12,11 +12,11 @@ export async function GET(
 
   const auth = validateRequest(request)
   if (!auth) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
   }
 
   if (auth.sub !== id) {
-    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
   }
 
   try {
@@ -27,7 +27,7 @@ export async function GET(
     if (dayOfWeekParam !== null) {
       const dayOfWeek = parseInt(dayOfWeekParam, 10)
       if (isNaN(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
-        return NextResponse.json({ success: false, error: 'dayOfWeek must be 0-6' }, { status: 400 })
+        return NextResponse.json({ success: false, message: 'dayOfWeek must be 0-6' }, { status: 400 })
       }
       where.dayOfWeek = dayOfWeek
     }
@@ -49,7 +49,7 @@ export async function GET(
     return NextResponse.json({ success: true, data: slots })
   } catch (error) {
     console.error('Error fetching availability:', error)
-    return NextResponse.json({ success: false, error: 'Failed to fetch availability' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Failed to fetch availability' }, { status: 500 })
   }
 }
 
@@ -64,11 +64,11 @@ export async function PUT(
 
   const auth = validateRequest(request)
   if (!auth) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
   }
 
   if (auth.sub !== id) {
-    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
   }
 
   try {
@@ -76,7 +76,7 @@ export async function PUT(
     const parsed = updateAvailabilitySchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.issues[0].message },
+        { success: false, message: parsed.error.issues[0].message },
         { status: 400 }
       )
     }
@@ -116,6 +116,6 @@ export async function PUT(
     return NextResponse.json({ success: true, data: newSlots })
   } catch (error) {
     console.error('Error updating availability:', error)
-    return NextResponse.json({ success: false, error: 'Failed to update availability' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Failed to update availability' }, { status: 500 })
   }
 }

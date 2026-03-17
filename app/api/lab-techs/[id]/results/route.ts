@@ -27,10 +27,10 @@ export async function GET(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  if (auth.sub !== id) return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+  if (auth.sub !== id) return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
 
   try {
     const labProfile = await prisma.labTechProfile.findUnique({
@@ -39,7 +39,7 @@ export async function GET(
     })
 
     if (!labProfile) {
-      return NextResponse.json({ message: 'Lab tech profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Lab tech profile not found' }, { status: 404 })
     }
 
     const bookings = await prisma.labTestBooking.findMany({
@@ -87,6 +87,6 @@ export async function GET(
     return NextResponse.json({ success: true, data })
   } catch (error) {
     console.error('Lab tech results fetch error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

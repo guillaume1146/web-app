@@ -15,7 +15,7 @@ export async function GET(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
 
@@ -25,7 +25,7 @@ export async function GET(
       select: { id: true, firstName: true, lastName: true, profileImage: true },
     })
     if (!user) {
-      return NextResponse.json({ message: 'Nanny not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Nanny not found' }, { status: 404 })
     }
 
     const nannyProfile = await prisma.nannyProfile.findUnique({
@@ -41,7 +41,7 @@ export async function GET(
       },
     })
     if (!nannyProfile) {
-      return NextResponse.json({ message: 'Nanny profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Nanny profile not found' }, { status: 404 })
     }
 
     const { id: profileId, ...profile } = nannyProfile
@@ -58,6 +58,6 @@ export async function GET(
     })
   } catch (error) {
     console.error('GET /api/nannies/[id] error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

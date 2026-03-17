@@ -6,9 +6,9 @@ import { rateLimitPublic } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
   if (auth.userType !== 'pharmacy') {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
   }
 
   try {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     })
 
     if (!pharmacistProfile) {
-      return NextResponse.json({ message: 'Pharmacist profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Pharmacist profile not found' }, { status: 404 })
     }
 
     const medicines = await prisma.pharmacyMedicine.findMany({
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, data: medicines })
   } catch (error) {
     console.error('Pharmacist medicines fetch error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
 
@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
   if (auth.userType !== 'pharmacy') {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
   }
 
   try {
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!pharmacistProfile) {
-      return NextResponse.json({ message: 'Pharmacist profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Pharmacist profile not found' }, { status: 404 })
     }
 
     const body = await request.json()
@@ -81,6 +81,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, data: medicine }, { status: 201 })
   } catch (error) {
     console.error('Pharmacist medicine create error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

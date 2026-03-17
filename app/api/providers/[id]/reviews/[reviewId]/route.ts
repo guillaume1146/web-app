@@ -11,7 +11,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; reviewId: string }> }
 ) {
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id, reviewId } = await params
 
@@ -22,7 +22,7 @@ export async function PATCH(
     })
 
     if (!review) {
-      return NextResponse.json({ message: 'Review not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Review not found' }, { status: 404 })
     }
 
     const body = await request.json()
@@ -30,7 +30,7 @@ export async function PATCH(
     // Provider responding to the review
     if (body.response !== undefined) {
       if (review.providerUserId !== auth.sub) {
-        return NextResponse.json({ message: 'Only the provider can respond' }, { status: 403 })
+        return NextResponse.json({ success: false, message: 'Only the provider can respond' }, { status: 403 })
       }
 
       const updated = await prisma.providerReview.update({
@@ -56,9 +56,9 @@ export async function PATCH(
       return NextResponse.json({ success: true, data: updated })
     }
 
-    return NextResponse.json({ message: 'No valid action provided' }, { status: 400 })
+    return NextResponse.json({ success: false, message: 'No valid action provided' }, { status: 400 })
   } catch (error) {
     console.error('Review update error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

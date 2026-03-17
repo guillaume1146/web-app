@@ -30,13 +30,8 @@ export async function GET() {
   } catch (error) {
     console.error('Stats API error:', error)
     return NextResponse.json({
-      success: true,
-      data: [
-        { number: 0, label: 'Qualified Doctors', color: 'text-blue-500' },
-        { number: 0, label: 'Happy Patients', color: 'text-green-500' },
-        { number: 0, label: 'Consultations', color: 'text-purple-500' },
-        { number: 0, label: 'Cities Covered', color: 'text-orange-500' },
-      ],
-    })
+      success: false,
+      message: 'Failed to fetch statistics',
+    }, { status: 500 })
   }
 }

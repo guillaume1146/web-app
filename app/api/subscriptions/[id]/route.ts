@@ -29,10 +29,30 @@ export async function GET(
         type: true,
         price: true,
         currency: true,
+        countryCode: true,
+        targetAudience: true,
         gpConsultsPerMonth: true,
         specialistConsultsPerMonth: true,
+        nurseConsultsPerMonth: true,
+        mentalHealthConsultsPerMonth: true,
+        nutritionConsultsPerMonth: true,
+        ambulanceFreePerMonth: true,
+        discounts: true,
         features: true,
         isActive: true,
+        planServices: {
+          select: {
+            isFree: true,
+            adminPrice: true,
+            monthlyLimit: true,
+            platformService: {
+              select: { id: true, serviceName: true, category: true, defaultPrice: true, providerType: true },
+            },
+            serviceGroup: {
+              select: { id: true, name: true },
+            },
+          },
+        },
       },
     })
 

@@ -24,11 +24,11 @@ export async function GET(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
   if (auth.userType === 'patient' && auth.sub !== id) {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
   }
 
   const { searchParams } = new URL(request.url)
@@ -38,7 +38,7 @@ export async function GET(
   try {
     const profile = await prisma.patientProfile.findUnique({ where: { userId: id } })
     if (!profile) {
-      return NextResponse.json({ message: 'Patient profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Patient profile not found' }, { status: 404 })
     }
 
     const where = { patientId: profile.id, ...(type ? { type } : {}) }
@@ -66,7 +66,7 @@ export async function GET(
     return NextResponse.json({ success: true, data: records, total, limit, offset })
   } catch (error) {
     console.error('Medical records fetch error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
 
@@ -78,17 +78,17 @@ export async function POST(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
   // Only doctors/nurses can add medical records for a patient
   const allowedTypes = ['doctor', 'nurse', 'lab', 'patient']
   if (!allowedTypes.includes(auth.userType)) {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
   }
   // Patients can only add to their own records
   if (auth.userType === 'patient' && auth.sub !== id) {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
   }
 
   try {
@@ -100,7 +100,7 @@ export async function POST(
 
     const profile = await prisma.patientProfile.findUnique({ where: { userId: id }, select: { id: true } })
     if (!profile) {
-      return NextResponse.json({ message: 'Patient profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Patient profile not found' }, { status: 404 })
     }
 
     // If the creator is a doctor, link the record to the doctor profile
@@ -135,6 +135,6 @@ export async function POST(
     return NextResponse.json({ success: true, data: record }, { status: 201 })
   } catch (error) {
     console.error('POST /api/patients/[id]/medical-records error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

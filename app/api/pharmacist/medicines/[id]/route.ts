@@ -12,9 +12,9 @@ export async function GET(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
   if (auth.userType !== 'pharmacy') {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
   }
 
   const { id } = await params
@@ -26,7 +26,7 @@ export async function GET(
     })
 
     if (!pharmacistProfile) {
-      return NextResponse.json({ message: 'Pharmacist profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Pharmacist profile not found' }, { status: 404 })
     }
 
     const medicine = await prisma.pharmacyMedicine.findUnique({
@@ -34,17 +34,17 @@ export async function GET(
     })
 
     if (!medicine) {
-      return NextResponse.json({ message: 'Medicine not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Medicine not found' }, { status: 404 })
     }
 
     if (medicine.pharmacistId !== pharmacistProfile.id) {
-      return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
     }
 
     return NextResponse.json({ success: true, data: medicine })
   } catch (error) {
     console.error('Pharmacist medicine get error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
 
@@ -56,9 +56,9 @@ export async function PUT(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
   if (auth.userType !== 'pharmacy') {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
   }
 
   const { id } = await params
@@ -70,7 +70,7 @@ export async function PUT(
     })
 
     if (!pharmacistProfile) {
-      return NextResponse.json({ message: 'Pharmacist profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Pharmacist profile not found' }, { status: 404 })
     }
 
     const medicine = await prisma.pharmacyMedicine.findUnique({
@@ -79,11 +79,11 @@ export async function PUT(
     })
 
     if (!medicine) {
-      return NextResponse.json({ message: 'Medicine not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Medicine not found' }, { status: 404 })
     }
 
     if (medicine.pharmacistId !== pharmacistProfile.id) {
-      return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -103,7 +103,7 @@ export async function PUT(
     return NextResponse.json({ success: true, data: updated })
   } catch (error) {
     console.error('Pharmacist medicine update error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
 
@@ -115,9 +115,9 @@ export async function DELETE(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
   if (auth.userType !== 'pharmacy') {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
   }
 
   const { id } = await params
@@ -129,7 +129,7 @@ export async function DELETE(
     })
 
     if (!pharmacistProfile) {
-      return NextResponse.json({ message: 'Pharmacist profile not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Pharmacist profile not found' }, { status: 404 })
     }
 
     const medicine = await prisma.pharmacyMedicine.findUnique({
@@ -138,11 +138,11 @@ export async function DELETE(
     })
 
     if (!medicine) {
-      return NextResponse.json({ message: 'Medicine not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Medicine not found' }, { status: 404 })
     }
 
     if (medicine.pharmacistId !== pharmacistProfile.id) {
-      return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
     }
 
     await prisma.pharmacyMedicine.delete({ where: { id } })
@@ -150,6 +150,6 @@ export async function DELETE(
     return NextResponse.json({ success: true, message: 'Medicine deleted' })
   } catch (error) {
     console.error('Pharmacist medicine delete error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }

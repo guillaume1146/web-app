@@ -22,7 +22,7 @@ export async function GET(
     })
 
     if (!post) {
-      return NextResponse.json({ message: 'Post not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Post not found' }, { status: 404 })
     }
 
     const where = { postId: id }
@@ -62,7 +62,7 @@ export async function GET(
     })
   } catch (error) {
     console.error('Comments fetch error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
 
@@ -75,7 +75,7 @@ export async function POST(
   if (limited) return limited
 
   const auth = validateRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+  if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
 
@@ -87,14 +87,14 @@ export async function POST(
     })
 
     if (!post) {
-      return NextResponse.json({ message: 'Post not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Post not found' }, { status: 404 })
     }
 
     const body = await request.json()
     const parsed = createCommentSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.issues[0].message },
+        { success: false, message: parsed.error.issues[0].message },
         { status: 400 }
       )
     }
@@ -124,6 +124,6 @@ export async function POST(
     return NextResponse.json({ success: true, data: comment }, { status: 201 })
   } catch (error) {
     console.error('Comment creation error:', error)
-    return NextResponse.json({ message: 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
