@@ -202,6 +202,35 @@ async function main() {
   await seedProviderSpecialties(prisma)
   await seedNewProviderRoles(prisma)
 
+  // ── Final step: ensure ALL users have subscriptions ──────────────
+  console.log('  Ensuring all users have subscriptions...')
+  const planAssign: Record<string, string> = {
+    PATIENT: 'essential', DOCTOR: 'plus', NURSE: 'essential', NANNY: 'essential',
+    PHARMACIST: 'essential', LAB_TECHNICIAN: 'essential', EMERGENCY_WORKER: 'essential',
+    INSURANCE_REP: 'plus', REFERRAL_PARTNER: 'plus', REGIONAL_ADMIN: 'premium',
+    CORPORATE_ADMIN: 'plus', CAREGIVER: 'essential', PHYSIOTHERAPIST: 'essential',
+    DENTIST: 'essential', OPTOMETRIST: 'essential', NUTRITIONIST: 'essential',
+  }
+  const allUsers = await prisma.user.findMany({
+    where: { subscription: null },
+    select: { id: true, userType: true, regionId: true },
+  })
+  let enrollCount = 0
+  for (const u of allUsers) {
+    const base = planAssign[u.userType]
+    if (!base) continue
+    let cc = 'mu'
+    if (u.regionId) {
+      const r = await prisma.region.findUnique({ where: { id: u.regionId }, select: { countryCode: true } })
+      if (r) cc = r.countryCode.toLowerCase()
+    }
+    const plan = await prisma.subscriptionPlan.findUnique({ where: { slug: `${base}-${cc}` } })
+    if (!plan) continue
+    await prisma.userSubscription.create({ data: { userId: u.id, planId: plan.id, status: 'active', autoRenew: true } })
+    enrollCount++
+  }
+  if (enrollCount > 0) console.log(`  ✓ Enrolled ${enrollCount} additional users in plans`)
+
   console.log('Database seeded successfully!')
 }
 
