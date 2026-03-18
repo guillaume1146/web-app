@@ -1883,7 +1883,7 @@ model SubscriptionPlan {
   currency                     String               @default("MUR")
   countryCode                  String?              // null = global, "MU" = region-specific
   targetAudience               String?              // "students & young adults", "families", etc.
-  quotas                       Json                 // Array of { role: string, specialty?: string, limit: number }
+  quotas                       Json                 @default("[]") // Array of { role: string, specialty?: string, limit: number }
   discounts                    Json?                // { "DOCTOR:Cardiology": 20, "lab": 15, "pharmacy": 10, "volume_50": 5 }
   paidServices                 Json?                // services NOT included, with default prices
   features                     Json                 // Array of feature strings
