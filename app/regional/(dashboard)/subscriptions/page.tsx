@@ -567,8 +567,9 @@ export default function SubscriptionsManagementPage() {
                   <button
                     onClick={() => {
                       const sel = document.getElementById('add-discount-select') as HTMLSelectElement
-                      if (!sel.value || form.discounts[sel.value]) return
-                      setForm(prev => ({ ...prev, discounts: { ...prev.discounts, [sel.value]: 0 } }))
+                      if (!sel.value) return
+                      if (form.discounts[sel.value] !== undefined) return // already exists
+                      setForm(prev => ({ ...prev, discounts: { ...prev.discounts, [sel.value]: 10 } })) // default 10%
                       sel.value = ''
                     }}
                     className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200"
@@ -576,21 +577,6 @@ export default function SubscriptionsManagementPage() {
                 </div>
               </div>
               <div className="border-t pt-3">
-                <h5 className="text-xs font-semibold text-gray-700 mb-2">Quick Service Categories</h5>
-                <div className="grid grid-cols-4 gap-2">
-                  {['lab', 'pharmacy', 'emergency', 'childcare'].map(key => (
-                    <div key={key}>
-                      <label className="block text-[10px] font-medium text-gray-500 mb-0.5">{key}</label>
-                      <div className="flex items-center gap-0.5">
-                        <input type="number" value={form.discounts[key] ?? ''} onChange={(e) => {
-                          const v = parseInt(e.target.value)
-                          setForm(prev => { const d = { ...prev.discounts }; if (isNaN(v) || v <= 0) delete d[key]; else d[key] = Math.min(v, 100); return { ...prev, discounts: d } })
-                        }} placeholder="0" className="w-full px-1 py-1 border border-gray-200 rounded text-xs text-center" min="0" max="100" />
-                        <span className="text-[10px] text-gray-400">%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
                 {form.type === 'corporate' && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <h5 className="text-xs font-semibold text-gray-700 mb-2">Volume Discounts (Corporate)</h5>
