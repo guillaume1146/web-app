@@ -15,5 +15,5 @@ export default function MyConsultations() {
       price: a.servicePrice,
     })), [])
 
-  return <HealthSectionList title="Doctor Consultations" icon={FaStethoscope} apiUrl="/api/patients/{userId}/appointments" mapData={mapData} />
+  return <HealthSectionList title="Doctor Consultations" icon={FaStethoscope} apiUrl="/api/patients/{userId}/appointments" mapData={mapData} defaultProviderType="DOCTOR" />
 }
