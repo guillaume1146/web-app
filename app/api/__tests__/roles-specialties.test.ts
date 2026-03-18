@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/lib/db', () => ({
   default: {
     providerSpecialty: { findMany: vi.fn() },
+    user: { groupBy: vi.fn() },
   },
 }))
 
@@ -19,11 +20,17 @@ describe('GET /api/roles', () => {
 
   it('returns provider roles grouped with specialties', async () => {
     vi.mocked(prisma.providerSpecialty.findMany).mockResolvedValue([
-      { id: '1', providerType: 'DOCTOR', name: 'General Practice', description: 'GP', isActive: true, createdAt: new Date() },
-      { id: '2', providerType: 'DOCTOR', name: 'Cardiology', description: 'Heart', isActive: true, createdAt: new Date() },
-      { id: '3', providerType: 'NURSE', name: 'General Nursing', description: 'General', isActive: true, createdAt: new Date() },
-      { id: '4', providerType: 'CAREGIVER', name: 'Elder Care', description: 'Senior care', isActive: true, createdAt: new Date() },
-      { id: '5', providerType: 'DENTIST', name: 'General Dentistry', description: 'Dental', isActive: true, createdAt: new Date() },
+      { providerType: 'DOCTOR', name: 'General Practice', description: 'GP' },
+      { providerType: 'DOCTOR', name: 'Cardiology', description: 'Heart' },
+      { providerType: 'NURSE', name: 'General Nursing', description: 'General' },
+      { providerType: 'CAREGIVER', name: 'Elder Care', description: 'Senior care' },
+      { providerType: 'DENTIST', name: 'General Dentistry', description: 'Dental' },
+    ] as never)
+    vi.mocked(prisma.user.groupBy).mockResolvedValue([
+      { userType: 'DOCTOR', _count: 3 },
+      { userType: 'NURSE', _count: 2 },
+      { userType: 'CAREGIVER', _count: 2 },
+      { userType: 'DENTIST', _count: 1 },
     ] as never)
 
     const res = await GET(new NextRequest('http://localhost:3000/api/roles'))
@@ -31,30 +38,24 @@ describe('GET /api/roles', () => {
 
     expect(res.status).toBe(200)
     expect(json.success).toBe(true)
+    expect(json.data.length).toBeGreaterThanOrEqual(4)
 
-    // Should include all 11 provider roles
-    expect(json.data).toHaveLength(11)
-
-    // Doctor should have 2 specialties
     const doctor = json.data.find((r: { role: string }) => r.role === 'DOCTOR')
+    expect(doctor).toBeTruthy()
     expect(doctor.specialties).toHaveLength(2)
-    expect(doctor.specialties[0].name).toBe('General Practice')
+    expect(doctor.label).toBe('Doctors')
+    expect(doctor.providerCount).toBe(3)
 
-    // Caregiver should have 1 specialty
     const caregiver = json.data.find((r: { role: string }) => r.role === 'CAREGIVER')
     expect(caregiver.specialties).toHaveLength(1)
-
-    // Dentist should have 1 specialty
-    const dentist = json.data.find((r: { role: string }) => r.role === 'DENTIST')
-    expect(dentist.specialties).toHaveLength(1)
-
-    // Roles without seeded specialties should have empty array
-    const physio = json.data.find((r: { role: string }) => r.role === 'PHYSIOTHERAPIST')
-    expect(physio.specialties).toHaveLength(0)
   })
 
-  it('returns all new provider roles', async () => {
-    vi.mocked(prisma.providerSpecialty.findMany).mockResolvedValue([] as never)
+  it('returns roles from DB not hardcoded', async () => {
+    vi.mocked(prisma.providerSpecialty.findMany).mockResolvedValue([
+      { providerType: 'CAREGIVER', name: 'Elder Care', description: null },
+      { providerType: 'PHYSIOTHERAPIST', name: 'Sports', description: null },
+    ] as never)
+    vi.mocked(prisma.user.groupBy).mockResolvedValue([] as never)
 
     const res = await GET(new NextRequest('http://localhost:3000/api/roles'))
     const json = await res.json()
@@ -62,10 +63,22 @@ describe('GET /api/roles', () => {
     const roles = json.data.map((r: { role: string }) => r.role)
     expect(roles).toContain('CAREGIVER')
     expect(roles).toContain('PHYSIOTHERAPIST')
-    expect(roles).toContain('DENTIST')
-    expect(roles).toContain('OPTOMETRIST')
-    expect(roles).toContain('NUTRITIONIST')
     expect(roles).not.toContain('PATIENT')
     expect(roles).not.toContain('REGIONAL_ADMIN')
+  })
+
+  it('includes searchPath and color for each role', async () => {
+    vi.mocked(prisma.providerSpecialty.findMany).mockResolvedValue([
+      { providerType: 'DENTIST', name: 'General', description: null },
+    ] as never)
+    vi.mocked(prisma.user.groupBy).mockResolvedValue([{ userType: 'DENTIST', _count: 1 }] as never)
+
+    const res = await GET(new NextRequest('http://localhost:3000/api/roles'))
+    const json = await res.json()
+
+    const dentist = json.data.find((r: { role: string }) => r.role === 'DENTIST')
+    expect(dentist.searchPath).toBe('/search/dentists')
+    expect(dentist.color).toBe('sky')
+    expect(dentist.icon).toBe('FaTooth')
   })
 })
