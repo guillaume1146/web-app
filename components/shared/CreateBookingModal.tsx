@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useDashboardUser } from '@/hooks/useDashboardUser'
 import { useProviderRoles, ProviderRole } from '@/hooks/useProviderRoles'
-import { FaTimes, FaSpinner, FaCalendarAlt, FaSearch } from 'react-icons/fa'
+import { FaTimes, FaSpinner, FaCalendarAlt, FaChevronLeft } from 'react-icons/fa'
 
 interface Provider {
   id: string
@@ -11,6 +11,8 @@ interface Provider {
   lastName: string
   address: string | null
   specializations: string[]
+  profileImage: string | null
+  verified: boolean
 }
 
 interface Service {
@@ -31,6 +33,26 @@ interface CreateBookingModalProps {
   onClose: () => void
   onCreated: () => void
   defaultProviderType?: string
+}
+
+/**
+ * Map UserType to the providerType string used by the available-slots API.
+ * Old roles map to their legacy names; new roles use lowercase UserType.
+ */
+function getSlotProviderType(role: string): string {
+  const map: Record<string, string> = {
+    DOCTOR: 'doctor',
+    NURSE: 'nurse',
+    NANNY: 'nanny',
+    LAB_TECHNICIAN: 'lab-test',
+    EMERGENCY_WORKER: 'emergency',
+    CAREGIVER: 'caregiver',
+    PHYSIOTHERAPIST: 'physiotherapist',
+    DENTIST: 'dentist',
+    OPTOMETRIST: 'optometrist',
+    NUTRITIONIST: 'nutritionist',
+  }
+  return map[role] || role.toLowerCase()
 }
 
 export default function CreateBookingModal({ isOpen, onClose, onCreated, defaultProviderType }: CreateBookingModalProps) {
@@ -74,7 +96,7 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
       .finally(() => setLoading(false))
   }, [selectedRole])
 
-  // Fetch services when provider selected
+  // Fetch services when role selected
   useEffect(() => {
     if (!selectedRole) return
     fetch(`/api/services/catalog?providerType=${selectedRole.role}`)
@@ -90,12 +112,14 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
 
   // Fetch available slots when date selected
   useEffect(() => {
-    if (!selectedProvider || !selectedDate) return
-    fetch(`/api/bookings/available-slots?providerId=${selectedProvider.id}&date=${selectedDate}&providerType=${selectedRole?.role?.toLowerCase()}`)
+    if (!selectedProvider || !selectedDate || !selectedRole) return
+    const providerType = getSlotProviderType(selectedRole.role)
+    fetch(`/api/bookings/available-slots?providerId=${selectedProvider.id}&date=${selectedDate}&providerType=${providerType}`)
       .then(r => r.json())
       .then(json => {
-        if (json.success && json.data) {
-          setSlots(json.data.map((s: { time: string; available: boolean }) => s))
+        if (json.success && json.slots && json.slots.length > 0) {
+          const bookedSet = new Set(json.bookedSlots || [])
+          setSlots(json.slots.map((time: string) => ({ time, available: !bookedSet.has(time) })))
         } else {
           // Generate default slots if no availability configured
           const defaultSlots = []
@@ -116,13 +140,22 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
 
     try {
       const isOldRole = ['DOCTOR', 'NURSE', 'NANNY', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER'].includes(selectedRole?.role || '')
+      const roleToEndpoint: Record<string, string> = {
+        DOCTOR: 'doctor', NURSE: 'nurse', NANNY: 'nanny',
+        LAB_TECHNICIAN: 'lab-test', EMERGENCY_WORKER: 'emergency',
+      }
       const endpoint = isOldRole
-        ? `/api/bookings/${selectedRole?.role === 'DOCTOR' ? 'doctor' : selectedRole?.role === 'NURSE' ? 'nurse' : selectedRole?.role === 'NANNY' ? 'nanny' : selectedRole?.role === 'LAB_TECHNICIAN' ? 'lab-test' : 'emergency'}`
+        ? `/api/bookings/${roleToEndpoint[selectedRole?.role || '']}`
         : '/api/bookings/service'
+
+      const roleToBodyKey: Record<string, string> = {
+        DOCTOR: 'doctorId', NURSE: 'nurseId', NANNY: 'nannyId',
+        LAB_TECHNICIAN: 'labTechId', EMERGENCY_WORKER: 'emergencyWorkerId',
+      }
 
       const body = isOldRole
         ? {
-            [`${selectedRole?.role === 'DOCTOR' ? 'doctor' : selectedRole?.role === 'NURSE' ? 'nurse' : selectedRole?.role === 'NANNY' ? 'nanny' : selectedRole?.role === 'LAB_TECHNICIAN' ? 'labTech' : 'emergency'}Id`]: selectedProvider.id,
+            [roleToBodyKey[selectedRole?.role || '']]: selectedProvider.id,
             consultationType: consultType,
             scheduledDate: selectedDate,
             scheduledTime: selectedTime,
@@ -174,19 +207,37 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
     setError(null)
   }
 
-  if (!isOpen) return null
-
   // Get tomorrow as min date
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const minDate = tomorrow.toISOString().split('T')[0]
+  const minDate = useMemo(() => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    return tomorrow.toISOString().split('T')[0]
+  }, [])
+
+  // Group available slots by period for better UI
+  const groupedSlots = useMemo(() => {
+    const available = slots.filter(s => s.available)
+    const morning = available.filter(s => { const h = parseInt(s.time); return h >= 6 && h < 12 })
+    const afternoon = available.filter(s => { const h = parseInt(s.time); return h >= 12 && h < 17 })
+    const evening = available.filter(s => { const h = parseInt(s.time); return h >= 17 })
+    return { morning, afternoon, evening }
+  }, [slots])
+
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="text-lg font-bold text-gray-900">Book an Appointment</h3>
+        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
+          <div className="flex items-center gap-2">
+            {step > 1 && (
+              <button onClick={() => setStep(step - 1)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+                <FaChevronLeft className="text-xs" />
+              </button>
+            )}
+            <h3 className="text-lg font-bold text-gray-900">Book an Appointment</h3>
+          </div>
           <button onClick={() => { onClose(); resetForm() }} className="p-2 text-gray-400 hover:text-gray-600"><FaTimes /></button>
         </div>
 
@@ -194,9 +245,12 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
           {/* Step indicator */}
           <div className="flex items-center gap-1 mb-2">
             {[1,2,3,4,5].map(s => (
-              <div key={s} className={`flex-1 h-1 rounded-full ${step >= s ? 'bg-blue-600' : 'bg-gray-200'}`} />
+              <div key={s} className={`flex-1 h-1.5 rounded-full transition-colors ${step >= s ? 'bg-blue-600' : 'bg-gray-200'}`} />
             ))}
           </div>
+          <p className="text-[10px] text-gray-400 text-center -mt-2">
+            Step {step} of 5 — {step === 1 ? 'Provider Type' : step === 2 ? 'Choose Provider' : step === 3 ? 'Service & Type' : step === 4 ? 'Date & Time' : 'Confirm'}
+          </p>
 
           {/* Step 1: Choose provider type */}
           {step === 1 && (
@@ -217,57 +271,69 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
           {/* Step 2: Choose provider */}
           {step === 2 && (
             <div>
-              <h4 className="text-sm font-semibold text-gray-800 mb-3">Choose a {selectedRole?.label}</h4>
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Choose a {selectedRole?.label?.replace(/s$/, '')}</h4>
               {loading ? <div className="flex justify-center py-8"><FaSpinner className="animate-spin text-blue-500" /></div> : (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {providers.map(p => (
                     <button key={p.id} onClick={() => { setSelectedProvider(p); setStep(3) }}
                       className="w-full p-3 border rounded-lg text-left hover:border-blue-300 hover:bg-blue-50 transition flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm flex-shrink-0">
-                        {p.firstName[0]}{p.lastName[0]}
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm text-gray-900">{p.firstName} {p.lastName}</p>
-                        {p.specializations.length > 0 && <p className="text-[10px] text-gray-500">{p.specializations.join(', ')}</p>}
-                        {p.address && <p className="text-[10px] text-gray-400">{p.address}</p>}
+                      {p.profileImage ? (
+                        <img src={p.profileImage} alt="" className="w-10 h-10 rounded-full object-cover border-2 border-blue-100 flex-shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm flex-shrink-0">
+                          {p.firstName[0]}{p.lastName[0]}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-gray-900">
+                          {selectedRole?.role === 'DOCTOR' ? 'Dr. ' : ''}{p.firstName} {p.lastName}
+                          {p.verified && <span className="ml-1 text-green-500 text-[10px]">✓</span>}
+                        </p>
+                        {p.specializations.length > 0 && <p className="text-[10px] text-blue-600 truncate">{p.specializations.join(', ')}</p>}
+                        {p.address && <p className="text-[10px] text-gray-400 truncate">{p.address}</p>}
                       </div>
                     </button>
                   ))}
                   {providers.length === 0 && <p className="text-center py-4 text-gray-400 text-sm">No providers found</p>}
                 </div>
               )}
-              <button onClick={() => setStep(1)} className="mt-2 text-xs text-blue-600 hover:underline">Back</button>
             </div>
           )}
 
           {/* Step 3: Choose service + type */}
           {step === 3 && (
             <div>
-              <h4 className="text-sm font-semibold text-gray-800 mb-3">Choose service & type</h4>
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Choose service & consultation type</h4>
               {services.length > 0 && (
                 <div className="space-y-1 max-h-40 overflow-y-auto mb-3">
                   {services.map(s => (
                     <button key={s.id || s.serviceName} onClick={() => setSelectedService(s)}
-                      className={`w-full p-2 border rounded-lg text-left text-sm transition ${selectedService?.serviceName === s.serviceName ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'}`}>
-                      <div className="flex justify-between">
-                        <span className="font-medium text-gray-900">{s.serviceName}</span>
-                        <span className="text-gray-500">Rs {(s.defaultPrice ?? 0).toLocaleString()}</span>
+                      className={`w-full p-2.5 border rounded-lg text-left text-sm transition ${selectedService?.serviceName === s.serviceName ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-gray-50'}`}>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="font-medium text-gray-900">{s.serviceName}</span>
+                          {s.duration && <span className="text-[10px] text-gray-400 ml-2">{s.duration} min</span>}
+                        </div>
+                        <span className="text-gray-600 font-semibold text-xs">Rs {(s.defaultPrice ?? 0).toLocaleString()}</span>
                       </div>
                     </button>
                   ))}
                 </div>
               )}
+              {services.length === 0 && (
+                <p className="text-xs text-gray-400 mb-3">No specific services listed — general consultation will be booked.</p>
+              )}
+              <p className="text-xs font-medium text-gray-600 mb-2">Consultation type</p>
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {(['in_person', 'home_visit', 'video'] as const).map(t => (
                   <button key={t} onClick={() => setConsultType(t)}
-                    className={`p-2 border rounded-lg text-xs font-medium transition ${consultType === t ? 'border-blue-500 bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}>
-                    {t === 'in_person' ? 'At Office' : t === 'home_visit' ? 'At Home' : 'Video Call'}
+                    className={`p-2.5 border rounded-lg text-xs font-medium transition ${consultType === t ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-200' : 'text-gray-600 hover:bg-gray-50'}`}>
+                    {t === 'in_person' ? '🏥 At Office' : t === 'home_visit' ? '🏠 At Home' : '📹 Video Call'}
                   </button>
                 ))}
               </div>
               <button onClick={() => setStep(4)} disabled={!selectedService && services.length > 0}
-                className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">Continue</button>
-              <button onClick={() => setStep(2)} className="mt-2 text-xs text-blue-600 hover:underline block">Back</button>
+                className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-blue-700 transition">Continue</button>
             </div>
           )}
 
@@ -275,50 +341,87 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
           {step === 4 && (
             <div>
               <h4 className="text-sm font-semibold text-gray-800 mb-3">Choose date & time</h4>
-              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
-                min={minDate} className="w-full px-3 py-2 border rounded-lg text-sm mb-3" />
+              <input type="date" value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime('') }}
+                min={minDate} className="w-full px-3 py-2.5 border rounded-lg text-sm mb-4 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none" />
 
               {selectedDate && slots.length > 0 && (
-                <div className="grid grid-cols-4 gap-1 max-h-40 overflow-y-auto mb-3">
-                  {slots.filter(s => s.available).map(s => (
-                    <button key={s.time} onClick={() => setSelectedTime(s.time)}
-                      className={`px-2 py-1.5 border rounded text-xs font-medium transition ${selectedTime === s.time ? 'border-blue-500 bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}>
-                      {s.time}
-                    </button>
-                  ))}
+                <div className="space-y-3 mb-4">
+                  {groupedSlots.morning.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">☀️ Morning</p>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {groupedSlots.morning.map(s => (
+                          <button key={s.time} onClick={() => setSelectedTime(s.time)}
+                            className={`px-2 py-2 border rounded-lg text-xs font-medium transition ${selectedTime === s.time ? 'border-blue-500 bg-blue-600 text-white' : 'text-gray-700 hover:bg-blue-50 hover:border-blue-200'}`}>
+                            {s.time}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {groupedSlots.afternoon.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">🌤️ Afternoon</p>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {groupedSlots.afternoon.map(s => (
+                          <button key={s.time} onClick={() => setSelectedTime(s.time)}
+                            className={`px-2 py-2 border rounded-lg text-xs font-medium transition ${selectedTime === s.time ? 'border-blue-500 bg-blue-600 text-white' : 'text-gray-700 hover:bg-blue-50 hover:border-blue-200'}`}>
+                            {s.time}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {groupedSlots.evening.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">🌙 Evening</p>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {groupedSlots.evening.map(s => (
+                          <button key={s.time} onClick={() => setSelectedTime(s.time)}
+                            className={`px-2 py-2 border rounded-lg text-xs font-medium transition ${selectedTime === s.time ? 'border-blue-500 bg-blue-600 text-white' : 'text-gray-700 hover:bg-blue-50 hover:border-blue-200'}`}>
+                            {s.time}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
+              {selectedDate && slots.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-4">No scheduled availability — default slots shown above.</p>
+              )}
+
               <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for visit (optional)"
-                className="w-full px-3 py-2 border rounded-lg text-sm mb-3" rows={2} />
+                className="w-full px-3 py-2 border rounded-lg text-sm mb-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none" rows={2} />
 
               <button onClick={() => setStep(5)} disabled={!selectedDate || !selectedTime}
-                className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">Review</button>
-              <button onClick={() => setStep(3)} className="mt-2 text-xs text-blue-600 hover:underline block">Back</button>
+                className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-blue-700 transition">Review Booking</button>
             </div>
           )}
 
           {/* Step 5: Confirm */}
           {step === 5 && (
             <div>
-              <h4 className="text-sm font-semibold text-gray-800 mb-3">Confirm Booking</h4>
-              <div className="bg-gray-50 rounded-lg p-3 space-y-2 text-sm mb-3">
-                <div className="flex justify-between"><span className="text-gray-500">Provider</span><span className="font-medium">{selectedProvider?.firstName} {selectedProvider?.lastName}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Service</span><span className="font-medium">{selectedService?.serviceName || 'General'}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Type</span><span className="font-medium">{consultType === 'in_person' ? 'At Office' : consultType === 'home_visit' ? 'At Home' : 'Video Call'}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Date</span><span className="font-medium">{selectedDate}</span></div>
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Review & Confirm</h4>
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2.5 text-sm mb-4">
+                <div className="flex justify-between"><span className="text-gray-500">Provider</span><span className="font-medium">{selectedRole?.role === 'DOCTOR' ? 'Dr. ' : ''}{selectedProvider?.firstName} {selectedProvider?.lastName}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Type</span><span className="font-medium text-blue-600">{selectedRole?.label}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Service</span><span className="font-medium">{selectedService?.serviceName || 'General Consultation'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Format</span><span className="font-medium">{consultType === 'in_person' ? '🏥 At Office' : consultType === 'home_visit' ? '🏠 At Home' : '📹 Video Call'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Date</span><span className="font-medium">{new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Time</span><span className="font-medium">{selectedTime}</span></div>
+                {reason && <div className="flex justify-between"><span className="text-gray-500">Reason</span><span className="font-medium text-right max-w-[200px] truncate">{reason}</span></div>}
                 {selectedService?.defaultPrice != null && (
-                  <div className="flex justify-between border-t pt-2"><span className="text-gray-500">Price</span><span className="font-bold">Rs {(selectedService.defaultPrice ?? 0).toLocaleString()}</span></div>
+                  <div className="flex justify-between border-t pt-2 mt-1"><span className="text-gray-600 font-medium">Estimated Price</span><span className="font-bold text-lg">Rs {(selectedService.defaultPrice ?? 0).toLocaleString()}</span></div>
                 )}
               </div>
-              {error && <p className="text-red-500 text-xs mb-2">{error}</p>}
+              {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3"><p className="text-red-600 text-xs">{error}</p></div>}
               <button onClick={handleSubmit} disabled={submitting}
-                className="w-full py-2.5 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                className="w-full py-3 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2 transition">
                 {submitting ? <FaSpinner className="animate-spin" /> : <FaCalendarAlt />}
                 {submitting ? 'Booking...' : 'Confirm Booking'}
               </button>
-              <button onClick={() => setStep(4)} className="mt-2 text-xs text-blue-600 hover:underline block">Back</button>
             </div>
           )}
         </div>

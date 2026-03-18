@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { rateLimitSearch } from '@/lib/rate-limit'
 
-type ProviderType = 'doctor' | 'nurse' | 'nanny' | 'lab-test'
+type ProviderType = 'doctor' | 'nurse' | 'nanny' | 'lab-test' | 'caregiver' | 'physiotherapist' | 'dentist' | 'optometrist' | 'nutritionist'
 
 interface ResolvedProvider {
   userId: string    // User.id — used for ProviderAvailability lookup
@@ -17,12 +17,19 @@ interface ResolvedProvider {
  * We try Profile ID first, then fall back to looking up by userId.
  */
 async function resolveProvider(providerId: string, providerType: ProviderType): Promise<ResolvedProvider | null> {
+  // New provider types use User ID directly (ServiceBooking references user IDs)
+  const newRoles: ProviderType[] = ['caregiver', 'physiotherapist', 'dentist', 'optometrist', 'nutritionist']
+  if (newRoles.includes(providerType)) {
+    // Verify user exists
+    const user = await prisma.user.findUnique({ where: { id: providerId }, select: { id: true } })
+    if (user) return { userId: user.id, profileId: user.id }
+    return null
+  }
+
   switch (providerType) {
     case 'doctor': {
-      // Try as profile ID
       const byProfile = await prisma.doctorProfile.findUnique({ where: { id: providerId }, select: { id: true, userId: true } })
       if (byProfile) return { userId: byProfile.userId, profileId: byProfile.id }
-      // Fall back: try as user ID
       const byUser = await prisma.doctorProfile.findFirst({ where: { userId: providerId }, select: { id: true, userId: true } })
       if (byUser) return { userId: byUser.userId, profileId: byUser.id }
       return null
@@ -48,6 +55,8 @@ async function resolveProvider(providerId: string, providerType: ProviderType): 
       if (byUser) return { userId: byUser.userId, profileId: byUser.id }
       return null
     }
+    default:
+      return null
   }
 }
 
@@ -69,6 +78,19 @@ function generateSlots(startTime: string, endTime: string, slotDuration: number 
 }
 
 async function getExistingBookings(providerId: string, providerType: ProviderType, dayStart: Date, dayEnd: Date) {
+  // New roles use ServiceBooking table with providerUserId
+  const newRoles: ProviderType[] = ['caregiver', 'physiotherapist', 'dentist', 'optometrist', 'nutritionist']
+  if (newRoles.includes(providerType)) {
+    return prisma.serviceBooking.findMany({
+      where: {
+        providerUserId: providerId,
+        scheduledAt: { gte: dayStart, lt: dayEnd },
+        status: { notIn: ['cancelled'] },
+      },
+      select: { scheduledAt: true },
+    })
+  }
+
   switch (providerType) {
     case 'doctor':
       return prisma.appointment.findMany({
@@ -126,16 +148,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const validProviderTypes: ProviderType[] = ['doctor', 'nurse', 'nanny', 'lab-test']
+    const validProviderTypes: ProviderType[] = ['doctor', 'nurse', 'nanny', 'lab-test', 'caregiver', 'physiotherapist', 'dentist', 'optometrist', 'nutritionist']
     if (!validProviderTypes.includes(providerType)) {
       return NextResponse.json(
-        { success: false, message: 'Invalid providerType. Must be one of: doctor, nurse, nanny, lab-test' },
+        { success: false, message: `Invalid providerType. Must be one of: ${validProviderTypes.join(', ')}` },
         { status: 400 }
       )
     }
 
     // Resolve the providerId to both userId and profileId
-    // (providerId may be either a User ID or a Profile ID depending on the caller)
     const provider = await resolveProvider(providerId, providerType)
     if (!provider) {
       return NextResponse.json(
@@ -173,7 +194,7 @@ export async function GET(request: NextRequest) {
       scheduleSlots = doctorSlots.map(s => ({
         startTime: s.startTime,
         endTime: s.endTime,
-        slotDuration: 30, // default 30-min slots for doctor schedule
+        slotDuration: 30,
       }))
     }
 
@@ -192,7 +213,7 @@ export async function GET(request: NextRequest) {
     const dayStart = new Date(date + 'T00:00:00')
     const dayEnd = new Date(date + 'T23:59:59')
 
-    const bookings = await getExistingBookings(provider.profileId, providerType, dayStart, dayEnd)
+    const bookings = await getExistingBookings(provider.profileId, providerType, dayStart, dayEnd) ?? []
 
     // Extract booked hours from existing bookings (use local time to match slot strings)
     const bookedHours = bookings.map(b => {

@@ -5,6 +5,24 @@ import { UserType } from '@prisma/client'
 import { userTypeToProfileRelation } from '@/lib/auth/user-type-map'
 
 /**
+ * Map each UserType to the correct specialization field name in its profile table.
+ * DoctorProfile uses `specialty`, most others use `specializations`,
+ * and some (Nanny, EmergencyWorker) have no specialization field.
+ */
+const SPECIALIZATION_FIELD: Partial<Record<UserType, string>> = {
+  DOCTOR: 'specialty',
+  NURSE: 'specializations',
+  PHARMACIST: 'specializations',
+  LAB_TECHNICIAN: 'specializations',
+  CAREGIVER: 'specializations',
+  PHYSIOTHERAPIST: 'specializations',
+  DENTIST: 'specializations',
+  OPTOMETRIST: 'specializations',
+  NUTRITIONIST: 'specializations',
+  // NANNY, EMERGENCY_WORKER — no specialization field on their profile
+}
+
+/**
  * GET /api/search/providers?type=CAREGIVER&q=search
  * Search providers by user type. Returns basic profile info.
  */
@@ -43,6 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     const profileRelation = userTypeToProfileRelation[type]
+    const specField = SPECIALIZATION_FIELD[type]
 
     const users = await prisma.user.findMany({
       where,
@@ -53,9 +72,9 @@ export async function GET(request: NextRequest) {
         profileImage: true,
         address: true,
         verified: true,
-        ...(profileRelation ? {
+        ...(profileRelation && specField ? {
           [profileRelation]: {
-            select: { specializations: true },
+            select: { [specField]: true },
           },
         } : {}),
       },
@@ -64,7 +83,9 @@ export async function GET(request: NextRequest) {
     })
 
     const data = users.map(u => {
-      const profile = profileRelation ? (u as Record<string, unknown>)[profileRelation] as { specializations?: string[] } | null : null
+      const profile = profileRelation && specField
+        ? (u as Record<string, unknown>)[profileRelation] as Record<string, string[]> | null
+        : null
       return {
         id: u.id,
         firstName: u.firstName,
@@ -72,7 +93,7 @@ export async function GET(request: NextRequest) {
         profileImage: u.profileImage,
         address: u.address,
         verified: u.verified,
-        specializations: profile?.specializations ?? [],
+        specializations: profile?.[specField!] ?? [],
       }
     })
 

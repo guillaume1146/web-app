@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
-import { FaStethoscope, FaPills, FaFileAlt, FaShieldAlt, FaTimes, FaUser } from 'react-icons/fa'
+import { FaStethoscope, FaPills, FaFileAlt, FaShieldAlt, FaTimes, FaUser, FaChevronRight } from 'react-icons/fa'
 import { useProviderRoles } from '@/hooks/useProviderRoles'
 
 const ConsultationsContent = dynamic(() => import('@/components/health/MyConsultations'), { ssr: false, loading: () => <Loading /> })
@@ -109,15 +109,15 @@ export default function MyHealthSidebar() {
 
   return (
     <div className="flex h-full flex-row-reverse">
-      {/* Mobile: button to open sidebar */}
-      <div className="sm:hidden flex items-center gap-2 px-3 py-2 bg-white border-b border-gray-200 fixed top-[56px] left-0 right-0 z-40">
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${activeItem?.bgColor} ${activeItem?.color}`}
-        >
-          {activeItem?.label}
-        </button>
-      </div>
+      {/* Mobile: floating button to open sidebar */}
+      <button
+        onClick={() => setSidebarOpen(true)}
+        className={`sm:hidden fixed bottom-20 right-3 z-40 flex items-center gap-2 px-3 py-2.5 rounded-full shadow-lg text-sm font-medium ${activeItem?.bgColor} ${activeItem?.color} border border-gray-200`}
+      >
+        <FaUser className="text-xs" />
+        <span className="max-w-[120px] truncate">{activeItem?.label}</span>
+        <FaChevronRight className="text-[8px] opacity-60" />
+      </button>
 
       {/* Backdrop */}
       {sidebarOpen && <div className="sm:hidden fixed inset-0 bg-black/30 z-50" onClick={() => setSidebarOpen(false)} />}
@@ -172,7 +172,7 @@ export default function MyHealthSidebar() {
       </div>
 
       {/* Content area */}
-      <div className="flex-1 min-w-0 pt-12 sm:pt-0">
+      <div className="flex-1 min-w-0 pb-24 sm:pb-0">
         {activeSection === 'consult' && <ConsultationsContent />}
         {activeSection === 'rx' && <PrescriptionsContent />}
         {activeSection === 'records' && <HealthRecordsContent />}
