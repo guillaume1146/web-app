@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import {
   FaStethoscope, FaPills, FaFileAlt, FaUserNurse, FaBaby,
@@ -21,12 +21,51 @@ function Loading() {
   return <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
 }
 
-// Placeholder for new role sections
-function ComingSoon({ label }: { label: string }) {
+// Generic service bookings list for new provider roles
+function ServiceBookingsList({ providerType, title }: { providerType: string; title: string }) {
+  const [bookings, setBookings] = useState<{ id: string; providerName: string; serviceName: string | null; scheduledAt: string; status: string; price: number | null }[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/bookings/unified?role=patient')
+      .then(r => r.json())
+      .then(json => {
+        if (json.success && json.data) {
+          setBookings(json.data.filter((b: { providerRole: string }) => b.providerRole === providerType))
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [providerType])
+
+  if (loading) return <Loading />
+
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-      <p className="text-lg font-semibold">{label}</p>
-      <p className="text-sm mt-1">Appointments & bookings coming soon</p>
+    <div className="p-4">
+      <h2 className="text-lg font-bold text-gray-900 mb-4">{title}</h2>
+      {bookings.length === 0 ? (
+        <p className="text-center py-8 text-gray-400 text-sm">No {title.toLowerCase()} bookings yet. Book from the search page.</p>
+      ) : (
+        <div className="space-y-2">
+          {bookings.map(b => (
+            <div key={b.id} className="bg-white rounded-lg border border-gray-200 p-3 flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-gray-900 text-sm truncate">{b.providerName}</p>
+                <p className="text-xs text-gray-500">{b.serviceName || title}</p>
+                <p className="text-xs text-gray-400">{new Date(b.scheduledAt).toLocaleDateString()}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                  b.status === 'completed' ? 'bg-green-100 text-green-700' :
+                  b.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                  b.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-blue-100 text-blue-700'
+                }`}>{b.status}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -117,11 +156,11 @@ export default function MyHealthSidebar() {
         {activeSection === 'emergency' && <EmergencyContent />}
         {activeSection === 'lab' && <LabResultsContent />}
         {activeSection === 'insurance' && <InsuranceContent />}
-        {activeSection === 'caregiver' && <ComingSoon label="Caregiver Services" />}
-        {activeSection === 'physio' && <ComingSoon label="Physiotherapy" />}
-        {activeSection === 'dentist' && <ComingSoon label="Dental Care" />}
-        {activeSection === 'eye' && <ComingSoon label="Eye Care" />}
-        {activeSection === 'nutrition' && <ComingSoon label="Nutrition" />}
+        {activeSection === 'caregiver' && <ServiceBookingsList providerType="CAREGIVER" title="Caregiver Services" />}
+        {activeSection === 'physio' && <ServiceBookingsList providerType="PHYSIOTHERAPIST" title="Physiotherapy" />}
+        {activeSection === 'dentist' && <ServiceBookingsList providerType="DENTIST" title="Dental Care" />}
+        {activeSection === 'eye' && <ServiceBookingsList providerType="OPTOMETRIST" title="Eye Care" />}
+        {activeSection === 'nutrition' && <ServiceBookingsList providerType="NUTRITIONIST" title="Nutrition" />}
       </div>
     </div>
   )
