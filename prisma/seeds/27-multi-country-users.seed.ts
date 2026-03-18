@@ -143,8 +143,7 @@ function buildProfile(userType: UserType, profileId: string, country: CountryCon
         doctorProfile: {
           create: {
             id: profileId,
-            category: 'General Practitioner',
-            specialty: ['General Medicine'],
+            specialty: ['General Practice'],
             subSpecialties: [],
             licenseNumber: `${country.code}-DOC-${profileId}`,
             licenseExpiryDate: new Date('2027-12-31'),

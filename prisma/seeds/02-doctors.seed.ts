@@ -27,7 +27,6 @@ export async function seedDoctors(prisma: PrismaClient) {
       doctorProfile: {
         create: {
           id: 'DPROF001',
-          category: 'Specialist',
           specialty: ['Endocrinology', 'Internal Medicine'],
           subSpecialties: ['Diabetes Management', 'Thyroid Disorders'],
           licenseNumber: 'MU-DOC-2015-001',
@@ -76,7 +75,6 @@ export async function seedDoctors(prisma: PrismaClient) {
       doctorProfile: {
         create: {
           id: 'DPROF002',
-          category: 'General Practitioner',
           specialty: ['General Medicine', 'Family Medicine'],
           subSpecialties: ['Geriatrics', 'Preventive Care'],
           licenseNumber: 'MU-DOC-2010-042',
@@ -124,7 +122,6 @@ export async function seedDoctors(prisma: PrismaClient) {
       doctorProfile: {
         create: {
           id: 'DPROF003',
-          category: 'Specialist',
           specialty: ['Cardiology'],
           subSpecialties: ['Interventional Cardiology', 'Heart Failure'],
           licenseNumber: 'MU-DOC-2012-018',
