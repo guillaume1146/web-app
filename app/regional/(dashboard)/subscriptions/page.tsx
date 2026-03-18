@@ -97,6 +97,8 @@ export default function SubscriptionsManagementPage() {
   const [featureInput, setFeatureInput] = useState('')
   const [saving, setSaving] = useState(false)
   const [generatingFeatures, setGeneratingFeatures] = useState(false)
+  const [discountToAdd, setDiscountToAdd] = useState('')
+  const [quotaToAdd, setQuotaToAdd] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [services, setServices] = useState<ServiceCategory[]>([])
   const [providerRoles, setProviderRoles] = useState<{ role: string; specialties: { name: string }[] }[]>([])
@@ -484,11 +486,11 @@ export default function SubscriptionsManagementPage() {
                 {/* Add quota button */}
                 <div className="mt-2 flex gap-2">
                   <select
-                    id="add-quota-select"
+                    value={quotaToAdd}
+                    onChange={(e) => setQuotaToAdd(e.target.value)}
                     className="flex-1 px-2 py-1.5 border border-gray-200 rounded text-xs"
-                    defaultValue=""
                   >
-                    <option value="" disabled>Add quota for...</option>
+                    <option value="">Add quota for...</option>
                     {providerRoles.map(r => (
                       <optgroup key={r.role} label={r.role}>
                         <option value={`${r.role}:`}>{r.role} (any specialty)</option>
@@ -500,13 +502,12 @@ export default function SubscriptionsManagementPage() {
                   </select>
                   <button
                     onClick={() => {
-                      const sel = document.getElementById('add-quota-select') as HTMLSelectElement
-                      if (!sel.value) return
-                      const [role, specialty] = sel.value.split(':')
+                      if (!quotaToAdd) return
+                      const [role, specialty] = quotaToAdd.split(':')
                       const exists = form.quotas.some(q => q.role === role && (q.specialty || '') === (specialty || ''))
                       if (exists) return
                       setForm(prev => ({ ...prev, quotas: [...prev.quotas, { role, specialty: specialty || null, limit: 0 }] }))
-                      sel.value = ''
+                      setQuotaToAdd('')
                     }}
                     className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200"
                   >
@@ -546,10 +547,14 @@ export default function SubscriptionsManagementPage() {
                     </div>
                   ))}
                 </div>
-                {/* Add discount — same role+specialty dropdown + service categories */}
+                {/* Add discount */}
                 <div className="mt-2 flex gap-2">
-                  <select id="add-discount-select" className="flex-1 px-2 py-1.5 border border-gray-200 rounded text-xs" defaultValue="">
-                    <option value="" disabled>Add discount for...</option>
+                  <select
+                    value={discountToAdd}
+                    onChange={(e) => setDiscountToAdd(e.target.value)}
+                    className="flex-1 px-2 py-1.5 border border-gray-200 rounded text-xs"
+                  >
+                    <option value="">Add discount for...</option>
                     <optgroup label="Service Categories">
                       {['lab', 'pharmacy', 'emergency', 'childcare'].map(c => (
                         <option key={c} value={c}>{c}</option>
@@ -566,11 +571,10 @@ export default function SubscriptionsManagementPage() {
                   </select>
                   <button
                     onClick={() => {
-                      const sel = document.getElementById('add-discount-select') as HTMLSelectElement
-                      if (!sel.value) return
-                      if (form.discounts[sel.value] !== undefined) return // already exists
-                      setForm(prev => ({ ...prev, discounts: { ...prev.discounts, [sel.value]: 10 } })) // default 10%
-                      sel.value = ''
+                      if (!discountToAdd) return
+                      if (form.discounts[discountToAdd] !== undefined) return
+                      setForm(prev => ({ ...prev, discounts: { ...prev.discounts, [discountToAdd]: 10 } }))
+                      setDiscountToAdd('')
                     }}
                     className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200"
                   >Add</button>
