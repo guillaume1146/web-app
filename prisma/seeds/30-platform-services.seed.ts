@@ -60,6 +60,41 @@ export async function seedPlatformServices(prisma: PrismaClient) {
     { providerType: UserType.EMERGENCY_WORKER, serviceName: 'First Aid Response', category: 'First Aid', description: 'Rapid first-response for urban emergencies.', defaultPrice: 1500, duration: null },
     { providerType: UserType.EMERGENCY_WORKER, serviceName: 'Inter-Hospital Transfer', category: 'Medical Transport', description: 'Safe patient transfer between hospitals with medical escort.', defaultPrice: 5000, duration: null },
     { providerType: UserType.EMERGENCY_WORKER, serviceName: 'Medical Event Coverage', category: 'Event Coverage', description: 'On-site medical support for events and gatherings.', defaultPrice: 8000, duration: null },
+
+    // ── Caregiver Services ───────────────────────────────────────────
+    { providerType: UserType.CAREGIVER, serviceName: 'Elder Daily Care — Half Day', category: 'Daily Care', description: 'Morning or afternoon elder care with meals and activities.', defaultPrice: 600, duration: 240 },
+    { providerType: UserType.CAREGIVER, serviceName: 'Elder Daily Care — Full Day', category: 'Daily Care', description: 'Full-day elder companionship, meals, and mobility assistance.', defaultPrice: 1000, duration: 480 },
+    { providerType: UserType.CAREGIVER, serviceName: 'Overnight Care', category: 'Overnight', description: 'Night-time monitoring and assistance for elderly or disabled.', defaultPrice: 1200, duration: 600 },
+    { providerType: UserType.CAREGIVER, serviceName: 'Post-Surgery Home Aide', category: 'Recovery', description: 'Daily assistance during post-surgical recovery.', defaultPrice: 800, duration: 240 },
+    { providerType: UserType.CAREGIVER, serviceName: 'Dementia Companion', category: 'Specialized', description: 'Specialized companionship for dementia patients.', defaultPrice: 900, duration: 240 },
+
+    // ── Physiotherapist Services ─────────────────────────────────────
+    { providerType: UserType.PHYSIOTHERAPIST, serviceName: 'Initial Assessment', category: 'Assessment', description: 'Comprehensive physical assessment and treatment plan.', defaultPrice: 1500, duration: 60 },
+    { providerType: UserType.PHYSIOTHERAPIST, serviceName: 'Rehabilitation Session', category: 'Treatment', description: 'Standard physiotherapy rehabilitation session.', defaultPrice: 800, duration: 45 },
+    { providerType: UserType.PHYSIOTHERAPIST, serviceName: 'Sports Injury Treatment', category: 'Sports', description: 'Sports-specific injury assessment and treatment.', defaultPrice: 1200, duration: 60 },
+    { providerType: UserType.PHYSIOTHERAPIST, serviceName: 'Home Visit Physio', category: 'Home Visit', description: 'Physiotherapy session at patient home.', defaultPrice: 1500, duration: 60 },
+    { providerType: UserType.PHYSIOTHERAPIST, serviceName: 'Post-Surgery Rehab', category: 'Rehabilitation', description: 'Post-operative rehabilitation program session.', defaultPrice: 1000, duration: 45 },
+
+    // ── Dentist Services ────────────────────────────────────────────
+    { providerType: UserType.DENTIST, serviceName: 'Dental Check-up', category: 'General', description: 'Routine dental examination and cleaning.', defaultPrice: 800, duration: 30 },
+    { providerType: UserType.DENTIST, serviceName: 'Teeth Cleaning', category: 'General', description: 'Professional dental cleaning and polishing.', defaultPrice: 600, duration: 30 },
+    { providerType: UserType.DENTIST, serviceName: 'Filling', category: 'Restorative', description: 'Dental filling for cavities.', defaultPrice: 1200, duration: 45 },
+    { providerType: UserType.DENTIST, serviceName: 'Root Canal', category: 'Endodontics', description: 'Root canal treatment to save infected tooth.', defaultPrice: 5000, duration: 90 },
+    { providerType: UserType.DENTIST, serviceName: 'Teeth Whitening', category: 'Cosmetic', description: 'Professional teeth whitening treatment.', defaultPrice: 3000, duration: 60 },
+    { providerType: UserType.DENTIST, serviceName: 'Tooth Extraction', category: 'Surgery', description: 'Surgical or simple tooth removal.', defaultPrice: 2000, duration: 30 },
+
+    // ── Optometrist Services ────────────────────────────────────────
+    { providerType: UserType.OPTOMETRIST, serviceName: 'Eye Exam', category: 'General', description: 'Comprehensive eye examination and vision test.', defaultPrice: 800, duration: 30 },
+    { providerType: UserType.OPTOMETRIST, serviceName: 'Contact Lens Fitting', category: 'Contact Lenses', description: 'Professional contact lens fitting and trial.', defaultPrice: 1200, duration: 45 },
+    { providerType: UserType.OPTOMETRIST, serviceName: 'Glasses Prescription', category: 'Prescription', description: 'Vision testing and glasses prescription.', defaultPrice: 600, duration: 20 },
+    { providerType: UserType.OPTOMETRIST, serviceName: 'Pediatric Eye Exam', category: 'Pediatric', description: 'Children\'s eye health screening.', defaultPrice: 1000, duration: 30 },
+
+    // ── Nutritionist Services ───────────────────────────────────────
+    { providerType: UserType.NUTRITIONIST, serviceName: 'Initial Nutrition Assessment', category: 'Assessment', description: 'Full dietary assessment and personalized plan.', defaultPrice: 1500, duration: 60 },
+    { providerType: UserType.NUTRITIONIST, serviceName: 'Follow-up Consultation', category: 'Consultation', description: 'Progress review and plan adjustment.', defaultPrice: 800, duration: 30 },
+    { providerType: UserType.NUTRITIONIST, serviceName: 'Meal Plan Creation', category: 'Planning', description: 'Custom weekly or monthly meal plan.', defaultPrice: 1200, duration: 45 },
+    { providerType: UserType.NUTRITIONIST, serviceName: 'Sports Nutrition Plan', category: 'Sports', description: 'Nutrition plan for athletic performance.', defaultPrice: 1500, duration: 45 },
+    { providerType: UserType.NUTRITIONIST, serviceName: 'Diabetes Diet Management', category: 'Clinical', description: 'Diabetic-specific dietary counseling.', defaultPrice: 1000, duration: 30 },
   ]
 
   for (const svc of services) {
@@ -93,7 +128,7 @@ export async function seedPlatformServices(prisma: PrismaClient) {
   // Get all providers with their user types
   const providers = await prisma.user.findMany({
     where: {
-      userType: { in: ['DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER'] },
+      userType: { in: ['DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER', 'CAREGIVER', 'PHYSIOTHERAPIST', 'DENTIST', 'OPTOMETRIST', 'NUTRITIONIST'] },
     },
     select: { id: true, userType: true },
   })

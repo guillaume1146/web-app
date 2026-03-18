@@ -95,6 +95,41 @@ export const userTypes: UserType[] = [
     icon: FaGlobe,
     description: 'Country/region-level platform management',
     color: 'bg-amber-100 text-amber-700 border-amber-300'
+  },
+  {
+    id: 'caregiver',
+    label: 'Caregiver',
+    icon: FaUser,
+    description: 'Elder care, disability care, home aide',
+    color: 'bg-teal-100 text-teal-700 border-teal-300'
+  },
+  {
+    id: 'physiotherapist',
+    label: 'Physiotherapist',
+    icon: FaUser,
+    description: 'Rehabilitation & physical therapy',
+    color: 'bg-lime-100 text-lime-700 border-lime-300'
+  },
+  {
+    id: 'dentist',
+    label: 'Dentist',
+    icon: FaUser,
+    description: 'Dental care & oral health',
+    color: 'bg-sky-100 text-sky-700 border-sky-300'
+  },
+  {
+    id: 'optometrist',
+    label: 'Optometrist',
+    icon: FaUser,
+    description: 'Eye care & vision testing',
+    color: 'bg-violet-100 text-violet-700 border-violet-300'
+  },
+  {
+    id: 'nutritionist',
+    label: 'Nutritionist',
+    icon: FaUser,
+    description: 'Diet planning & nutrition counseling',
+    color: 'bg-yellow-100 text-yellow-700 border-yellow-300'
   }
 ]
 

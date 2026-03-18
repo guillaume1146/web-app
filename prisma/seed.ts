@@ -29,6 +29,8 @@ import { seedMultiCountryUsers } from './seeds/27-multi-country-users.seed'
 import { seedDocumentsAndFiles } from './seeds/28-seed-documents.seed'
 import { seedSubscriptions } from './seeds/29-subscriptions.seed'
 import { seedPlatformServices } from './seeds/30-platform-services.seed'
+import { seedProviderSpecialties } from './seeds/31-provider-specialties.seed'
+import { seedNewProviderRoles } from './seeds/32-new-provider-roles.seed'
 
 const prisma = new PrismaClient()
 
@@ -196,6 +198,8 @@ async function main() {
   await seedDocumentsAndFiles(prisma)
   await seedSubscriptions(prisma)
   await seedPlatformServices(prisma)
+  await seedProviderSpecialties(prisma)
+  await seedNewProviderRoles(prisma)
 
   console.log('Database seeded successfully!')
 }

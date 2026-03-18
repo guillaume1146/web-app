@@ -23,6 +23,11 @@ const signupTypeToPrisma: Record<string, UserType> = {
   'corporate':        UserType.CORPORATE_ADMIN,
   'referral-partner': UserType.REFERRAL_PARTNER,
   'regional-admin':   UserType.REGIONAL_ADMIN,
+  'caregiver':        UserType.CAREGIVER,
+  'physiotherapist':  UserType.PHYSIOTHERAPIST,
+  'dentist':          UserType.DENTIST,
+  'optometrist':      UserType.OPTOMETRIST,
+  'nutritionist':     UserType.NUTRITIONIST,
 }
 
 export async function POST(request: NextRequest) {
@@ -264,6 +269,69 @@ export async function POST(request: NextRequest) {
           })
           break
         }
+
+        case UserType.CAREGIVER: {
+          await tx.caregiverProfile.create({
+            data: {
+              userId: newUser.id,
+              experience: data.experience ? parseInt(data.experience, 10) || 0 : 0,
+              specializations: data.specialization ? [data.specialization] : [],
+              certifications: [],
+            },
+          })
+          break
+        }
+
+        case UserType.PHYSIOTHERAPIST: {
+          await tx.physiotherapistProfile.create({
+            data: {
+              userId: newUser.id,
+              licenseNumber: data.licenseNumber || `PT-${newUser.id.slice(0, 8).toUpperCase()}`,
+              experience: data.experience ? parseInt(data.experience, 10) || 0 : 0,
+              specializations: data.specialization ? [data.specialization] : [],
+              clinicName: data.institution || null,
+            },
+          })
+          break
+        }
+
+        case UserType.DENTIST: {
+          await tx.dentistProfile.create({
+            data: {
+              userId: newUser.id,
+              licenseNumber: data.licenseNumber || `DN-${newUser.id.slice(0, 8).toUpperCase()}`,
+              experience: data.experience ? parseInt(data.experience, 10) || 0 : 0,
+              specializations: data.specialization ? [data.specialization] : ['General Dentistry'],
+              clinicName: data.institution || null,
+            },
+          })
+          break
+        }
+
+        case UserType.OPTOMETRIST: {
+          await tx.optometristProfile.create({
+            data: {
+              userId: newUser.id,
+              licenseNumber: data.licenseNumber || `OP-${newUser.id.slice(0, 8).toUpperCase()}`,
+              experience: data.experience ? parseInt(data.experience, 10) || 0 : 0,
+              specializations: data.specialization ? [data.specialization] : ['General Eye Care'],
+              clinicName: data.institution || null,
+            },
+          })
+          break
+        }
+
+        case UserType.NUTRITIONIST: {
+          await tx.nutritionistProfile.create({
+            data: {
+              userId: newUser.id,
+              experience: data.experience ? parseInt(data.experience, 10) || 0 : 0,
+              specializations: data.specialization ? [data.specialization] : [],
+              certifications: [],
+            },
+          })
+          break
+        }
       }
 
       // Create trial wallet with region-specific currency and credit
@@ -290,7 +358,7 @@ export async function POST(request: NextRequest) {
       })
 
       // Auto-assign default platform services for provider types
-      const providerTypes: string[] = ['DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER']
+      const providerTypes: string[] = ['DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER', 'CAREGIVER', 'PHYSIOTHERAPIST', 'DENTIST', 'OPTOMETRIST', 'NUTRITIONIST']
       if (providerTypes.includes(prismaUserType)) {
         const defaultServices = await tx.platformService.findMany({
           where: { providerType: prismaUserType as UserType, isDefault: true, isActive: true },

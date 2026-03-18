@@ -27,6 +27,7 @@ export const registerSchema = z.object({
     'patient', 'doctor', 'nurse', 'nanny',
     'pharmacist', 'lab', 'emergency',
     'insurance', 'corporate', 'referral-partner', 'regional-admin',
+    'caregiver', 'physiotherapist', 'dentist', 'optometrist', 'nutritionist',
   ]),
 
   // Referral Information (optional for all)
