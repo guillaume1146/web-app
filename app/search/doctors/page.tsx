@@ -5,8 +5,10 @@ import Link from 'next/link'
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { type Doctor } from '@/lib/data'
-import AuthBookingLink from '@/components/booking/AuthBookingLink'
+import dynamic from 'next/dynamic'
 import ConnectButton from '@/components/search/ConnectButton'
+
+const CreateBookingModal = dynamic(() => import('@/components/shared/CreateBookingModal'), { ssr: false })
 import SearchFilters, { type SearchFilterValues } from '@/components/search/SearchFilters'
 import { SearchResultsSkeleton, NoResults } from '@/components/search/SearchResults'
 import { useSearchHistory } from '@/hooks/useSearchHistory'
@@ -19,6 +21,7 @@ import {
 
 interface DoctorProps {
   doctor: Doctor
+  onBook: () => void
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -30,7 +33,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Dentist: 'bg-teal-100 text-teal-700',
 }
 
-const DoctorCard = ({ doctor }: DoctorProps) => {
+const DoctorCard = ({ doctor, onBook }: DoctorProps) => {
   return (
     <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 overflow-hidden">
       <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4">
@@ -126,9 +129,9 @@ const DoctorCard = ({ doctor }: DoctorProps) => {
                 Details
               </button>
             </Link>
-            <AuthBookingLink type="doctor" providerId={doctor.id} className="flex-1 sm:flex-none bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors text-center">
+            <button onClick={onBook} className="flex-1 sm:flex-none bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors text-center">
               Book
-            </AuthBookingLink>
+            </button>
             <ConnectButton providerId={doctor.id} className="flex-1 sm:flex-none !px-4 !py-2.5 !text-sm" />
           </div>
         </div>
@@ -175,6 +178,8 @@ function DoctorsSearchContent() {
   const [allDoctors, setAllDoctors] = useState<Doctor[]>([])
   const [hasSearched, setHasSearched] = useState(!!initialQuery || !!initialSpecialty)
   const [showHistory, setShowHistory] = useState(false)
+  const [bookingModalOpen, setBookingModalOpen] = useState(false)
+  const [bookingDoctor, setBookingDoctor] = useState<Doctor | null>(null)
 
   const { history, addToHistory, removeFromHistory, clearHistory } = useSearchHistory()
 
@@ -492,7 +497,7 @@ function DoctorsSearchContent() {
 
                 <div className="flex flex-col gap-4">
                   {searchResults.map((doctor) => (
-                    <DoctorCard key={doctor.id} doctor={doctor} />
+                    <DoctorCard key={doctor.id} doctor={doctor} onBook={() => { setBookingDoctor(doctor); setBookingModalOpen(true) }} />
                   ))}
                 </div>
               </>
@@ -502,6 +507,17 @@ function DoctorsSearchContent() {
           </div>
         </div>
       </div>
+
+      {/* Booking Modal */}
+      {bookingModalOpen && bookingDoctor && (
+        <CreateBookingModal
+          isOpen={bookingModalOpen}
+          onClose={() => { setBookingModalOpen(false); setBookingDoctor(null) }}
+          onCreated={() => { setBookingModalOpen(false); setBookingDoctor(null) }}
+          defaultProviderType="DOCTOR"
+          defaultProvider={{ id: bookingDoctor.id, firstName: bookingDoctor.firstName, lastName: bookingDoctor.lastName }}
+        />
+      )}
     </div>
   )
 }

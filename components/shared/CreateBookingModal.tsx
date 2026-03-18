@@ -230,10 +230,10 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
             scheduledDate: selectedDate,
             scheduledTime: selectedTime,
             type: consultType,
-            reason,
-            serviceName: selectedService?.serviceName,
+            reason: reason || undefined,
+            serviceName: selectedService?.serviceName || undefined,
             servicePrice: selectedService?.defaultPrice,
-            specialty: selectedProvider.specializations?.[0] || selectedSpecialty,
+            specialty: selectedProvider.specializations?.[0] || selectedSpecialty || undefined,
           }
 
       const res = await fetch(endpoint, {

@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
-import { FaStethoscope, FaPills, FaFileAlt, FaShieldAlt, FaTimes, FaUser, FaChevronRight, FaPlus } from 'react-icons/fa'
+import { FaPills, FaFileAlt, FaShieldAlt, FaTimes, FaUser, FaChevronRight, FaPlus } from 'react-icons/fa'
 import { useProviderRoles } from '@/hooks/useProviderRoles'
 
-const ConsultationsContent = dynamic(() => import('@/components/health/MyConsultations'), { ssr: false, loading: () => <Loading /> })
 const PrescriptionsContent = dynamic(() => import('@/components/health/MyPrescriptions'), { ssr: false, loading: () => <Loading /> })
 const HealthRecordsContent = dynamic(() => import('@/components/health/MyHealthRecords'), { ssr: false, loading: () => <Loading /> })
 const InsuranceContent = dynamic(() => import('@/components/health/MyInsurance'), { ssr: false, loading: () => <Loading /> })
@@ -61,14 +60,10 @@ function ServiceBookingsList({ providerType, title }: { providerType: string; ti
 
 // Fixed data sections (not role-based)
 const FIXED_SECTIONS = [
-  { id: 'consult', label: 'Doctor Consultations', icon: FaStethoscope, color: 'text-blue-600', bgColor: 'bg-blue-50' },
   { id: 'rx', label: 'Prescriptions', icon: FaPills, color: 'text-purple-600', bgColor: 'bg-purple-50' },
   { id: 'records', label: 'Health Records', icon: FaFileAlt, color: 'text-gray-600', bgColor: 'bg-gray-50' },
   { id: 'insurance', label: 'Insurance', icon: FaShieldAlt, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
 ]
-
-/** Roles already handled by fixed sections — exclude from dynamic list */
-const FIXED_ROLE_TYPES = new Set(['DOCTOR'])
 
 const COLOR_MAP: Record<string, { text: string; bg: string }> = {
   blue: { text: 'text-blue-600', bg: 'bg-blue-50' },
@@ -86,17 +81,14 @@ const COLOR_MAP: Record<string, { text: string; bg: string }> = {
 }
 
 export default function MyHealthSidebar() {
-  const [activeSection, setActiveSection] = useState('consult')
+  const [activeSection, setActiveSection] = useState('rx')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showBookingModal, setShowBookingModal] = useState(false)
   const { roles } = useProviderRoles()
 
-  // Filter out roles already represented in fixed sections
-  const dynamicRoles = useMemo(() => roles.filter(r => !FIXED_ROLE_TYPES.has(r.role)), [roles])
-
-  // Build all sections: fixed + dynamic from DB
+  // Build all sections: fixed + dynamic from DB (all provider roles including Doctor)
   const allSections = useMemo(() => {
-    const dynamic = dynamicRoles.map(r => ({
+    const dynamic = roles.map(r => ({
       id: `role:${r.role}`,
       label: r.label,
       icon: FaUser,
@@ -108,7 +100,7 @@ export default function MyHealthSidebar() {
       ...FIXED_SECTIONS.map(s => ({ ...s, providerType: undefined as string | undefined })),
       ...dynamic,
     ]
-  }, [dynamicRoles])
+  }, [roles])
 
   const activeItem = allSections.find(s => s.id === activeSection) || allSections[0]
   const isProviderSection = activeSection.startsWith('role:')
@@ -157,11 +149,11 @@ export default function MyHealthSidebar() {
           </nav>
         </div>
 
-        {/* Dynamic role sections from DB (excluding Doctor — already in fixed) */}
+        {/* Dynamic role sections from DB (all provider roles including Doctor) */}
         <div className="px-2 pt-3">
           <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider px-2 mb-1">Provider Services</p>
           <nav className="space-y-0.5 pb-20">
-            {dynamicRoles.map(r => {
+            {roles.map(r => {
               const sectionId = `role:${r.role}`
               const colors = COLOR_MAP[r.color] || COLOR_MAP.gray
               return (
@@ -194,7 +186,6 @@ export default function MyHealthSidebar() {
         )}
 
         <div className="p-4">
-          {activeSection === 'consult' && <ConsultationsContent />}
           {activeSection === 'rx' && <PrescriptionsContent />}
           {activeSection === 'records' && <HealthRecordsContent />}
           {activeSection === 'insurance' && <InsuranceContent />}
