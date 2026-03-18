@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import AuthBookingLink from '@/components/booking/AuthBookingLink'
 import ConnectButton from '@/components/search/ConnectButton'
-import { FaSearch, FaFlask, FaStar, FaMapMarkerAlt, FaClock,FaCheckCircle, FaStarHalfAlt, FaShoppingCart, FaLock,  FaHome, FaExclamationTriangle, FaCertificate, FaHeadset,  FaHeart,  FaBaby, FaHandHoldingMedical,  FaVial, FaPercent,  FaUserMd,  FaFileAlt, FaTint, FaMicroscope, FaViruses, FaAmbulance,  FaClipboardList } from 'react-icons/fa'
+import { FaSearch, FaFlask, FaStar, FaMapMarkerAlt, FaClock, FaCheckCircle, FaShoppingCart, FaHome, FaExclamationTriangle, FaPercent, FaTint, FaMicroscope, FaHeart, FaHandHoldingMedical, FaUserMd, FaViruses, FaLock, FaBaby } from 'react-icons/fa'
 
 interface ApiLabTest {
   id: string
@@ -197,7 +197,7 @@ const EmptyState = ({ onClear }: EmptyStateProps) => {
       <FaFlask className="text-6xl text-gray-300 mx-auto mb-4" />
       <h3 className="text-xl font-semibold text-gray-700 mb-2">No lab tests found</h3>
       <p className="text-gray-500 mb-6">Try adjusting your search criteria or browse all categories</p>
-      <button 
+      <button
         onClick={onClear}
         className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
       >
@@ -216,15 +216,6 @@ export default function LabTestingPage() {
   const [searchResults, setSearchResults] = useState<ReturnType<typeof mapApiTestToUi>[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasSearched, setHasSearched] = useState(false)
-  const [cartCount] = useState(2)
-  const [searchExamples] = useState([
-    "Blood sugar test for diabetes",
-    "Cholesterol check",
-    "Complete blood count",
-    "Thyroid function test",
-    "Vitamin D deficiency",
-    "COVID-19 test for travel"
-  ])
 
   const fetchLabTests = useCallback(async () => {
     try {
@@ -276,10 +267,6 @@ export default function LabTestingPage() {
     setHasSearched(false)
   }
 
-  const handleExampleClick = (example: string) => {
-    setSearchQuery(example)
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white">
       <div className="container mx-auto px-4 py-8">
@@ -298,26 +285,9 @@ export default function LabTestingPage() {
                   />
                   <FaSearch className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 </div>
-                
-                {/* Example Searches */}
-                {!hasSearched && (
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-sm text-gray-500">Popular searches:</span>
-                    {searchExamples.map((example, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => handleExampleClick(example)}
-                        className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full transition-colors"
-                      >
-                        {example}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                
+
                 <div className="flex flex-col md:flex-row gap-4">
-                  <select 
+                  <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                     className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-colors"
@@ -331,8 +301,8 @@ export default function LabTestingPage() {
                     <option value="infectious">Infectious Disease</option>
                     <option value="cardiology">Heart Health</option>
                   </select>
-                  
-                  <button 
+
+                  <button
                     type="button"
                     onClick={handleSearch}
                     className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-2.5 rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all duration-200 font-medium flex items-center justify-center gap-2 min-w-[150px]"
@@ -340,56 +310,14 @@ export default function LabTestingPage() {
                     <FaSearch />
                     Find Tests
                   </button>
-                  
-                  <button className="bg-gradient-to-r from-green-600 to-teal-600 text-white px-6 py-2.5 rounded-xl hover:from-green-700 hover:to-teal-700 transition-all duration-200 font-medium flex items-center gap-2">
-                    <FaShoppingCart />
-                    Cart ({cartCount})
-                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        
-        {/* Trust Statistics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 mb-8">
-          <div className="bg-white rounded-lg shadow p-4 text-center">
-            <FaFlask className="text-3xl text-purple-600 mx-auto mb-2" />
-            <p className="text-lg font-bold text-gray-900">500+</p>
-            <p className="text-sm text-gray-600">Lab Tests</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center">
-            <FaHome className="text-3xl text-blue-600 mx-auto mb-2" />
-            <p className="text-lg font-bold text-gray-900">Free</p>
-            <p className="text-sm text-gray-600">Home Collection</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center">
-            <FaClock className="text-3xl text-green-600 mx-auto mb-2" />
-            <p className="text-lg font-bold text-gray-900">Same Day</p>
-            <p className="text-sm text-gray-600">Results</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center">
-            <FaCertificate className="text-3xl text-orange-600 mx-auto mb-2" />
-            <p className="text-lg font-bold text-gray-900">100%</p>
-            <p className="text-sm text-gray-600">Accurate</p>
-          </div>
-        </div>
-        
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
-          <div className="flex items-start gap-3">
-            <FaUserMd className="text-blue-600 text-xl mt-1 flex-shrink-0" />
-            <div>
-              <h4 className="font-semibold text-blue-800 mb-1">Medical Advisory</h4>
-              <p className="text-sm text-blue-700">
-                Lab tests should be ordered based on medical consultation. Some tests may require  prescription of doctor. 
-                Consult with our expert pathologists for test recommendations and result interpretation.
-              </p>
-            </div>
-          </div>
-        </div>
-        
+
         {/* Results Section */}
-        <div className="mt-12">
+        <div className="mt-8">
           {isLoading || isSearching ? (
             <LoadingAnimation />
           ) : searchResults.length > 0 ? (
@@ -407,7 +335,7 @@ export default function LabTestingPage() {
                   </button>
                 </div>
               )}
-              
+
               <div className="flex flex-col gap-4">
                 {searchResults.map((test) => (
                   <LabTestCard key={test.id} test={test} />
@@ -417,289 +345,6 @@ export default function LabTestingPage() {
           ) : hasSearched ? (
             <EmptyState onClear={handleClearFilters} />
           ) : null}
-        </div>
-        
-        {/* Test Categories */}
-        <div className="mt-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">Browse by Category</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            <div className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer text-center">
-              <FaTint className="text-3xl text-red-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-sm">Blood Tests</h3>
-            </div>
-            <div className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer text-center">
-              <FaHeart className="text-3xl text-pink-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-sm">Heart Health</h3>
-            </div>
-            <div className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer text-center">
-              <FaHandHoldingMedical className="text-3xl text-blue-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-sm">Diabetes</h3>
-            </div>
-            <div className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer text-center">
-              <FaUserMd className="text-3xl text-green-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-sm">Vitamins</h3>
-            </div>
-            <div className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer text-center">
-              <FaViruses className="text-3xl text-purple-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-sm">Infectious</h3>
-            </div>
-            <div className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer text-center">
-              <FaMicroscope className="text-3xl text-orange-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-sm">Hormones</h3>
-            </div>
-          </div>
-        </div>
-        
-        {/* Test Packages */}
-        <div className="mt-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">Popular Health Packages</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg p-6 shadow-lg border-2 border-blue-100">
-              <div className="text-center mb-4">
-                <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
-                  <FaHeart className="text-2xl text-blue-600" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Basic Health Checkup</h3>
-                <p className="text-gray-600 text-sm">Essential tests for overall health monitoring</p>
-              </div>
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span>CBC + ESR</span>
-                  <span>Rs 800</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Lipid Profile</span>
-                  <span>Rs 1200</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Blood Sugar</span>
-                  <span>Rs 400</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Kidney Function</span>
-                  <span>Rs 1300</span>
-                </div>
-              </div>
-              <div className="border-t pt-3">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-gray-500 line-through">Rs 3700</span>
-                  <span className="text-xl font-bold text-blue-600">Rs 2500</span>
-                </div>
-                <span className="text-green-600 text-sm font-medium">Save Rs 1200</span>
-                <button className="w-full mt-3 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                  Book Package
-                </button>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg p-6 shadow-lg border-2 border-purple-100">
-              <div className="text-center mb-4">
-                <div className="bg-purple-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
-                  <FaFlask className="text-2xl text-purple-600" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Comprehensive Package</h3>
-                <p className="text-gray-600 text-sm">Complete health assessment with major tests</p>
-              </div>
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span>Full Body Checkup</span>
-                  <span>Rs 4000</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Thyroid Panel</span>
-                  <span>Rs 1500</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Vitamin Profile</span>
-                  <span>Rs 2500</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Cancer Markers</span>
-                  <span>Rs 3000</span>
-                </div>
-              </div>
-              <div className="border-t pt-3">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-gray-500 line-through">Rs 11000</span>
-                  <span className="text-xl font-bold text-purple-600">Rs 7500</span>
-                </div>
-                <span className="text-green-600 text-sm font-medium">Save Rs 3500</span>
-                <button className="w-full mt-3 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors">
-                  Book Package
-                </button>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg p-6 shadow-lg border-2 border-green-100">
-              <div className="text-center mb-4">
-                <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
-                  <FaHandHoldingMedical className="text-2xl text-green-600" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Diabetes Care Package</h3>
-                <p className="text-gray-600 text-sm">Specialized tests for diabetes management</p>
-              </div>
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span>HbA1c</span>
-                  <span>Rs 1000</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Fasting Glucose</span>
-                  <span>Rs 400</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Lipid Profile</span>
-                  <span>Rs 1200</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Kidney Function</span>
-                  <span>Rs 1300</span>
-                </div>
-              </div>
-              <div className="border-t pt-3">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-gray-500 line-through">Rs 3900</span>
-                  <span className="text-xl font-bold text-green-600">Rs 2800</span>
-                </div>
-                <span className="text-green-600 text-sm font-medium">Save Rs 1100</span>
-                <button className="w-full mt-3 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors">
-                  Book Package
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* How It Works */}
-        <div className="mt-16 bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">How Lab Testing Works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className="bg-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <span className="text-2xl font-bold text-purple-600">1</span>
-              </div>
-              <h3 className="font-semibold mb-2">Select Tests</h3>
-              <p className="text-sm text-gray-600">Choose from 500+ lab tests or health packages</p>
-            </div>
-            <div className="text-center">
-              <div className="bg-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <span className="text-2xl font-bold text-purple-600">2</span>
-              </div>
-              <h3 className="font-semibold mb-2">Book Appointment</h3>
-              <p className="text-sm text-gray-600">Schedule home collection or visit our lab centers</p>
-            </div>
-            <div className="text-center">
-              <div className="bg-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <span className="text-2xl font-bold text-purple-600">3</span>
-              </div>
-              <h3 className="font-semibold mb-2">Sample Collection</h3>
-              <p className="text-sm text-gray-600">Trained phlebotomists collect samples safely</p>
-            </div>
-            <div className="text-center">
-              <div className="bg-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <span className="text-2xl font-bold text-purple-600">4</span>
-              </div>
-              <h3 className="font-semibold mb-2">Get Reports</h3>
-              <p className="text-sm text-gray-600">Receive accurate digital reports with doctor consultation</p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Lab Services */}
-        <div className="mt-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">Additional Services</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg p-6 shadow-lg">
-              <FaUserMd className="text-4xl text-blue-600 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Doctor Consultation</h3>
-              <p className="text-gray-600 text-sm mb-4">Free consultation with specialist doctors for report interpretation</p>
-              <button className="text-blue-600 font-medium text-sm">Consult Now →</button>
-            </div>
-            <div className="bg-white rounded-lg p-6 shadow-lg">
-              <FaHome className="text-4xl text-green-600 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Home Collection</h3>
-              <p className="text-gray-600 text-sm mb-4">Convenient sample collection at your home with trained professionals</p>
-              <button className="text-green-600 font-medium text-sm">Schedule Now →</button>
-            </div>
-            <div className="bg-white rounded-lg p-6 shadow-lg">
-              <FaFileAlt className="text-4xl text-purple-600 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Digital Reports</h3>
-              <p className="text-gray-600 text-sm mb-4">Secure digital reports accessible anytime with trend analysis</p>
-              <button className="text-purple-600 font-medium text-sm">View Sample →</button>
-            </div>
-          </div>
-        </div>
-        
-        {/* Customer Testimonials */}
-        <div className="mt-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">Patient Reviews</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg p-6 shadow-lg">
-              <div className="flex items-center gap-1 text-yellow-500 mb-3">
-                {[...Array(5)].map((_, i) => (
-                  <FaStar key={i} className="text-sm" />
-                ))}
-              </div>
-              <p className="text-gray-600 text-sm mb-4">Quick and accurate results. Home collection was very convenient and professional.</p>
-              <p className="font-semibold text-gray-900">- Ramesh K.</p>
-              <p className="text-xs text-gray-500">Port Louis</p>
-            </div>
-            <div className="bg-white rounded-lg p-6 shadow-lg">
-              <div className="flex items-center gap-1 text-yellow-500 mb-3">
-                {[...Array(5)].map((_, i) => (
-                  <FaStar key={i} className="text-sm" />
-                ))}
-              </div>
-              <p className="text-gray-600 text-sm mb-4">Excellent service! Got my diabetes panel results the same day with doctor consultation.</p>
-              <p className="font-semibold text-gray-900">- Anjali P.</p>
-              <p className="text-xs text-gray-500">Curepipe</p>
-            </div>
-            <div className="bg-white rounded-lg p-6 shadow-lg">
-              <div className="flex items-center gap-1 text-yellow-500 mb-3">
-                {[...Array(5)].map((_, i) => (
-                  <FaStar key={i} className="text-sm" />
-                ))}
-              </div>
-              <p className="text-gray-600 text-sm mb-4">Very affordable packages and transparent pricing. Digital reports are very detailed.</p>
-              <p className="font-semibold text-gray-900">- David L.</p>
-              <p className="text-xs text-gray-500">Rose Hill</p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Emergency Testing Banner */}
-        <div className="mt-16 bg-gradient-to-r from-red-600 to-orange-600 rounded-2xl p-8 text-white">
-          <h2 className="text-2xl font-bold mb-4">Need Emergency Lab Tests?</h2>
-          <p className="text-red-100 mb-6">
-            Our 24/7 emergency lab service provides critical test results when you need them most. 
-            Immediate collection and rapid processing for urgent medical situations.
-          </p>
-          <div className="flex gap-4">
-            <button className="bg-white text-red-700 px-6 py-3 rounded-lg font-medium hover:bg-red-50 transition-colors flex items-center gap-2">
-              <FaAmbulance />
-              Emergency Testing
-            </button>
-            <button className="border-2 border-white text-white px-6 py-3 rounded-lg font-medium hover:bg-white hover:text-red-700 transition-colors">
-              Call Hotline
-            </button>
-          </div>
-        </div>
-        
-        {/* Lab Partner Banner */}
-        <div className="mt-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
-          <h2 className="text-2xl font-bold mb-4">Are you a diagnostic lab?</h2>
-          <p className="text-blue-100 mb-6">
-            Partner with us to expand your reach and serve more patients across Mauritius. 
-            Join our network of certified laboratories and grow your business.
-          </p>
-          <div className="flex gap-4">
-            <button className="bg-white text-blue-700 px-6 py-3 rounded-lg font-medium hover:bg-blue-50 transition-colors">
-              Become a Partner →
-            </button>
-            <button className="border-2 border-white text-white px-6 py-3 rounded-lg font-medium hover:bg-white hover:text-blue-700 transition-colors">
-              Learn More
-            </button>
-          </div>
         </div>
       </div>
     </div>

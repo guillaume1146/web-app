@@ -266,18 +266,6 @@ function ProviderSearchContent({ config }: { config: ProviderSearchPageConfig })
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 mt-8 mb-8">
-          <div className="bg-white rounded-lg shadow p-4 text-center border border-blue-100">
-            <p className="text-2xl font-bold text-gray-900">{allProviders.length}</p>
-            <p className="text-sm text-gray-600">{config.title.replace('Find ', '')}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center border border-green-100">
-            <p className="text-2xl font-bold text-gray-900">{allProviders.filter(p => p.verified).length}</p>
-            <p className="text-sm text-gray-600">Verified</p>
-          </div>
-        </div>
-
         {/* Results */}
         <div className="flex-1 min-w-0">
           {isLoading ? (

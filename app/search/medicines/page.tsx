@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { FaSearch, FaPills, FaStar, FaMapMarkerAlt, FaClock, FaTruck, FaCheckCircle, FaStarHalfAlt, FaShoppingCart, FaLock,  FaLeaf, FaExclamationTriangle,  FaHeadset, FaUndo, FaHeart, FaBrain, FaBaby, FaEye, FaTooth, FaBone, FaHandHoldingMedical, FaMedkit, FaPercent,  FaPlus, FaMinus, FaTrash, FaHistory, FaTimes } from 'react-icons/fa'
+import { FaSearch, FaPills, FaStar, FaMapMarkerAlt, FaTruck, FaCheckCircle, FaShoppingCart, FaLock, FaLeaf, FaExclamationTriangle, FaHeart, FaBrain, FaBaby, FaEye, FaTooth, FaBone, FaHandHoldingMedical, FaMedkit, FaPercent, FaPlus, FaMinus, FaTrash, FaHistory, FaTimes } from 'react-icons/fa'
 import { useCart } from '@/app/search/medicines/contexts/CartContext'
 import { useSearchHistory } from '@/hooks/useSearchHistory'
 
@@ -404,15 +404,6 @@ function MedicinesContent() {
 
   const { history, addToHistory, removeFromHistory, clearHistory } = useSearchHistory()
 
-  const searchExamples = [
-    "Paracetamol for fever",
-    "Diabetes medication",
-    "Vitamin D supplements",
-    "Antibiotics for infection",
-    "Blood pressure medicine",
-    "Cough syrup for children"
-  ]
-
   const updateUrl = useCallback((q: string, cat: string) => {
     const params = new URLSearchParams()
     if (q) params.set('q', q)
@@ -468,10 +459,6 @@ function MedicinesContent() {
     setSearchResults(allMedicines)
     setHasSearched(false)
     router.replace(pathname, { scroll: false })
-  }
-
-  const handleExampleClick = (example: string) => {
-    setSearchQuery(example)
   }
 
   const handleHistoryClick = (entry: { query: string }) => {
@@ -549,23 +536,6 @@ function MedicinesContent() {
                   )}
                 </div>
 
-                {/* Example Searches */}
-                {!hasSearched && (
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-sm text-gray-500">Popular searches:</span>
-                    {searchExamples.map((example, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => handleExampleClick(example)}
-                        className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full transition-colors"
-                      >
-                        {example}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
                 <div className="flex flex-col md:flex-row gap-4">
                   <select
                     value={category}
@@ -593,43 +563,6 @@ function MedicinesContent() {
                 </div>
               </div>
             </form>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 mb-8">
-          <div className="bg-white rounded-lg shadow p-4 text-center">
-            <FaTruck className="text-3xl text-green-600 mx-auto mb-2" />
-            <p className="text-lg font-bold text-gray-900">2-4 Hours</p>
-            <p className="text-sm text-gray-600">Fast Delivery</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center">
-            <FaCheckCircle className="text-3xl text-blue-600 mx-auto mb-2" />
-            <p className="text-lg font-bold text-gray-900">100%</p>
-            <p className="text-sm text-gray-600">Authentic</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center">
-            <FaHeadset className="text-3xl text-purple-600 mx-auto mb-2" />
-            <p className="text-lg font-bold text-gray-900">24/7</p>
-            <p className="text-sm text-gray-600">Support</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center">
-            <FaUndo className="text-3xl text-orange-600 mx-auto mb-2" />
-            <p className="text-lg font-bold text-gray-900">Easy</p>
-            <p className="text-sm text-gray-600">Returns</p>
-          </div>
-        </div>
-        
-        {/* Medical Disclaimer */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
-          <div className="flex items-start gap-3">
-            <FaExclamationTriangle className="text-yellow-600 text-xl mt-1 flex-shrink-0" />
-            <div>
-              <h4 className="font-semibold text-yellow-800 mb-1">Important Medical Disclaimer</h4>
-              <p className="text-sm text-yellow-700">
-                This platform is for purchasing medicines only. Always consult with a qualified healthcare professional before taking any medication. 
-                Prescription medicines require a valid prescription from a licensed doctor.
-              </p>
-            </div>
           </div>
         </div>
         
@@ -664,36 +597,6 @@ function MedicinesContent() {
           ) : null}
         </div>
         
-        {/* Medicine Categories */}
-        <div className="mt-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">Browse by Category</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            <div className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer text-center">
-              <FaHandHoldingMedical className="text-3xl text-red-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-sm">Pain Relief</h3>
-            </div>
-            <div className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer text-center">
-              <FaHeart className="text-3xl text-pink-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-sm">Heart Health</h3>
-            </div>
-            <div className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer text-center">
-              <FaLock className="text-3xl text-blue-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-sm">Antibiotics</h3>
-            </div>
-            <div className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer text-center">
-              <FaLeaf className="text-3xl text-green-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-sm">Vitamins</h3>
-            </div>
-            <div className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer text-center">
-              <FaBaby className="text-3xl text-purple-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-sm">Children</h3>
-            </div>
-            <div className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer text-center">
-              <FaMedkit className="text-3xl text-orange-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-sm">Digestive</h3>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   )

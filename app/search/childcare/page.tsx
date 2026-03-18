@@ -160,15 +160,6 @@ export default function NanniesSearchPage() {
   const [allNannies, setAllNannies] = useState<Nanny[]>([])
   const [hasSearched, setHasSearched] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [searchExamples] = useState([
-    "Find infant care specialist near me",
-    "I need bilingual nanny for toddlers",
-    "Looking for after school care",
-    "Special needs childcare support",
-    "Overnight baby care services",
-    "Creative arts nanny available"
-  ])
-
   const fetchNannies = useCallback(async (query = '', spec = '') => {
     const params = new URLSearchParams()
     if (query) params.set('q', query)
@@ -199,10 +190,6 @@ export default function NanniesSearchPage() {
     setSpecialization('all')
     setSearchResults(allNannies)
     setHasSearched(false)
-  }
-
-  const handleExampleClick = (example: string) => {
-    setSearchQuery(example)
   }
 
   return (
@@ -264,50 +251,9 @@ export default function NanniesSearchPage() {
               </div>
             </div>
             
-            {/* Search Examples */}
-            {!hasSearched && (
-              <div className="mt-6">
-                <p className="text-sm text-gray-600 mb-3">Try searching for:</p>
-                <div className="flex flex-wrap gap-2">
-                  {searchExamples.map((example, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleExampleClick(example)}
-                      className="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-full hover:bg-purple-100 hover:text-purple-700 transition-colors"
-                    >
-                      {example}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
-        
-        {/* Statistics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 mb-8">
-          <div className="bg-white rounded-lg shadow p-4 text-center border border-purple-100">
-            <FaBaby className="text-3xl text-purple-600 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-gray-900">{allNannies.length}+</p>
-            <p className="text-sm text-gray-600">Verified Nannies</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center border border-yellow-100">
-            <FaStar className="text-3xl text-yellow-500 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-gray-900">4.8</p>
-            <p className="text-sm text-gray-600">Average Rating</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center border border-green-100">
-            <FaShieldAlt className="text-3xl text-green-600 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-gray-900">100%</p>
-            <p className="text-sm text-gray-600">Background Checked</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center border border-blue-100">
-            <FaCheckCircle className="text-3xl text-purple-600 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-gray-900">97%</p>
-            <p className="text-sm text-gray-600">Family Satisfaction</p>
-          </div>
-        </div>
-        
+
         {/* Results */}
         <div className="mt-12">
           {isLoading || isSearching ? (

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { FaSearch, FaAmbulance, FaStar, FaMapMarkerAlt, FaClock, FaPhone, FaExclamationTriangle, FaHospital, FaFireExtinguisher, FaHeartbeat, FaShieldAlt, FaCheckCircle, FaInfoCircle, FaBell, FaStarHalfAlt, FaEnvelope, FaIdCard, FaHelicopter, FaTruck, FaWifi, FaPhoneAlt } from 'react-icons/fa'
+import { FaSearch, FaAmbulance, FaStar, FaMapMarkerAlt, FaClock, FaExclamationTriangle, FaHospital, FaFireExtinguisher, FaHeartbeat, FaShieldAlt, FaCheckCircle, FaBell, FaHelicopter, FaTruck, FaWifi } from 'react-icons/fa'
 
 import { IconType } from 'react-icons'
 import AuthBookingLink from '@/components/booking/AuthBookingLink'
@@ -179,34 +179,15 @@ const EmptyState = ({ onClear }: { onClear: () => void }) => {
   )
 }
 
-// Booking status filter tabs
-const STATUS_FILTERS = [
-  { value: 'all', label: 'All Services' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'dispatched', label: 'Dispatched' },
-  { value: 'on-scene', label: 'On Scene' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
-]
-
 // Main Component
 export default function EmergencyPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [category, setCategory] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
   const [isSearching, setIsSearching] = useState(false)
   const [allServices, setAllServices] = useState<EmergencyService[]>([])
   const [searchResults, setSearchResults] = useState<EmergencyService[]>([])
   const [hasSearched, setHasSearched] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [searchExamples] = useState([
-    "Need ambulance now",
-    "Fire emergency",
-    "Poison control",
-    "Mental health crisis",
-    "Water rescue",
-    "Air ambulance"
-  ])
 
   const fetchServices = useCallback(async () => {
     try {
@@ -298,38 +279,12 @@ export default function EmergencyPage() {
   const handleClearFilters = () => {
     setSearchQuery('')
     setCategory('all')
-    setStatusFilter('all')
     setSearchResults(allServices)
     setHasSearched(false)
   }
 
-  const handleExampleClick = (example: string) => {
-    setSearchQuery(example)
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-
-      {/* Emergency Numbers Banner */}
-      <div className="bg-blue-900 text-white py-3">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
-            <span className="text-blue-200 font-medium">Real Emergency? Call:</span>
-            <a href="tel:114" className="flex items-center gap-2 hover:text-yellow-300 transition-colors">
-              <FaAmbulance /> SAMU: <strong>114</strong>
-            </a>
-            <a href="tel:115" className="flex items-center gap-2 hover:text-yellow-300 transition-colors">
-              <FaFireExtinguisher /> Fire: <strong>115</strong>
-            </a>
-            <a href="tel:999" className="flex items-center gap-2 hover:text-yellow-300 transition-colors">
-              <FaShieldAlt /> Police: <strong>999</strong>
-            </a>
-            <a href="tel:112" className="flex items-center gap-2 hover:text-yellow-300 transition-colors">
-              <FaHospital /> Hospital: <strong>112</strong>
-            </a>
-          </div>
-        </div>
-      </div>
 
       <div className="container mx-auto px-4 py-8">
         {/* Search Section */}
@@ -346,23 +301,6 @@ export default function EmergencyPage() {
                 />
                 <FaSearch className="absolute right-4 top-1/2 transform -translate-y-1/2 text-blue-400" />
               </div>
-
-              {/* Example Searches */}
-              {!hasSearched && (
-                <div className="flex flex-wrap gap-2">
-                  <span className="text-sm text-gray-500">Quick search:</span>
-                  {searchExamples.map((example, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => handleExampleClick(example)}
-                      className="text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1 rounded-full transition-colors"
-                    >
-                      {example}
-                    </button>
-                  ))}
-                </div>
-              )}
 
               <div className="flex flex-col md:flex-row gap-4">
                 <select
@@ -390,23 +328,6 @@ export default function EmergencyPage() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Status Filter Tabs */}
-        <div className="mt-6 flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((filter) => (
-            <button
-              key={filter.value}
-              onClick={() => setStatusFilter(filter.value)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                statusFilter === filter.value
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-blue-50 hover:text-blue-600'
-              }`}
-            >
-              {filter.label}
-            </button>
-          ))}
         </div>
 
         {/* Results Section */}
@@ -440,15 +361,6 @@ export default function EmergencyPage() {
           ) : null}
         </div>
 
-        {/* Disclaimer */}
-        <div className="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-gray-600 text-center">
-            <strong>Note:</strong> This is a booking platform for emergency services. In a life-threatening emergency, always call{' '}
-            <a href="tel:114" className="text-blue-600 font-semibold hover:underline">114</a> (SAMU),{' '}
-            <a href="tel:115" className="text-blue-600 font-semibold hover:underline">115</a> (Fire), or{' '}
-            <a href="tel:999" className="text-blue-600 font-semibold hover:underline">999</a> (Police) directly.
-          </p>
-        </div>
       </div>
     </div>
   )

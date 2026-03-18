@@ -183,15 +183,6 @@ function DoctorsSearchContent() {
 
   const { history, addToHistory, removeFromHistory, clearHistory } = useSearchHistory()
 
-  const searchExamples = [
-    "Find a heart specialist near me",
-    "I need a pediatrician for my baby",
-    "Looking for skin doctor",
-    "Neurologist for migraine treatment",
-    "Doctor who speaks French",
-    "Weekend availability doctor"
-  ]
-
   const updateUrl = useCallback((q: string, f: SearchFilterValues) => {
     const params = new URLSearchParams()
     if (q) params.set('q', q)
@@ -302,10 +293,6 @@ function DoctorsSearchContent() {
     router.replace(pathname, { scroll: false })
   }
 
-  const handleExampleClick = (example: string) => {
-    setSearchQuery(example)
-  }
-
   const handleHistoryClick = (entry: { query: string }) => {
     setSearchQuery(entry.query)
     setShowHistory(false)
@@ -411,60 +398,8 @@ function DoctorsSearchContent() {
               </div>
             </form>
 
-            {/* Search Examples */}
-            {!hasSearched && (
-              <div className="mt-6">
-                <p className="text-sm text-gray-600 mb-3">Try searching for:</p>
-                <div className="flex flex-wrap gap-2">
-                  {searchExamples.map((example, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleExampleClick(example)}
-                      className="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-full hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                    >
-                      {example}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
-
-        {/* Statistics (computed from actual data) */}
-        {(() => {
-          const avgRating = allDoctors.length > 0
-            ? (allDoctors.reduce((sum, d) => sum + (d.rating || 0), 0) / allDoctors.length).toFixed(1)
-            : '0.0'
-          const verifiedPct = allDoctors.length > 0
-            ? Math.round((allDoctors.filter(d => d.verified).length / allDoctors.length) * 100)
-            : 0
-          const totalReviews = allDoctors.reduce((sum, d) => sum + (d.reviews || 0), 0)
-          return (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 mb-8">
-              <div className="bg-white rounded-lg shadow p-4 text-center border border-blue-100">
-                <FaUserMd className="text-3xl text-blue-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">{allDoctors.length}</p>
-                <p className="text-sm text-gray-600">Verified Doctors</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-4 text-center border border-green-100">
-                <FaStar className="text-3xl text-yellow-500 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">{avgRating}</p>
-                <p className="text-sm text-gray-600">Average Rating</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-4 text-center border border-purple-100">
-                <FaShieldAlt className="text-3xl text-green-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">{verifiedPct}%</p>
-                <p className="text-sm text-gray-600">Verified & Licensed</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-4 text-center border border-orange-100">
-                <FaCheckCircle className="text-3xl text-blue-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">{totalReviews.toLocaleString()}</p>
-                <p className="text-sm text-gray-600">Patient Reviews</p>
-              </div>
-            </div>
-          )
-        })()}
 
         {/* Filters + Results */}
         <div className="flex flex-col lg:flex-row gap-6 mt-6">
