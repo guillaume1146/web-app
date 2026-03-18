@@ -122,14 +122,14 @@ const DoctorCard = ({ doctor }: DoctorProps) => {
           </div>
           <div className="flex items-center gap-2">
             <Link href={`/search/doctors/${doctor.id}`} className="flex-1 sm:flex-none">
-              <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium transition-colors">
+              <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors">
                 Details
               </button>
             </Link>
-            <AuthBookingLink type="doctor" providerId={doctor.id} className="flex-1 sm:flex-none bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors text-center">
+            <AuthBookingLink type="doctor" providerId={doctor.id} className="flex-1 sm:flex-none bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors text-center">
               Book
             </AuthBookingLink>
-            <ConnectButton providerId={doctor.id} className="flex-1 sm:flex-none !px-3 !py-2 !text-xs" />
+            <ConnectButton providerId={doctor.id} className="flex-1 sm:flex-none !px-4 !py-2.5 !text-sm" />
           </div>
         </div>
       </div>

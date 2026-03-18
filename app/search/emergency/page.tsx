@@ -128,14 +128,14 @@ const EmergencyCard = ({ service }: { service: EmergencyService }) => {
             </a>
           </div>
           <div className="flex items-center gap-2">
-            <CallButton providerId={service.id} className="flex-1 sm:flex-none !px-3 !py-2 !text-xs" />
+            <CallButton providerId={service.id} className="flex-1 sm:flex-none !px-4 !py-2.5 !text-sm" />
             <AuthBookingLink
               type="emergency"
-              className="flex-1 sm:flex-none bg-teal-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-teal-700 transition-colors text-center"
+              className="flex-1 sm:flex-none bg-teal-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-teal-700 transition-colors text-center"
             >
               Book
             </AuthBookingLink>
-            <ConnectButton providerId={service.id} className="flex-1 sm:flex-none !px-3 !py-2 !text-xs" />
+            <ConnectButton providerId={service.id} className="flex-1 sm:flex-none !px-4 !py-2.5 !text-sm" />
           </div>
         </div>
       </div>

@@ -88,15 +88,15 @@ const ProviderCard = ({ provider, slug, accentColor, onBook }: { provider: Provi
         <div className="flex flex-col items-stretch sm:items-end gap-2 flex-shrink-0 sm:border-l sm:border-gray-100 sm:pl-4 border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0">
           <div className="flex items-center gap-2">
             <Link href={`/search/${slug}/${provider.id}`} className="flex-1 sm:flex-none">
-              <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium transition-colors">
+              <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors">
                 Details
               </button>
             </Link>
             <button onClick={onBook}
-              className="flex-1 sm:flex-none bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors text-center">
+              className="flex-1 sm:flex-none bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors text-center">
               Book
             </button>
-            <ConnectButton providerId={provider.id} className="flex-1 sm:flex-none !px-3 !py-2 !text-xs" />
+            <ConnectButton providerId={provider.id} className="flex-1 sm:flex-none !px-4 !py-2.5 !text-sm" />
           </div>
         </div>
       </div>

@@ -279,7 +279,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       <div className="h-0.5 bg-gradient-to-r from-primary-blue via-primary-teal to-secondary-green" />
       <div className="bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100">
       <div className="px-2 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-3 md:py-2.5">
-        <div className="flex items-center justify-between gap-1 overflow-hidden">
+        <div className="flex items-center justify-between gap-1">
           {/* Left: mobile toggle + logo + user info */}
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
             <button
