@@ -83,13 +83,14 @@ export default function MobileSwipeWrapper({ children, sectionLabels }: MobileSw
         onTouchEnd={handleTouchEnd}
       >
         <div
-          className="flex transition-transform duration-300 ease-out"
+          className="flex transition-transform duration-300 ease-out h-full"
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
         >
           {children.map((child, i) => (
             <div
               key={i}
-              className="w-full flex-shrink-0 h-full overflow-hidden flex flex-col items-center justify-center px-4 pb-14"
+              className="w-full flex-shrink-0 h-full overflow-hidden px-2 pb-14"
+              style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', maxHeight: '100%' }}
             >
               {child}
             </div>

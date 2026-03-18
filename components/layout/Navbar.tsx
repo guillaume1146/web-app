@@ -34,8 +34,13 @@ const serviceCategories = {
     { href: '/search/nurses', label: 'Nursing Care', desc: 'Home visits & health monitoring', icon: FaUserNurse, color: 'from-purple-500 to-purple-600' },
     { href: '/search/childcare', label: 'Childcare', desc: 'Trusted nannies & child services', icon: FaBaby, color: 'from-pink-500 to-pink-600' },
     { href: '/search/emergency', label: 'Emergency', desc: 'Ambulance & first response', icon: FaAmbulance, color: 'from-red-500 to-red-600' },
+    { href: '/search/caregivers', label: 'Caregivers', desc: 'Elder & disability home care', icon: FaUser, color: 'from-teal-500 to-teal-600' },
   ],
   'Medical Services': [
+    { href: '/search/dentists', label: 'Dentists', desc: 'Dental care & oral health', icon: FaUser, color: 'from-sky-500 to-sky-600' },
+    { href: '/search/optometrists', label: 'Eye Care', desc: 'Vision testing & eye health', icon: FaUser, color: 'from-violet-500 to-violet-600' },
+    { href: '/search/physiotherapists', label: 'Physio', desc: 'Rehabilitation & therapy', icon: FaUser, color: 'from-lime-500 to-lime-600' },
+    { href: '/search/nutritionists', label: 'Nutrition', desc: 'Diet plans & counseling', icon: FaUser, color: 'from-yellow-500 to-yellow-600' },
     { href: '/search/medicines', label: 'Medicines', desc: 'Order & get delivered', icon: FaPills, color: 'from-orange-500 to-orange-600' },
     { href: '/search/lab', label: 'Lab Testing', desc: 'Book tests & view results', icon: FaFlask, color: 'from-cyan-500 to-cyan-600' },
     { href: '/search/insurance', label: 'Insurance', desc: 'Health coverage plans', icon: FaShieldAlt, color: 'from-indigo-500 to-indigo-600' },
