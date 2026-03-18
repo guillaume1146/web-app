@@ -15,10 +15,15 @@ vi.mock('@/lib/rate-limit', () => ({
   rateLimitAuth: vi.fn(() => null),
 }))
 
+vi.mock('@/lib/subscription/usage', () => ({
+  getUsageSummary: vi.fn(),
+  trackConsultationUsage: vi.fn(),
+}))
+
 import { GET } from '../users/[id]/subscription/route'
 import { POST } from '../users/[id]/subscription/check/route'
-import prisma from '@/lib/db'
 import { validateRequest } from '@/lib/auth/validate'
+import { getUsageSummary, trackConsultationUsage } from '@/lib/subscription/usage'
 import { NextRequest } from 'next/server'
 
 const mockParams = (id: string) => ({ params: Promise.resolve({ id }) })
@@ -50,7 +55,11 @@ describe('GET /api/users/[id]/subscription', () => {
 
   it('returns no subscription when none exists', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'patient', email: 'u@ex.com' })
-    vi.mocked(prisma.userSubscription.findUnique).mockResolvedValue(null)
+    vi.mocked(getUsageSummary).mockResolvedValue({
+      hasSubscription: false,
+      plan: null,
+      usage: null,
+    })
 
     const res = await GET(
       new NextRequest('http://localhost:3000/api/users/user-1/subscription'),
@@ -64,8 +73,8 @@ describe('GET /api/users/[id]/subscription', () => {
 
   it('returns subscription with usage data', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'patient', email: 'u@ex.com' })
-    vi.mocked(prisma.userSubscription.findUnique).mockResolvedValue({
-      id: 'sub-1',
+    vi.mocked(getUsageSummary).mockResolvedValue({
+      hasSubscription: true,
       status: 'active',
       startDate: new Date(),
       endDate: null,
@@ -77,15 +86,17 @@ describe('GET /api/users/[id]/subscription', () => {
         type: 'individual',
         price: 250,
         currency: 'MUR',
-        gpConsultsPerMonth: 1,
-        specialistConsultsPerMonth: 0,
+        quotas: [{ role: 'DOCTOR', specialty: 'General Practice', limit: 1 }],
+        discounts: null,
         features: ['Chat with a doctor'],
       },
-    } as never)
-    vi.mocked(prisma.subscriptionUsage.findUnique).mockResolvedValue({
-      gpConsultsUsed: 0,
-      specialistConsultsUsed: 0,
-    } as never)
+      usage: {
+        month: '2026-03',
+        quotas: [
+          { key: 'DOCTOR:General Practice', label: 'General Practice', used: 0, limit: 1 },
+        ],
+      },
+    })
 
     const res = await GET(
       new NextRequest('http://localhost:3000/api/users/user-1/subscription'),
@@ -96,7 +107,7 @@ describe('GET /api/users/[id]/subscription', () => {
     expect(res.status).toBe(200)
     expect(json.data.hasSubscription).toBe(true)
     expect(json.data.plan.name).toBe('Essential')
-    expect(json.data.usage.gpConsultsLimit).toBe(1)
+    expect(json.data.usage.quotas[0].limit).toBe(1)
   })
 })
 
@@ -110,7 +121,7 @@ describe('POST /api/users/[id]/subscription/check', () => {
       new NextRequest('http://localhost:3000/api/users/user-1/subscription/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consultType: 'gp' }),
+        body: JSON.stringify({ role: 'DOCTOR', specialty: 'General Practice' }),
       }),
       mockParams('user-1')
     )
@@ -118,7 +129,7 @@ describe('POST /api/users/[id]/subscription/check', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns 400 for invalid consultType', async () => {
+  it('returns 400 for invalid body (missing role)', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'patient', email: 'u@ex.com' })
 
     const res = await POST(
@@ -135,13 +146,18 @@ describe('POST /api/users/[id]/subscription/check', () => {
 
   it('allows consultation when no subscription (full price)', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'patient', email: 'u@ex.com' })
-    vi.mocked(prisma.userSubscription.findUnique).mockResolvedValue(null)
+    vi.mocked(trackConsultationUsage).mockResolvedValue({
+      allowed: true,
+      remaining: 0,
+      covered: false,
+      message: 'No active subscription — full price applies.',
+    })
 
     const res = await POST(
       new NextRequest('http://localhost:3000/api/users/user-1/subscription/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consultType: 'gp' }),
+        body: JSON.stringify({ role: 'DOCTOR', specialty: 'General Practice' }),
       }),
       mockParams('user-1')
     )
@@ -152,25 +168,20 @@ describe('POST /api/users/[id]/subscription/check', () => {
     expect(json.data.remaining).toBe(0)
   })
 
-  it('tracks GP usage when within limit', async () => {
+  it('tracks usage when within limit', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'patient', email: 'u@ex.com' })
-    vi.mocked(prisma.userSubscription.findUnique).mockResolvedValue({
-      id: 'sub-1',
-      status: 'active',
-      plan: { gpConsultsPerMonth: 1, specialistConsultsPerMonth: 0, name: 'Essential' },
-    } as never)
-    vi.mocked(prisma.subscriptionUsage.findUnique).mockResolvedValue({
-      id: 'usage-1',
-      gpConsultsUsed: 0,
-      specialistConsultsUsed: 0,
-    } as never)
-    vi.mocked(prisma.subscriptionUsage.update).mockResolvedValue({} as never)
+    vi.mocked(trackConsultationUsage).mockResolvedValue({
+      allowed: true,
+      remaining: 0,
+      covered: true,
+      message: 'Free General Practice consultation (0 remaining this month).',
+    })
 
     const res = await POST(
       new NextRequest('http://localhost:3000/api/users/user-1/subscription/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consultType: 'gp' }),
+        body: JSON.stringify({ role: 'DOCTOR', specialty: 'General Practice' }),
       }),
       mockParams('user-1')
     )
@@ -178,28 +189,23 @@ describe('POST /api/users/[id]/subscription/check', () => {
 
     expect(res.status).toBe(200)
     expect(json.data.allowed).toBe(true)
-    expect(json.data.remaining).toBe(0) // 1 limit - 0 used - 1 tracked = 0 remaining
-    expect(prisma.subscriptionUsage.update).toHaveBeenCalled()
+    expect(json.data.remaining).toBe(0)
   })
 
-  it('allows but signals full price when over limit', async () => {
+  it('allows but signals standard rate when over limit', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'patient', email: 'u@ex.com' })
-    vi.mocked(prisma.userSubscription.findUnique).mockResolvedValue({
-      id: 'sub-1',
-      status: 'active',
-      plan: { gpConsultsPerMonth: 1, specialistConsultsPerMonth: 0, name: 'Essential' },
-    } as never)
-    vi.mocked(prisma.subscriptionUsage.findUnique).mockResolvedValue({
-      id: 'usage-1',
-      gpConsultsUsed: 1,
-      specialistConsultsUsed: 0,
-    } as never)
+    vi.mocked(trackConsultationUsage).mockResolvedValue({
+      allowed: true,
+      remaining: 0,
+      covered: false,
+      message: 'Monthly General Practice consultations used — standard rate applies.',
+    })
 
     const res = await POST(
       new NextRequest('http://localhost:3000/api/users/user-1/subscription/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consultType: 'gp' }),
+        body: JSON.stringify({ role: 'DOCTOR', specialty: 'General Practice' }),
       }),
       mockParams('user-1')
     )

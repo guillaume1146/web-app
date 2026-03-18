@@ -33,7 +33,6 @@ export async function GET(
             id: true,
             specialty: true,
             subSpecialties: true,
-            category: true,
             bio: true,
             experience: true,
             languages: true,

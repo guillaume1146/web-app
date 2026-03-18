@@ -8,6 +8,7 @@ vi.mock('@/lib/db', () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    subscriptionPlanService: { findFirst: vi.fn() },
   },
 }))
 
@@ -21,134 +22,139 @@ const mockPrisma = prisma as unknown as {
     create: ReturnType<typeof vi.fn>
     update: ReturnType<typeof vi.fn>
   }
+  subscriptionPlanService: { findFirst: ReturnType<typeof vi.fn> }
 }
 
 const makePlan = (overrides = {}) => ({
-  gpConsultsPerMonth: 1,
-  specialistConsultsPerMonth: 0,
-  nurseConsultsPerMonth: 2,
-  mentalHealthConsultsPerMonth: 1,
-  nutritionConsultsPerMonth: 1,
-  ambulanceFreePerMonth: 0,
   name: 'Plus',
+  quotas: [
+    { role: 'DOCTOR', specialty: 'General Practice', limit: 1 },
+    { role: 'NURSE', limit: 2 },
+    { role: 'DOCTOR', specialty: 'Psychiatry', limit: 1 },
+    { role: 'EMERGENCY_WORKER', limit: 0 },
+  ],
   discounts: { lab: 10, pharmacy: 5 },
   ...overrides,
 })
 
 const makeUsage = (overrides = {}) => ({
   id: 'usage-1',
-  gpConsultsUsed: 0,
-  specialistConsultsUsed: 0,
-  nurseConsultsUsed: 0,
-  mentalHealthConsultsUsed: 0,
-  nutritionConsultsUsed: 0,
-  ambulanceUsed: 0,
+  usageData: {},
   ...overrides,
 })
 
-describe('trackConsultationUsage — expanded types', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+describe('trackConsultationUsage — flexible quotas', () => {
+  beforeEach(() => vi.clearAllMocks())
 
-  it('should track nurse consultation within limit', async () => {
+  it('tracks nurse consultation within limit', async () => {
     mockPrisma.userSubscription.findUnique.mockResolvedValue({
       id: 'sub-1', status: 'active', plan: makePlan(),
     })
     mockPrisma.subscriptionUsage.findUnique.mockResolvedValue(makeUsage())
     mockPrisma.subscriptionUsage.update.mockResolvedValue({})
 
-    const result = await trackConsultationUsage('user-1', 'nurse')
+    const result = await trackConsultationUsage('user-1', { role: 'NURSE' })
     expect(result.allowed).toBe(true)
-    expect(result.remaining).toBe(1) // 2 limit - 0 used - 1 = 1
-    expect(result.message).toContain('Free nurse consultation')
+    expect(result.covered).toBe(true)
+    expect(result.remaining).toBe(1)
   })
 
-  it('should return full price when nurse consults used up', async () => {
+  it('returns full price when nurse quota exhausted', async () => {
     mockPrisma.userSubscription.findUnique.mockResolvedValue({
       id: 'sub-1', status: 'active', plan: makePlan(),
     })
-    mockPrisma.subscriptionUsage.findUnique.mockResolvedValue(makeUsage({ nurseConsultsUsed: 2 }))
+    mockPrisma.subscriptionUsage.findUnique.mockResolvedValue(makeUsage({ usageData: { NURSE: 2 } }))
 
-    const result = await trackConsultationUsage('user-1', 'nurse')
-    expect(result.allowed).toBe(true)
+    const result = await trackConsultationUsage('user-1', { role: 'NURSE' })
+    expect(result.covered).toBe(false)
     expect(result.remaining).toBe(0)
-    expect(result.message).toContain('standard rate')
   })
 
-  it('should track mental health consultation', async () => {
+  it('tracks doctor specialty consultation', async () => {
     mockPrisma.userSubscription.findUnique.mockResolvedValue({
       id: 'sub-1', status: 'active', plan: makePlan(),
     })
     mockPrisma.subscriptionUsage.findUnique.mockResolvedValue(makeUsage())
     mockPrisma.subscriptionUsage.update.mockResolvedValue({})
 
-    const result = await trackConsultationUsage('user-1', 'mental_health')
-    expect(result.allowed).toBe(true)
+    const result = await trackConsultationUsage('user-1', { role: 'DOCTOR', specialty: 'Psychiatry' })
+    expect(result.covered).toBe(true)
     expect(result.remaining).toBe(0) // 1 limit - 0 used - 1 = 0
   })
 
-  it('should handle ambulance not included (0 limit)', async () => {
+  it('handles role not included (0 limit)', async () => {
     mockPrisma.userSubscription.findUnique.mockResolvedValue({
       id: 'sub-1', status: 'active', plan: makePlan(),
     })
     mockPrisma.subscriptionUsage.findUnique.mockResolvedValue(makeUsage())
 
-    const result = await trackConsultationUsage('user-1', 'ambulance')
-    expect(result.allowed).toBe(true)
+    const result = await trackConsultationUsage('user-1', { role: 'EMERGENCY_WORKER' })
+    expect(result.covered).toBe(false)
     expect(result.remaining).toBe(0)
-    expect(result.message).toContain('not included')
   })
 
-  it('should handle unlimited (-1) nurse consults', async () => {
+  it('handles unlimited (-1) quota', async () => {
     mockPrisma.userSubscription.findUnique.mockResolvedValue({
-      id: 'sub-1', status: 'active', plan: makePlan({ nurseConsultsPerMonth: -1 }),
+      id: 'sub-1', status: 'active', plan: makePlan({
+        quotas: [{ role: 'NURSE', limit: -1 }],
+      }),
     })
     mockPrisma.subscriptionUsage.findUnique.mockResolvedValue(makeUsage())
 
-    const result = await trackConsultationUsage('user-1', 'nurse')
-    expect(result.allowed).toBe(true)
+    const result = await trackConsultationUsage('user-1', { role: 'NURSE' })
+    expect(result.covered).toBe(true)
     expect(result.remaining).toBe(-1)
-    expect(result.message).toContain('Unlimited')
   })
 
-  it('should return full price for no subscription', async () => {
+  it('returns full price for no subscription', async () => {
     mockPrisma.userSubscription.findUnique.mockResolvedValue(null)
 
-    const result = await trackConsultationUsage('user-1', 'gp')
-    expect(result.allowed).toBe(true)
+    const result = await trackConsultationUsage('user-1', { role: 'DOCTOR', specialty: 'General Practice' })
+    expect(result.covered).toBe(false)
     expect(result.remaining).toBe(0)
-    expect(result.message).toContain('No active subscription')
+  })
+
+  it('handles new role (CAREGIVER) in quotas', async () => {
+    mockPrisma.userSubscription.findUnique.mockResolvedValue({
+      id: 'sub-1', status: 'active', plan: makePlan({
+        quotas: [{ role: 'CAREGIVER', limit: 3 }],
+      }),
+    })
+    mockPrisma.subscriptionUsage.findUnique.mockResolvedValue(makeUsage())
+    mockPrisma.subscriptionUsage.update.mockResolvedValue({})
+
+    const result = await trackConsultationUsage('user-1', { role: 'CAREGIVER' })
+    expect(result.covered).toBe(true)
+    expect(result.remaining).toBe(2)
   })
 })
 
-describe('getSubscriptionDiscount', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+describe('getSubscriptionDiscount — flexible', () => {
+  beforeEach(() => vi.clearAllMocks())
 
-  it('should return discount for lab services', async () => {
+  it('returns discount for service type', async () => {
     mockPrisma.userSubscription.findUnique.mockResolvedValue({
-      status: 'active',
+      status: 'active', planId: 'p1',
       plan: { discounts: { lab: 10, pharmacy: 5 }, name: 'Plus' },
     })
+    mockPrisma.subscriptionPlanService.findFirst.mockResolvedValue(null)
 
     const result = await getSubscriptionDiscount('user-1', 'lab')
     expect(result.discountPercent).toBe(10)
-    expect(result.message).toContain('10%')
   })
 
-  it('should return 0 for services without discount', async () => {
+  it('returns discount for role:specialty key', async () => {
     mockPrisma.userSubscription.findUnique.mockResolvedValue({
-      status: 'active',
-      plan: { discounts: { lab: 10 }, name: 'Plus' },
+      status: 'active', planId: 'p1',
+      plan: { discounts: { 'DOCTOR:Cardiology': 20 }, name: 'Premium' },
     })
+    mockPrisma.subscriptionPlanService.findFirst.mockResolvedValue(null)
 
-    const result = await getSubscriptionDiscount('user-1', 'specialist')
-    expect(result.discountPercent).toBe(0)
+    const result = await getSubscriptionDiscount('user-1', 'specialist', undefined, { role: 'DOCTOR', specialty: 'Cardiology' })
+    expect(result.discountPercent).toBe(20)
   })
 
-  it('should return 0 for no subscription', async () => {
+  it('returns 0 for no subscription', async () => {
     mockPrisma.userSubscription.findUnique.mockResolvedValue(null)
 
     const result = await getSubscriptionDiscount('user-1', 'lab')

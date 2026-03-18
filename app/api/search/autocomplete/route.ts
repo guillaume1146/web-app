@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         results.push({
           id: doc.user.id,
           label: `Dr. ${doc.user.firstName} ${doc.user.lastName}`,
-          sublabel: doc.specialty.join(', ') || doc.category,
+          sublabel: doc.specialty.join(', ') || 'General Practice',
           category: 'doctors',
           href: `/search/doctors/${doc.user.id}`,
           image: doc.user.profileImage,

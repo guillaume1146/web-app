@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
           const searchable = [
             user.firstName, user.lastName, ...doc.specialty,
             doc.bio, ...doc.languages, ...doc.subSpecialties,
-            doc.location, doc.category, ...(doc.specialInterests || []),
+            doc.location, ...(doc.specialInterests || []),
           ].map(s => (s || '').toLowerCase())
 
           if (!searchable.some(s => s.includes(lq))) continue
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
           experience: doc.experience,
           consultationTypes: doc.consultationTypes,
           emergencyAvailable: doc.emergencyAvailable,
-          category: doc.category,
+          category: doc.specialty[0] || 'General Practice',
           detailHref: `/search/doctors/${user.id}`,
         })
       }

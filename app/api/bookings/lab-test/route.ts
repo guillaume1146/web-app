@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     const costCheck = await checkBookingCost({
       patientUserId: auth.sub,
       baseFee: fee,
-      consultType: 'gp', // lab tests don't have own quota type, use gp as fallback
+      provider: { role: 'LAB_TECHNICIAN' },
       serviceType: 'lab',
     })
     if (!costCheck.sufficient) {

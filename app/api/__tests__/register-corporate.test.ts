@@ -94,10 +94,10 @@ describe('POST /api/auth/register — corporate enrollment', () => {
     expect(json.message).toContain('corporate administrator')
   })
 
-  it('creates doctor with specialist category', async () => {
+  it('creates doctor with given specialization', async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
 
-    let capturedCategory = ''
+    let capturedSpecialty: string[] = []
 
     vi.mocked(prisma.$transaction).mockImplementation(async (fn: unknown) => {
       const tx = {
@@ -106,8 +106,8 @@ describe('POST /api/auth/register — corporate enrollment', () => {
           update: vi.fn(),
         },
         doctorProfile: {
-          create: vi.fn().mockImplementation((args: { data: { category: string } }) => {
-            capturedCategory = args.data.category
+          create: vi.fn().mockImplementation((args: { data: { specialty: string[] } }) => {
+            capturedSpecialty = args.data.specialty
             return { id: 'doc-prof-1', ...args.data }
           }),
         },
@@ -123,18 +123,17 @@ describe('POST /api/auth/register — corporate enrollment', () => {
     const res = await POST(createRegisterRequest({
       ...baseBody,
       userType: 'doctor',
-      doctorCategory: 'specialist',
       specialization: 'Cardiology',
     }))
 
     expect(res.status).toBe(201)
-    expect(capturedCategory).toBe('Specialist')
+    expect(capturedSpecialty).toContain('Cardiology')
   })
 
-  it('creates doctor with General Practitioner category by default', async () => {
+  it('creates doctor with General Practice specialty by default', async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
 
-    let capturedCategory = ''
+    let capturedSpecialty: string[] = []
 
     vi.mocked(prisma.$transaction).mockImplementation(async (fn: unknown) => {
       const tx = {
@@ -143,8 +142,8 @@ describe('POST /api/auth/register — corporate enrollment', () => {
           update: vi.fn(),
         },
         doctorProfile: {
-          create: vi.fn().mockImplementation((args: { data: { category: string } }) => {
-            capturedCategory = args.data.category
+          create: vi.fn().mockImplementation((args: { data: { specialty: string[] } }) => {
+            capturedSpecialty = args.data.specialty
             return { id: 'doc-prof-2', ...args.data }
           }),
         },
@@ -163,6 +162,6 @@ describe('POST /api/auth/register — corporate enrollment', () => {
     }))
 
     expect(res.status).toBe(201)
-    expect(capturedCategory).toBe('General Practitioner')
+    expect(capturedSpecialty).toContain('General Practice')
   })
 })

@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     const costCheck = await checkBookingCost({
       patientUserId: auth.sub,
       baseFee: bookingFee,
-      consultType: 'nurse', // nanny uses nurse consult type for quota
+      provider: { role: 'NANNY' },
       serviceType: 'childcare',
     })
     if (!costCheck.sufficient) {

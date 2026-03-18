@@ -7,8 +7,9 @@ describe('createSubscriptionPlanSchema', () => {
     type: 'individual' as const,
     price: 1399,
     currency: 'MUR',
-    gpConsultsPerMonth: 2,
-    specialistConsultsPerMonth: 0,
+    quotas: [
+      { role: 'DOCTOR', specialty: 'General Practice', limit: 2 },
+    ],
     features: ['2 GP consultations/month'],
   }
 
@@ -55,29 +56,42 @@ describe('createSubscriptionPlanSchema', () => {
       discounts: { lab: 10, pharmacy: 5 },
       paidServices: { specialist: 2000 },
       targetAudience: 'families',
-      nurseConsultsPerMonth: 2,
-      mentalHealthConsultsPerMonth: 1,
-      nutritionConsultsPerMonth: 1,
-      ambulanceFreePerMonth: 0,
+      quotas: [
+        { role: 'DOCTOR', specialty: 'General Practice', limit: 2 },
+        { role: 'NURSE', limit: 2 },
+        { role: 'DOCTOR', specialty: 'Psychiatry', limit: 1 },
+        { role: 'NUTRITIONIST', limit: 1 },
+        { role: 'EMERGENCY_WORKER', limit: 0 },
+      ],
     })
     expect(result.success).toBe(true)
   })
 
-  it('accepts -1 for unlimited consults', () => {
+  it('accepts -1 for unlimited consults in quotas', () => {
     const result = createSubscriptionPlanSchema.safeParse({
       ...validData,
-      gpConsultsPerMonth: -1,
-      specialistConsultsPerMonth: -1,
+      quotas: [
+        { role: 'DOCTOR', specialty: 'General Practice', limit: -1 },
+        { role: 'DOCTOR', specialty: 'Cardiology', limit: -1 },
+      ],
     })
     expect(result.success).toBe(true)
   })
 
-  it('rejects gpConsultsPerMonth less than -1', () => {
+  it('accepts valid quotas array', () => {
     const result = createSubscriptionPlanSchema.safeParse({
       ...validData,
-      gpConsultsPerMonth: -2,
+      quotas: [
+        { role: 'DOCTOR', specialty: 'General Practice', limit: 2 },
+        { role: 'NURSE', specialty: null, limit: 1 },
+      ],
     })
-    expect(result.success).toBe(false)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.quotas).toHaveLength(2)
+      expect(result.data.quotas[0].role).toBe('DOCTOR')
+      expect(result.data.quotas[0].limit).toBe(2)
+    }
   })
 
   it('defaults currency to MUR', () => {

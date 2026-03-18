@@ -53,7 +53,6 @@ export async function GET(request: NextRequest) {
         lastName: user.lastName,
         email: user.email,
         profileImage: user.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${user.firstName} ${user.lastName}`,
-        category: doc.category,
         specialty: doc.specialty,
         subSpecialties: doc.subSpecialties,
         licenseNumber: doc.licenseNumber,

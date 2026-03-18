@@ -1,5 +1,5 @@
 import prisma from '@/lib/db'
-import { trackConsultationUsage, getSubscriptionDiscount, ConsultType } from '@/lib/subscription/usage'
+import { trackConsultationUsage, getSubscriptionDiscount, ConsultProvider } from '@/lib/subscription/usage'
 
 /**
  * Check if the patient has sufficient wallet balance for a booking.
@@ -85,10 +85,10 @@ export async function resolveServicePrice(params: {
  */
 export async function checkBookingCost(params: {
   patientUserId: string
-  baseFee: number              // Provider's market price for this service
-  consultType: ConsultType     // For checking free quota (gp, specialist, nurse, etc.)
-  serviceType?: string         // For discount lookup (lab, pharmacy, specialist, etc.)
-  platformServiceId?: string   // For per-service discount from SubscriptionPlanService
+  baseFee: number                // Provider's market price for this service
+  provider: ConsultProvider      // { role: 'DOCTOR', specialty: 'General Practice' }
+  serviceType?: string           // For discount lookup (lab, pharmacy, specialist, etc.)
+  platformServiceId?: string     // For per-service discount from SubscriptionPlanService
 }): Promise<{
   coveredBySubscription: boolean
   discount: number
@@ -99,7 +99,7 @@ export async function checkBookingCost(params: {
   isCorporate: boolean      // Whether this is a corporate-sponsored subscription
   message: string
 }> {
-  const { patientUserId, baseFee, consultType, serviceType, platformServiceId } = params
+  const { patientUserId, baseFee, provider, serviceType, platformServiceId } = params
 
   // Check if user has a subscription (individual or corporate-sponsored)
   const subscription = await prisma.userSubscription.findUnique({
@@ -138,7 +138,7 @@ export async function checkBookingCost(params: {
 
   // Step 1: Check if consultation is covered by subscription quota (free)
   if (hasActiveSub) {
-    const usageResult = await trackConsultationUsage(patientUserId, consultType)
+    const usageResult = await trackConsultationUsage(patientUserId, provider)
 
     // If consultation was covered by plan (free slot used) → patient pays 0
     if (usageResult.covered) {
@@ -160,7 +160,7 @@ export async function checkBookingCost(params: {
 
     // Step 2: Quota exhausted — check for discount on the provider's market price
     if (serviceType) {
-      const discountResult = await getSubscriptionDiscount(patientUserId, serviceType, platformServiceId)
+      const discountResult = await getSubscriptionDiscount(patientUserId, serviceType, platformServiceId, provider)
       if (discountResult.discountPercent > 0) {
         const discountAmount = Math.round((baseFee * discountResult.discountPercent) / 100)
         const adjustedFee = baseFee - discountAmount

@@ -5,14 +5,15 @@ import { trackConsultationUsage } from '@/lib/subscription/usage'
 import { z } from 'zod'
 
 const checkSchema = z.object({
-  consultType: z.enum(['gp', 'specialist']),
+  role: z.string().min(1),
+  specialty: z.string().nullable().optional(),
 })
 
 /**
  * POST /api/users/[id]/subscription/check
  * Check and track consultation usage against the user's subscription.
  * Returns whether the consultation is covered (free) or needs payment.
- * Body: { consultType: 'gp' | 'specialist' }
+ * Body: { role: 'DOCTOR', specialty?: 'General Practice' }
  */
 export async function POST(
   request: NextRequest,
@@ -41,7 +42,10 @@ export async function POST(
       )
     }
 
-    const result = await trackConsultationUsage(id, parsed.data.consultType)
+    const result = await trackConsultationUsage(id, {
+      role: parsed.data.role,
+      specialty: parsed.data.specialty ?? undefined,
+    })
     return NextResponse.json({ success: true, data: result })
   } catch (error) {
     console.error('POST /api/users/[id]/subscription/check error:', error)

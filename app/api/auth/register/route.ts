@@ -134,12 +134,10 @@ export async function POST(request: NextRequest) {
         }
 
         case UserType.DOCTOR: {
-          const doctorCat = data.doctorCategory === 'specialist' ? 'Specialist' : 'General Practitioner'
           await tx.doctorProfile.create({
             data: {
               userId: newUser.id,
-              category: doctorCat,
-              specialty: data.specialization ? [data.specialization] : [],
+              specialty: data.specialization ? [data.specialization] : ['General Practice'],
               subSpecialties: [],
               licenseNumber: data.licenseNumber || `DOC-${newUser.id.slice(0, 8).toUpperCase()}`,
               licenseExpiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now (placeholder)

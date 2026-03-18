@@ -56,15 +56,13 @@ export async function POST(request: NextRequest) {
     // Check patient wallet balance with subscription benefits
     const fee = servicePrice
       ?? (consultationType === 'video' ? doctorProfile.videoConsultationFee : doctorProfile.consultationFee)
-    // Determine consult type for subscription quota check
-    const consultType = doctorProfile.specialty?.[0]?.toLowerCase().includes('general') || !doctorProfile.specialty?.length
-      ? 'gp' as const
-      : 'specialist' as const
+    // Determine provider for subscription quota check
+    const providerSpec = doctorProfile.specialty?.[0] || 'General Practice'
     const costCheck = await checkBookingCost({
       patientUserId: auth.sub,
       baseFee: fee,
-      consultType,
-      serviceType: consultType === 'specialist' ? 'specialist' : 'gp',
+      provider: { role: 'DOCTOR', specialty: providerSpec },
+      serviceType: providerSpec.toLowerCase().includes('general') ? 'gp' : 'specialist',
     })
     if (!costCheck.sufficient) {
       return NextResponse.json(

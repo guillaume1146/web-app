@@ -14,6 +14,11 @@ vi.mock('@prisma/client', () => ({
     CORPORATE_ADMIN: 'CORPORATE_ADMIN',
     REFERRAL_PARTNER: 'REFERRAL_PARTNER',
     REGIONAL_ADMIN: 'REGIONAL_ADMIN',
+    CAREGIVER: 'CAREGIVER',
+    PHYSIOTHERAPIST: 'PHYSIOTHERAPIST',
+    DENTIST: 'DENTIST',
+    OPTOMETRIST: 'OPTOMETRIST',
+    NUTRITIONIST: 'NUTRITIONIST',
   },
 }))
 
@@ -35,6 +40,11 @@ describe('cookieToPrismaUserType', () => {
       'corporate': 'CORPORATE_ADMIN',
       'insurance': 'INSURANCE_REP',
       'referral-partner': 'REFERRAL_PARTNER',
+      'caregiver': 'CAREGIVER',
+      'physiotherapist': 'PHYSIOTHERAPIST',
+      'dentist': 'DENTIST',
+      'optometrist': 'OPTOMETRIST',
+      'nutritionist': 'NUTRITIONIST',
     }
 
     for (const [cookie, prismaType] of Object.entries(expectedMappings)) {
@@ -69,5 +79,10 @@ describe('userTypeToProfileRelation', () => {
     expect(userTypeToProfileRelation['CORPORATE_ADMIN']).toBe('corporateAdminProfile')
     expect(userTypeToProfileRelation['REFERRAL_PARTNER']).toBe('referralPartnerProfile')
     expect(userTypeToProfileRelation['REGIONAL_ADMIN']).toBe('regionalAdminProfile')
+    expect(userTypeToProfileRelation['CAREGIVER']).toBe('caregiverProfile')
+    expect(userTypeToProfileRelation['PHYSIOTHERAPIST']).toBe('physiotherapistProfile')
+    expect(userTypeToProfileRelation['DENTIST']).toBe('dentistProfile')
+    expect(userTypeToProfileRelation['OPTOMETRIST']).toBe('optometristProfile')
+    expect(userTypeToProfileRelation['NUTRITIONIST']).toBe('nutritionistProfile')
   })
 })

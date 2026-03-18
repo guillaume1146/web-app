@@ -11,6 +11,7 @@ vi.mock('@/lib/db', () => ({
     userWallet: { findUnique: vi.fn() },
     providerServiceConfig: { findUnique: vi.fn() },
     platformService: { findUnique: vi.fn() },
+    subscriptionPlanService: { findFirst: vi.fn() },
   },
 }))
 
@@ -27,6 +28,7 @@ const mockPrisma = prisma as unknown as {
   userWallet: { findUnique: ReturnType<typeof vi.fn> }
   providerServiceConfig: { findUnique: ReturnType<typeof vi.fn> }
   platformService: { findUnique: ReturnType<typeof vi.fn> }
+  subscriptionPlanService: { findFirst: ReturnType<typeof vi.fn> }
 }
 
 describe('resolveServicePrice', () => {
@@ -65,10 +67,10 @@ describe('checkBookingCost', () => {
       .mockResolvedValueOnce({ corporateAdminId: null, status: 'active' }) // first call: corporate check
       .mockResolvedValueOnce({ // second call: trackConsultationUsage
         id: 'sub-1', status: 'active',
-        plan: { name: 'Plus', gpConsultsPerMonth: 2, specialistConsultsPerMonth: 0, nurseConsultsPerMonth: 0, mentalHealthConsultsPerMonth: 0, nutritionConsultsPerMonth: 0, ambulanceFreePerMonth: 0 },
+        plan: { name: 'Plus', quotas: [{ role: 'DOCTOR', specialty: 'General Practice', limit: 2 }] },
       })
     mockPrisma.subscriptionUsage.findUnique.mockResolvedValue({
-      id: 'u1', gpConsultsUsed: 0, specialistConsultsUsed: 0, nurseConsultsUsed: 0, mentalHealthConsultsUsed: 0, nutritionConsultsUsed: 0, ambulanceUsed: 0,
+      id: 'u1', subscriptionId: 'sub-1', month: '2026-03', usageData: {},
     })
     mockPrisma.subscriptionUsage.update.mockResolvedValue({})
     mockPrisma.userWallet.findUnique.mockResolvedValue({ balance: 5000 })
@@ -76,7 +78,7 @@ describe('checkBookingCost', () => {
     const result = await checkBookingCost({
       patientUserId: 'user-1',
       baseFee: 800,
-      consultType: 'gp',
+      provider: { role: 'DOCTOR', specialty: 'General Practice' },
     })
 
     expect(result.coveredBySubscription).toBe(true)
@@ -90,21 +92,23 @@ describe('checkBookingCost', () => {
       .mockResolvedValueOnce({ corporateAdminId: null, status: 'active' }) // corporate check
       .mockResolvedValueOnce({ // trackConsultationUsage
         id: 'sub-1', status: 'active',
-        plan: { name: 'Premium', gpConsultsPerMonth: 1, specialistConsultsPerMonth: 0, nurseConsultsPerMonth: 0, mentalHealthConsultsPerMonth: 0, nutritionConsultsPerMonth: 0, ambulanceFreePerMonth: 0 },
+        plan: { name: 'Premium', quotas: [{ role: 'DOCTOR', specialty: 'General Practice', limit: 1 }] },
       })
       .mockResolvedValueOnce({ // getSubscriptionDiscount
         status: 'active',
+        planId: 'plan-1',
         plan: { discounts: { specialist: 20, lab: 10 }, name: 'Premium' },
       })
     mockPrisma.subscriptionUsage.findUnique.mockResolvedValue({
-      id: 'u1', gpConsultsUsed: 1, specialistConsultsUsed: 0, nurseConsultsUsed: 0, mentalHealthConsultsUsed: 0, nutritionConsultsUsed: 0, ambulanceUsed: 0,
+      id: 'u1', subscriptionId: 'sub-1', month: '2026-03', usageData: { 'DOCTOR:General Practice': 1 },
     })
+    mockPrisma.subscriptionPlanService.findFirst.mockResolvedValue(null)
     mockPrisma.userWallet.findUnique.mockResolvedValue({ balance: 5000 })
 
     const result = await checkBookingCost({
       patientUserId: 'user-1',
       baseFee: 2000,
-      consultType: 'gp', // quota exhausted
+      provider: { role: 'DOCTOR', specialty: 'General Practice' }, // quota exhausted
       serviceType: 'specialist', // but has 20% discount
     })
 
@@ -121,7 +125,7 @@ describe('checkBookingCost', () => {
     const result = await checkBookingCost({
       patientUserId: 'user-1',
       baseFee: 800,
-      consultType: 'gp',
+      provider: { role: 'DOCTOR', specialty: 'General Practice' },
     })
 
     expect(result.coveredBySubscription).toBe(false)
@@ -135,10 +139,10 @@ describe('checkBookingCost', () => {
       .mockResolvedValueOnce({ corporateAdminId: 'corp-admin-1', status: 'active' })
       .mockResolvedValueOnce({
         id: 'sub-1', status: 'active',
-        plan: { name: 'Corp Plus', gpConsultsPerMonth: 1, specialistConsultsPerMonth: 0, nurseConsultsPerMonth: 1, mentalHealthConsultsPerMonth: 0, nutritionConsultsPerMonth: 0, ambulanceFreePerMonth: 0 },
+        plan: { name: 'Corp Plus', quotas: [{ role: 'DOCTOR', specialty: 'General Practice', limit: 1 }, { role: 'NURSE', limit: 1 }] },
       })
     mockPrisma.subscriptionUsage.findUnique.mockResolvedValue({
-      id: 'u1', gpConsultsUsed: 0, specialistConsultsUsed: 0, nurseConsultsUsed: 0, mentalHealthConsultsUsed: 0, nutritionConsultsUsed: 0, ambulanceUsed: 0,
+      id: 'u1', subscriptionId: 'sub-1', month: '2026-03', usageData: {},
     })
     mockPrisma.subscriptionUsage.update.mockResolvedValue({})
     mockPrisma.userWallet.findUnique.mockResolvedValue({ balance: 1000 })
@@ -146,7 +150,7 @@ describe('checkBookingCost', () => {
     const result = await checkBookingCost({
       patientUserId: 'employee-1',
       baseFee: 800,
-      consultType: 'gp',
+      provider: { role: 'DOCTOR', specialty: 'General Practice' },
     })
 
     expect(result.isCorporate).toBe(true)
@@ -159,21 +163,23 @@ describe('checkBookingCost', () => {
       .mockResolvedValueOnce({ corporateAdminId: null, status: 'active' })
       .mockResolvedValueOnce({
         id: 'sub-1', status: 'active',
-        plan: { name: 'Essential', gpConsultsPerMonth: 0, specialistConsultsPerMonth: 0, nurseConsultsPerMonth: 0, mentalHealthConsultsPerMonth: 0, nutritionConsultsPerMonth: 0, ambulanceFreePerMonth: 0 },
+        plan: { name: 'Essential', quotas: [] },
       })
       .mockResolvedValueOnce({
         status: 'active',
+        planId: 'plan-1',
         plan: { discounts: { lab: 15 }, name: 'Essential' },
       })
     mockPrisma.subscriptionUsage.findUnique.mockResolvedValue({
-      id: 'u1', gpConsultsUsed: 0, specialistConsultsUsed: 0, nurseConsultsUsed: 0, mentalHealthConsultsUsed: 0, nutritionConsultsUsed: 0, ambulanceUsed: 0,
+      id: 'u1', subscriptionId: 'sub-1', month: '2026-03', usageData: {},
     })
+    mockPrisma.subscriptionPlanService.findFirst.mockResolvedValue(null)
     mockPrisma.userWallet.findUnique.mockResolvedValue({ balance: 100 })
 
     const result = await checkBookingCost({
       patientUserId: 'user-1',
       baseFee: 500,
-      consultType: 'gp',
+      provider: { role: 'DOCTOR', specialty: 'General Practice' },
       serviceType: 'lab',
     })
 
