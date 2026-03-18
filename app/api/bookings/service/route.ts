@@ -168,3 +168,60 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 })
   }
 }
+
+/**
+ * PATCH /api/bookings/service
+ * Update a service booking status. Provider can: accept → in_progress → completed.
+ * Body: { bookingId: string, status: string, notes?: string }
+ */
+export async function PATCH(request: NextRequest) {
+  const limited = rateLimitPublic(request)
+  if (limited) return limited
+
+  const auth = validateRequest(request)
+  if (!auth) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const body = await request.json()
+    const { bookingId, status, notes } = body as { bookingId: string; status: string; notes?: string }
+
+    if (!bookingId || !status) {
+      return NextResponse.json({ success: false, message: 'bookingId and status required' }, { status: 400 })
+    }
+
+    const validStatuses = ['accepted', 'in_progress', 'completed', 'cancelled']
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json({ success: false, message: `Invalid status. Must be: ${validStatuses.join(', ')}` }, { status: 400 })
+    }
+
+    const booking = await prisma.serviceBooking.findUnique({ where: { id: bookingId } })
+    if (!booking) {
+      return NextResponse.json({ success: false, message: 'Booking not found' }, { status: 404 })
+    }
+
+    // Verify ownership — provider or patient can update
+    if (booking.providerUserId !== auth.sub && booking.patientId !== auth.sub) {
+      return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
+    }
+
+    // Patients can only cancel
+    if (booking.patientId === auth.sub && status !== 'cancelled') {
+      return NextResponse.json({ success: false, message: 'Patients can only cancel bookings' }, { status: 403 })
+    }
+
+    const updateData: Record<string, unknown> = { status }
+    if (notes) updateData.notes = notes
+
+    const updated = await prisma.serviceBooking.update({
+      where: { id: bookingId },
+      data: updateData,
+    })
+
+    return NextResponse.json({ success: true, data: updated })
+  } catch (error) {
+    console.error('PATCH /api/bookings/service error:', error)
+    return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 })
+  }
+}
