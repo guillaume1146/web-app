@@ -70,6 +70,15 @@ export async function resolveAndConfirmBooking(
     const description = `Lab test: ${booking.testName}`
     await prisma.labTestBooking.update({ where: { id: bookingId }, data: { status: 'upcoming' } })
     return { data: { patientUserId: booking.patient.userId, providerUserId: booking.labTech.userId, amount, description, serviceType: 'lab_test' } }
+
+  } else if (bookingType === 'service') {
+    const booking = await prisma.serviceBooking.findUnique({ where: { id: bookingId } })
+    if (!booking) return { error: { message: 'Booking not found', status: 404 } }
+    if (booking.providerUserId !== providerUserId) return { error: { message: 'Forbidden', status: 403 } }
+    const amount = booking.servicePrice ?? 500
+    const description = booking.serviceName ? `${booking.providerType}: ${booking.serviceName}` : `${booking.providerType} service`
+    await prisma.serviceBooking.update({ where: { id: bookingId }, data: { status: 'accepted' } })
+    return { data: { patientUserId: booking.patientId, providerUserId: booking.providerUserId, amount, description, serviceType: booking.providerType.toLowerCase() } }
   }
 
   return { error: { message: 'Unknown booking type', status: 400 } }
@@ -131,6 +140,13 @@ export async function resolveAndDenyBooking(
     if (!booking) return { error: { message: 'Booking not found', status: 404 } }
     await prisma.emergencyBooking.update({ where: { id: bookingId }, data: { status: 'cancelled' } })
     return { patientUserId: booking.patient.userId, description: 'Emergency request' }
+
+  } else if (bookingType === 'service') {
+    const booking = await prisma.serviceBooking.findUnique({ where: { id: bookingId } })
+    if (!booking) return { error: { message: 'Booking not found', status: 404 } }
+    if (booking.providerUserId !== providerUserId) return { error: { message: 'Forbidden', status: 403 } }
+    await prisma.serviceBooking.update({ where: { id: bookingId }, data: { status: 'cancelled' } })
+    return { patientUserId: booking.patientId, description: booking.serviceName || `${booking.providerType} service` }
   }
 
   return { error: { message: 'Unknown booking type', status: 400 } }

@@ -9,7 +9,7 @@ import { z } from 'zod'
 
 const actionSchema = z.object({
   bookingId: z.string().min(1),
-  bookingType: z.enum(['doctor', 'nurse', 'nanny', 'lab_test', 'emergency']),
+  bookingType: z.enum(['doctor', 'nurse', 'nanny', 'lab_test', 'emergency', 'service']),
   action: z.enum(['accept', 'deny']),
 })
 
