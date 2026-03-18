@@ -21,6 +21,11 @@ enum UserType {
   CORPORATE_ADMIN
   REFERRAL_PARTNER
   REGIONAL_ADMIN
+  CAREGIVER
+  PHYSIOTHERAPIST
+  DENTIST
+  OPTOMETRIST
+  NUTRITIONIST
 }
 
 // ─── Booking & Appointment Status Enums ────────────────────────────────────
@@ -98,11 +103,6 @@ enum CorporateEmployeeStatus {
   removed
 }
 
-enum DoctorCategory {
-  GENERAL_PRACTITIONER
-  SPECIALIST
-}
-
 // ─── Region Model ────────────────────────────────────────────────────────────
 
 model Region {
@@ -153,7 +153,12 @@ model User {
   insuranceRepProfile    InsuranceRepProfile?
   corporateAdminProfile  CorporateAdminProfile?
   referralPartnerProfile ReferralPartnerProfile?
-  regionalAdminProfile   RegionalAdminProfile?
+  regionalAdminProfile      RegionalAdminProfile?
+  caregiverProfile          CaregiverProfile?
+  physiotherapistProfile    PhysiotherapistProfile?
+  dentistProfile            DentistProfile?
+  optometristProfile        OptometristProfile?
+  nutritionistProfile       NutritionistProfile?
 
   // Cross-cutting relations (generic for all user types)
   videoCallSessions    VideoCallSession[]
@@ -242,8 +247,7 @@ model DoctorProfile {
   id                       String    @id @default(uuid())
   userId                   String    @unique
   user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category                 String // Specialist, General Practitioner
-  specialty                String[]
+  specialty                String[] // e.g. ["General Practice", "Family Medicine"] — GP is just a specialty
   subSpecialties           String[]
   licenseNumber            String    @unique
   licenseExpiryDate        DateTime
@@ -285,7 +289,6 @@ model DoctorProfile {
   services        DoctorServiceCatalog[]
 
   @@index([userId])
-  @@index([category])
 }
 
 model DoctorServiceCatalog {
@@ -428,6 +431,190 @@ model RegionalAdminProfile {
 
   @@index([userId])
   @@index([countryCode])
+}
+
+// ─── New Provider Profile Tables ─────────────────────────────────────────────
+
+model CaregiverProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber   String?
+  experience      Int      @default(0)
+  specializations String[] // Elder Care, Disability Care, Dementia Care, etc.
+  certifications  String[]
+
+  @@index([userId])
+}
+
+model PhysiotherapistProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber   String   @unique
+  experience      Int      @default(0)
+  specializations String[] // Orthopedic, Neurological, Sports, etc.
+  clinicName      String?
+  clinicAddress   String?
+
+  @@index([userId])
+}
+
+model DentistProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber   String   @unique
+  experience      Int      @default(0)
+  specializations String[] // General, Orthodontics, Periodontics, etc.
+  clinicName      String?
+  clinicAddress   String?
+
+  @@index([userId])
+}
+
+model OptometristProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber   String   @unique
+  experience      Int      @default(0)
+  specializations String[] // General Eye Care, Pediatric, Contact Lenses, etc.
+  clinicName      String?
+  clinicAddress   String?
+
+  @@index([userId])
+}
+
+model NutritionistProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber   String?
+  experience      Int      @default(0)
+  specializations String[] // Clinical, Sports, Pediatric, Weight Management, etc.
+  certifications  String[]
+
+  @@index([userId])
+}
+
+// ─── Provider Specialties (database-driven, not hardcoded) ──────────────────
+
+model ProviderSpecialty {
+  id           String   @id @default(uuid())
+  providerType UserType
+  name         String
+  description  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@unique([providerType, name])
+  @@index([providerType])
+}
+
+// ─── Health Programs ────────────────────────────────────────────────────────
+
+model HealthProgram {
+  id                String    @id @default(uuid())
+  name              String
+  description       String
+  providerType      UserType
+  specialty         String?
+  durationWeeks     Int
+  startDate         DateTime?
+  endDate           DateTime?
+  price             Float
+  currency          String    @default("MUR")
+  maxParticipants   Int?
+  countryCode       String?
+  isActive          Boolean   @default(true)
+  createdByUserId   String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  sessions    ProgramSession[]
+  providers   ProgramProvider[]
+  enrollments ProgramEnrollment[]
+  planLinks   SubscriptionPlanProgram[]
+
+  @@index([providerType])
+  @@index([countryCode])
+  @@index([createdByUserId])
+  @@index([isActive])
+}
+
+model ProgramSession {
+  id          String        @id @default(uuid())
+  programId   String
+  program     HealthProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  weekNumber  Int
+  serviceName String
+  description String?
+  duration    Int?
+  sortOrder   Int           @default(0)
+
+  progress ProgramSessionProgress[]
+
+  @@index([programId])
+}
+
+model ProgramProvider {
+  id        String        @id @default(uuid())
+  programId String
+  program   HealthProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  userId    String
+  role      String        @default("collaborator") // lead, collaborator
+  joinedAt  DateTime      @default(now())
+
+  @@unique([programId, userId])
+  @@index([programId])
+}
+
+model ProgramEnrollment {
+  id          String        @id @default(uuid())
+  programId   String
+  program     HealthProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  patientId   String
+  status      String        @default("enrolled") // enrolled, in_progress, completed, dropped
+  enrolledAt  DateTime      @default(now())
+  completedAt DateTime?
+
+  sessionProgress ProgramSessionProgress[]
+
+  @@unique([programId, patientId])
+  @@index([programId])
+  @@index([patientId])
+}
+
+model ProgramSessionProgress {
+  id           String            @id @default(uuid())
+  enrollmentId String
+  enrollment   ProgramEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  sessionId    String
+  session      ProgramSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  status       String            @default("pending") // pending, scheduled, completed, missed
+  scheduledAt  DateTime?
+  completedAt  DateTime?
+  notes        String?
+  bookingId    String?
+
+  @@unique([enrollmentId, sessionId])
+  @@index([enrollmentId])
+}
+
+// ─── Subscription Plan Programs ─────────────────────────────────────────────
+
+model SubscriptionPlanProgram {
+  id              String           @id @default(uuid())
+  planId          String
+  plan            SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  programId       String
+  program         HealthProgram    @relation(fields: [programId], references: [id], onDelete: Cascade)
+  isFree          Boolean          @default(false)
+  discountPercent Int              @default(0)
+
+  @@unique([planId, programId])
+  @@index([planId])
 }
 
 // ─── Clinical Models ─────────────────────────────────────────────────────────
@@ -1669,13 +1856,8 @@ model SubscriptionPlan {
   currency                     String               @default("MUR")
   countryCode                  String?              // null = global, "MU" = region-specific
   targetAudience               String?              // "students & young adults", "families", etc.
-  gpConsultsPerMonth           Int                  // -1 = unlimited
-  specialistConsultsPerMonth   Int                  // -1 = unlimited
-  nurseConsultsPerMonth        Int                  @default(0) // -1 = unlimited
-  mentalHealthConsultsPerMonth Int                  @default(0) // -1 = unlimited
-  nutritionConsultsPerMonth    Int                  @default(0) // -1 = unlimited
-  ambulanceFreePerMonth        Int                  @default(0) // -1 = unlimited
-  discounts                    Json?                // {"lab":10,"pharmacy":5,"specialist":20}
+  quotas                       Json                 // Array of { role: string, specialty?: string, limit: number }
+  discounts                    Json?                // { "DOCTOR:Cardiology": 20, "lab": 15, "pharmacy": 10, "volume_50": 5 }
   paidServices                 Json?                // services NOT included, with default prices
   features                     Json                 // Array of feature strings
   isActive                     Boolean              @default(true)
@@ -1685,6 +1867,7 @@ model SubscriptionPlan {
 
   subscriptions UserSubscription[]
   planServices  SubscriptionPlanService[]
+  planPrograms  SubscriptionPlanProgram[]
 
   @@index([type])
   @@index([isActive])
@@ -1714,18 +1897,13 @@ model UserSubscription {
 }
 
 model SubscriptionUsage {
-  id                       String           @id @default(uuid())
-  subscriptionId           String
-  subscription             UserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  month                    String // "2026-03"
-  gpConsultsUsed           Int              @default(0)
-  specialistConsultsUsed   Int              @default(0)
-  nurseConsultsUsed        Int              @default(0)
-  mentalHealthConsultsUsed Int              @default(0)
-  nutritionConsultsUsed    Int              @default(0)
-  ambulanceUsed            Int              @default(0)
-  createdAt                DateTime         @default(now())
-  updatedAt                DateTime         @updatedAt
+  id             String           @id @default(uuid())
+  subscriptionId String
+  subscription   UserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  month          String // "2026-03"
+  usageData      Json   @default("{}") // { "DOCTOR:General Practice": 1, "NURSE": 0 }
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   @@unique([subscriptionId, month])
   @@index([month])

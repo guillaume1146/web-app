@@ -17,6 +17,11 @@ export const cookieToPrismaUserType: Record<string, UserType> = {
   'corporate':        UserType.CORPORATE_ADMIN,
   'insurance':        UserType.INSURANCE_REP,
   'referral-partner': UserType.REFERRAL_PARTNER,
+  'caregiver':        UserType.CAREGIVER,
+  'physiotherapist':  UserType.PHYSIOTHERAPIST,
+  'dentist':          UserType.DENTIST,
+  'optometrist':      UserType.OPTOMETRIST,
+  'nutritionist':     UserType.NUTRITIONIST,
 }
 
 /**
@@ -34,6 +39,11 @@ export const prismaUserTypeToCookie: Record<UserType, string> = {
   [UserType.CORPORATE_ADMIN]:  'corporate',
   [UserType.INSURANCE_REP]:    'insurance',
   [UserType.REFERRAL_PARTNER]: 'referral-partner',
+  [UserType.CAREGIVER]:        'caregiver',
+  [UserType.PHYSIOTHERAPIST]:  'physiotherapist',
+  [UserType.DENTIST]:          'dentist',
+  [UserType.OPTOMETRIST]:      'optometrist',
+  [UserType.NUTRITIONIST]:     'nutritionist',
 }
 
 /**
@@ -52,4 +62,9 @@ export const userTypeToProfileRelation: Record<UserType, string> = {
   [UserType.CORPORATE_ADMIN]:  'corporateAdminProfile',
   [UserType.REFERRAL_PARTNER]: 'referralPartnerProfile',
   [UserType.REGIONAL_ADMIN]:   'regionalAdminProfile',
+  [UserType.CAREGIVER]:        'caregiverProfile',
+  [UserType.PHYSIOTHERAPIST]:  'physiotherapistProfile',
+  [UserType.DENTIST]:          'dentistProfile',
+  [UserType.OPTOMETRIST]:      'optometristProfile',
+  [UserType.NUTRITIONIST]:     'nutritionistProfile',
 }

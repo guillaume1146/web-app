@@ -1,15 +1,31 @@
 import prisma from '@/lib/db'
 
-export type ConsultType = 'gp' | 'specialist' | 'nurse' | 'mental_health' | 'nutrition' | 'ambulance'
+export type ConsultProvider = { role: string; specialty?: string | null }
 
-/** Maps consult type to plan limit field and usage counter field. */
-const CONSULT_FIELD_MAP: Record<ConsultType, { limitField: string; usageField: string }> = {
-  gp:            { limitField: 'gpConsultsPerMonth',           usageField: 'gpConsultsUsed' },
-  specialist:    { limitField: 'specialistConsultsPerMonth',   usageField: 'specialistConsultsUsed' },
-  nurse:         { limitField: 'nurseConsultsPerMonth',        usageField: 'nurseConsultsUsed' },
-  mental_health: { limitField: 'mentalHealthConsultsPerMonth', usageField: 'mentalHealthConsultsUsed' },
-  nutrition:     { limitField: 'nutritionConsultsPerMonth',    usageField: 'nutritionConsultsUsed' },
-  ambulance:     { limitField: 'ambulanceFreePerMonth',        usageField: 'ambulanceUsed' },
+/**
+ * Build a usage key from role + specialty.
+ * e.g. "DOCTOR:General Practice", "NURSE", "CAREGIVER:Elder Care"
+ */
+function usageKey(provider: ConsultProvider): string {
+  return provider.specialty ? `${provider.role}:${provider.specialty}` : provider.role
+}
+
+/**
+ * Find the quota limit for a provider from the plan's quotas JSON.
+ * Checks exact match (role:specialty) first, then role-level fallback.
+ */
+function findQuotaLimit(
+  quotas: Array<{ role: string; specialty?: string | null; limit: number }>,
+  provider: ConsultProvider
+): number {
+  // Exact match: role + specialty
+  if (provider.specialty) {
+    const exact = quotas.find(q => q.role === provider.role && q.specialty === provider.specialty)
+    if (exact) return exact.limit
+  }
+  // Fallback: role only (specialty null = any specialty)
+  const roleLevel = quotas.find(q => q.role === provider.role && !q.specialty)
+  return roleLevel?.limit ?? 0
 }
 
 /**
@@ -26,55 +42,38 @@ export async function getOrCreateUsage(subscriptionId: string) {
   if (existing) return existing
 
   return prisma.subscriptionUsage.create({
-    data: { subscriptionId, month },
+    data: { subscriptionId, month, usageData: {} },
   })
 }
 
 /**
  * Track a consultation usage against the user's subscription.
- * Returns { allowed, remaining, message } indicating whether the consult is within the free tier.
+ * Uses flexible quotas JSON: [{ role, specialty?, limit }]
  */
 export async function trackConsultationUsage(
   userId: string,
-  consultType: ConsultType
+  provider: ConsultProvider
 ): Promise<{ allowed: boolean; remaining: number; covered: boolean; message: string }> {
-  const fieldMap = CONSULT_FIELD_MAP[consultType]
-  if (!fieldMap) {
-    return { allowed: true, remaining: 0, covered: false, message: 'Unknown consultation type — full price applies.' }
-  }
-
   const subscription = await prisma.userSubscription.findUnique({
     where: { userId },
     select: {
       id: true,
       status: true,
       plan: {
-        select: {
-          name: true,
-          gpConsultsPerMonth: true,
-          specialistConsultsPerMonth: true,
-          nurseConsultsPerMonth: true,
-          mentalHealthConsultsPerMonth: true,
-          nutritionConsultsPerMonth: true,
-          ambulanceFreePerMonth: true,
-        },
+        select: { name: true, quotas: true },
       },
     },
   })
 
-  // No active subscription — allow but charge full price
   if (!subscription || subscription.status !== 'active') {
     return { allowed: true, remaining: 0, covered: false, message: 'No active subscription — full price applies.' }
   }
 
-  const usage = await getOrCreateUsage(subscription.id)
-  const plan = subscription.plan as Record<string, unknown>
-  const limit = plan[fieldMap.limitField] as number
-  const used = (usage as Record<string, unknown>)[fieldMap.usageField] as number
+  const quotas = (subscription.plan.quotas ?? []) as Array<{ role: string; specialty?: string | null; limit: number }>
+  const limit = findQuotaLimit(quotas, provider)
+  const key = usageKey(provider)
+  const label = provider.specialty ? `${provider.specialty}` : provider.role.toLowerCase()
 
-  const label = consultType.replace('_', ' ')
-
-  // -1 = unlimited
   if (limit === -1) {
     return { allowed: true, remaining: -1, covered: true, message: `Unlimited ${label} consultations included in your plan.` }
   }
@@ -83,16 +82,21 @@ export async function trackConsultationUsage(
     return { allowed: true, remaining: 0, covered: false, message: `${label} consultations not included — standard rate applies.` }
   }
 
+  const usage = await getOrCreateUsage(subscription.id)
+  const usageData = (usage.usageData ?? {}) as Record<string, number>
+  const used = usageData[key] ?? 0
+
   if (used < limit) {
     // Increment usage
+    const newData = { ...usageData, [key]: used + 1 }
     await prisma.subscriptionUsage.update({
       where: { id: usage.id },
-      data: { [fieldMap.usageField]: { increment: 1 } },
+      data: { usageData: newData },
     })
     return {
       allowed: true,
       remaining: limit - used - 1,
-      covered: true, // This consultation was covered by the plan (free slot used)
+      covered: true,
       message: `Free ${label} consultation (${limit - used - 1} remaining this month).`,
     }
   }
@@ -101,25 +105,21 @@ export async function trackConsultationUsage(
 }
 
 /**
- * Get the subscription discount for a service type.
- * Checks two sources:
- * 1. Per-service discountPercent from SubscriptionPlanService (configured by regional admin)
- * 2. Plan-level discounts JSON (e.g. {"specialist": 20, "lab": 15})
- * Returns the highest discount found.
+ * Get the subscription discount for a service.
+ * Checks: per-service SubscriptionPlanService → plan discounts JSON (by role:specialty or category)
  */
 export async function getSubscriptionDiscount(
   userId: string,
   serviceType: string,
-  platformServiceId?: string
+  platformServiceId?: string,
+  provider?: ConsultProvider
 ): Promise<{ discountPercent: number; message: string }> {
   const subscription = await prisma.userSubscription.findUnique({
     where: { userId },
     select: {
       status: true,
       planId: true,
-      plan: {
-        select: { discounts: true, name: true },
-      },
+      plan: { select: { discounts: true, name: true } },
     },
   })
 
@@ -133,10 +133,7 @@ export async function getSubscriptionDiscount(
   // Source 1: Per-service discount from SubscriptionPlanService
   if (platformServiceId) {
     const planService = await prisma.subscriptionPlanService.findFirst({
-      where: {
-        planId: subscription.planId,
-        platformServiceId,
-      },
+      where: { planId: subscription.planId, platformServiceId },
       select: { discountPercent: true, isFree: true },
     })
     if (planService?.isFree) {
@@ -150,9 +147,22 @@ export async function getSubscriptionDiscount(
 
   // Source 2: Plan-level discounts JSON
   const discounts = subscription.plan.discounts as Record<string, number> | null
-  if (discounts && discounts[serviceType] && discounts[serviceType] > bestDiscount) {
-    bestDiscount = discounts[serviceType]
-    source = 'plan discount'
+  if (discounts) {
+    // Check role:specialty key (e.g. "DOCTOR:Cardiology")
+    if (provider?.specialty && discounts[`${provider.role}:${provider.specialty}`] > bestDiscount) {
+      bestDiscount = discounts[`${provider.role}:${provider.specialty}`]
+      source = `${provider.specialty} discount`
+    }
+    // Check role key (e.g. "DOCTOR")
+    if (provider?.role && discounts[provider.role] && discounts[provider.role] > bestDiscount) {
+      bestDiscount = discounts[provider.role]
+      source = `${provider.role} discount`
+    }
+    // Check service type key (e.g. "lab", "pharmacy")
+    if (discounts[serviceType] && discounts[serviceType] > bestDiscount) {
+      bestDiscount = discounts[serviceType]
+      source = 'plan discount'
+    }
   }
 
   if (bestDiscount === 0) {
@@ -185,12 +195,7 @@ export async function getUsageSummary(userId: string) {
           type: true,
           price: true,
           currency: true,
-          gpConsultsPerMonth: true,
-          specialistConsultsPerMonth: true,
-          nurseConsultsPerMonth: true,
-          mentalHealthConsultsPerMonth: true,
-          nutritionConsultsPerMonth: true,
-          ambulanceFreePerMonth: true,
+          quotas: true,
           discounts: true,
           features: true,
         },
@@ -209,6 +214,23 @@ export async function getUsageSummary(userId: string) {
     where: { subscriptionId_month: { subscriptionId: subscription.id, month } },
   })
 
+  const quotas = (subscription.plan.quotas ?? []) as Array<{ role: string; specialty?: string | null; limit: number }>
+  const usageData = (usage?.usageData ?? {}) as Record<string, number>
+
+  // Build usage summary from quotas
+  const quotaSummary = quotas
+    .filter(q => q.limit !== 0)
+    .map(q => {
+      const key = q.specialty ? `${q.role}:${q.specialty}` : q.role
+      const label = q.specialty || q.role
+      return {
+        key,
+        label,
+        used: usageData[key] ?? 0,
+        limit: q.limit,
+      }
+    })
+
   return {
     hasSubscription: true,
     status: subscription.status,
@@ -218,18 +240,7 @@ export async function getUsageSummary(userId: string) {
     plan: subscription.plan,
     usage: {
       month,
-      gpConsultsUsed: usage?.gpConsultsUsed ?? 0,
-      specialistConsultsUsed: usage?.specialistConsultsUsed ?? 0,
-      nurseConsultsUsed: usage?.nurseConsultsUsed ?? 0,
-      mentalHealthConsultsUsed: usage?.mentalHealthConsultsUsed ?? 0,
-      nutritionConsultsUsed: usage?.nutritionConsultsUsed ?? 0,
-      ambulanceUsed: usage?.ambulanceUsed ?? 0,
-      gpConsultsLimit: subscription.plan.gpConsultsPerMonth,
-      specialistConsultsLimit: subscription.plan.specialistConsultsPerMonth,
-      nurseConsultsLimit: subscription.plan.nurseConsultsPerMonth,
-      mentalHealthConsultsLimit: subscription.plan.mentalHealthConsultsPerMonth,
-      nutritionConsultsLimit: subscription.plan.nutritionConsultsPerMonth,
-      ambulanceLimit: subscription.plan.ambulanceFreePerMonth,
+      quotas: quotaSummary,
     },
   }
 }

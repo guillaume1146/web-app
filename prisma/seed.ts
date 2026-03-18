@@ -36,6 +36,14 @@ async function main() {
   console.log('Cleaning database...')
 
   // Delete in reverse dependency order
+  // 0. Programs
+  await prisma.programSessionProgress.deleteMany()
+  await prisma.programEnrollment.deleteMany()
+  await prisma.programProvider.deleteMany()
+  await prisma.programSession.deleteMany()
+  await prisma.subscriptionPlanProgram.deleteMany()
+  await prisma.healthProgram.deleteMany()
+
   // 0. Subscription + Corporate Employee + Service tables
   await prisma.subscriptionUsage.deleteMany()
   await prisma.userSubscription.deleteMany()
@@ -46,6 +54,7 @@ async function main() {
   await prisma.serviceGroup.deleteMany()
   await prisma.providerServiceConfig.deleteMany()
   await prisma.platformService.deleteMany()
+  await prisma.providerSpecialty.deleteMany()
 
   // 0. Config + Reviews tables (no FK dependencies)
   await prisma.roleFeatureConfig.deleteMany()
@@ -142,6 +151,11 @@ async function main() {
   await prisma.corporateAdminProfile.deleteMany()
   await prisma.referralPartnerProfile.deleteMany()
   await prisma.regionalAdminProfile.deleteMany()
+  await prisma.caregiverProfile.deleteMany()
+  await prisma.physiotherapistProfile.deleteMany()
+  await prisma.dentistProfile.deleteMany()
+  await prisma.optometristProfile.deleteMany()
+  await prisma.nutritionistProfile.deleteMany()
 
   // 8. User table (last — all FKs cleared above)
   await prisma.user.deleteMany()
