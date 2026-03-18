@@ -56,7 +56,7 @@ export default function MyHealthSidebar() {
   const activeItem = SECTIONS.find(s => s.id === activeSection)
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-row-reverse sm:flex-row-reverse">
       {/* Mobile: hamburger to toggle sidebar */}
       <div className="sm:hidden flex items-center gap-2 px-3 py-2 bg-white border-b border-gray-200 fixed top-[56px] left-0 right-0 z-40">
         <button

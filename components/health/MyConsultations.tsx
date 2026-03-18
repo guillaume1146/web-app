@@ -1,15 +1,19 @@
 'use client'
 
-import { useDashboardUser } from '@/hooks/useDashboardUser'
+import { useCallback } from 'react'
+import { FaStethoscope } from 'react-icons/fa'
+import HealthSectionList from './HealthSectionList'
 
 export default function MyConsultations() {
-  const user = useDashboardUser()
-  if (!user) return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" /></div>
-  
-  return (
-    <div className="p-4">
-      <h2 className="text-lg font-bold text-gray-900 mb-4">Consultations</h2>
-      <p className="text-gray-500 text-sm">View your Consultations history and upcoming appointments.</p>
-    </div>
-  )
+  const mapData = useCallback((data: unknown[]) =>
+    (data as { id: string; scheduledAt: string; status: string; specialty?: string; serviceName?: string; servicePrice?: number; doctor?: { user?: { firstName: string; lastName: string } } }[]).map(a => ({
+      id: a.id,
+      title: `Dr. ${a.doctor?.user?.firstName ?? ''} ${a.doctor?.user?.lastName ?? ''}`.trim() || 'Doctor',
+      subtitle: a.specialty || a.serviceName || 'Consultation',
+      date: new Date(a.scheduledAt).toLocaleDateString() + ' ' + new Date(a.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: a.status,
+      price: a.servicePrice,
+    })), [])
+
+  return <HealthSectionList title="Doctor Consultations" icon={FaStethoscope} apiUrl="/api/patients/{userId}/appointments" mapData={mapData} />
 }

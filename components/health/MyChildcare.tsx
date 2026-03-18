@@ -1,15 +1,21 @@
 'use client'
 
-import { useDashboardUser } from '@/hooks/useDashboardUser'
+import { useCallback } from 'react'
+import { FaBaby } from 'react-icons/fa'
+import HealthSectionList from './HealthSectionList'
 
 export default function MyChildcare() {
-  const user = useDashboardUser()
-  if (!user) return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" /></div>
-  
-  return (
-    <div className="p-4">
-      <h2 className="text-lg font-bold text-gray-900 mb-4">Childcare</h2>
-      <p className="text-gray-500 text-sm">View your Childcare history and upcoming appointments.</p>
-    </div>
-  )
+  const mapData = useCallback((data: unknown[]) =>
+    (data as { id: string; bookingType: string; providerName: string; serviceName?: string; scheduledAt: string; status: string; price?: number | null }[])
+      .filter(b => b.bookingType === 'childcare')
+      .map(b => ({
+        id: b.id,
+        title: b.providerName || 'Nanny',
+        subtitle: b.serviceName || 'Childcare',
+        date: new Date(b.scheduledAt).toLocaleDateString() + ' ' + new Date(b.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: b.status,
+        price: b.price,
+      })), [])
+
+  return <HealthSectionList title="Childcare" icon={FaBaby} apiUrl="/api/bookings/unified?role=patient" mapData={mapData} emptyMessage="No childcare bookings yet." />
 }

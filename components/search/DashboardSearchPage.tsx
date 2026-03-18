@@ -10,6 +10,12 @@ const searchPages: Record<string, React.ComponentType> = {
   lab: dynamic(() => import('@/app/search/lab/page'), { ssr: false }),
   emergency: dynamic(() => import('@/app/search/emergency/page'), { ssr: false }),
   medicines: dynamic(() => import('@/app/search/medicines/page'), { ssr: false }),
+  insurance: dynamic(() => import('@/app/search/insurance/page'), { ssr: false }),
+  caregivers: dynamic(() => import('@/app/search/caregivers/page'), { ssr: false }),
+  physiotherapists: dynamic(() => import('@/app/search/physiotherapists/page'), { ssr: false }),
+  dentists: dynamic(() => import('@/app/search/dentists/page'), { ssr: false }),
+  optometrists: dynamic(() => import('@/app/search/optometrists/page'), { ssr: false }),
+  nutritionists: dynamic(() => import('@/app/search/nutritionists/page'), { ssr: false }),
 }
 
 export default function DashboardSearchPage({ params }: { params: Promise<{ type: string }> }) {

@@ -1,15 +1,18 @@
 'use client'
 
-import { useDashboardUser } from '@/hooks/useDashboardUser'
+import { useCallback } from 'react'
+import { FaShieldAlt } from 'react-icons/fa'
+import HealthSectionList from './HealthSectionList'
 
 export default function MyInsurance() {
-  const user = useDashboardUser()
-  if (!user) return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" /></div>
-  
-  return (
-    <div className="p-4">
-      <h2 className="text-lg font-bold text-gray-900 mb-4">Insurance</h2>
-      <p className="text-gray-500 text-sm">View your Insurance history and upcoming appointments.</p>
-    </div>
-  )
+  const mapData = useCallback((data: unknown[]) =>
+    (data as { id: string; claimType?: string; amount?: number; createdAt: string; status: string; description?: string }[]).map(c => ({
+      id: c.id,
+      title: c.claimType || c.description || 'Insurance Claim',
+      date: new Date(c.createdAt).toLocaleDateString(),
+      status: c.status,
+      price: c.amount,
+    })), [])
+
+  return <HealthSectionList title="Insurance Claims" icon={FaShieldAlt} apiUrl="/api/patients/{userId}/claims" mapData={mapData} emptyMessage="No insurance claims yet." />
 }

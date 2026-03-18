@@ -1,15 +1,18 @@
 'use client'
 
-import { useDashboardUser } from '@/hooks/useDashboardUser'
+import { useCallback } from 'react'
+import { FaFileAlt } from 'react-icons/fa'
+import HealthSectionList from './HealthSectionList'
 
 export default function MyHealthRecords() {
-  const user = useDashboardUser()
-  if (!user) return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" /></div>
-  
-  return (
-    <div className="p-4">
-      <h2 className="text-lg font-bold text-gray-900 mb-4">HealthRecords</h2>
-      <p className="text-gray-500 text-sm">View your HealthRecords history and upcoming appointments.</p>
-    </div>
-  )
+  const mapData = useCallback((data: unknown[]) =>
+    (data as { id: string; createdAt: string; diagnosis?: string; notes?: string; doctor?: { user?: { firstName: string; lastName: string } } }[]).map(r => ({
+      id: r.id,
+      title: r.diagnosis || 'Medical Record',
+      subtitle: `Dr. ${r.doctor?.user?.firstName ?? ''} ${r.doctor?.user?.lastName ?? ''}`.trim(),
+      date: new Date(r.createdAt).toLocaleDateString(),
+      status: 'recorded',
+    })), [])
+
+  return <HealthSectionList title="Health Records" icon={FaFileAlt} apiUrl="/api/patients/{userId}/medical-records" mapData={mapData} />
 }

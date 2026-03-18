@@ -1,15 +1,20 @@
 'use client'
 
-import { useDashboardUser } from '@/hooks/useDashboardUser'
+import { useCallback } from 'react'
+import { FaAmbulance } from 'react-icons/fa'
+import HealthSectionList from './HealthSectionList'
 
 export default function MyEmergency() {
-  const user = useDashboardUser()
-  if (!user) return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" /></div>
-  
-  return (
-    <div className="p-4">
-      <h2 className="text-lg font-bold text-gray-900 mb-4">Emergency</h2>
-      <p className="text-gray-500 text-sm">View your Emergency history and upcoming appointments.</p>
-    </div>
-  )
+  const mapData = useCallback((data: unknown[]) =>
+    (data as { id: string; bookingType: string; providerName: string; serviceName?: string; scheduledAt: string; status: string }[])
+      .filter(b => b.bookingType === 'emergency')
+      .map(b => ({
+        id: b.id,
+        title: b.serviceName || 'Emergency',
+        subtitle: b.providerName,
+        date: new Date(b.scheduledAt).toLocaleDateString() + ' ' + new Date(b.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: b.status,
+      })), [])
+
+  return <HealthSectionList title="Emergency Services" icon={FaAmbulance} apiUrl="/api/bookings/unified?role=patient" mapData={mapData} emptyMessage="No emergency bookings." />
 }
