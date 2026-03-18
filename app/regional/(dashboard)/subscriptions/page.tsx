@@ -516,43 +516,77 @@ export default function SubscriptionsManagementPage() {
               </div>
 
               <div className="border-t pt-4">
-                <h4 className="text-sm font-semibold text-gray-800 mb-3">Service Category Discounts (%)</h4>
-                <p className="text-xs text-gray-500 mb-3">Set discount % off provider market price for each service category. These apply when quota is exhausted.</p>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {[
-                    { key: 'gp', label: 'GP' },
-                    { key: 'specialist', label: 'Specialist' },
-                    { key: 'nurse', label: 'Nurse' },
-                    { key: 'lab', label: 'Lab Tests' },
-                    { key: 'pharmacy', label: 'Pharmacy' },
-                    { key: 'childcare', label: 'Childcare' },
-                    { key: 'emergency', label: 'Emergency' },
-                    { key: 'mental_health', label: 'Mental Health' },
-                  ].map(({ key, label }) => (
-                    <div key={key}>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+                <h4 className="text-sm font-semibold text-gray-800 mb-3">Discounts (%) — by role, specialty, or service category</h4>
+                <p className="text-xs text-gray-500 mb-3">Set discount % off provider market price. Applies when quota is exhausted.</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {Object.entries(form.discounts).filter(([k]) => !k.startsWith('volume_')).map(([key, val]) => (
+                    <div key={key} className="flex items-center gap-2 text-sm">
+                      <span className="flex-1 text-gray-700 text-xs">{key}</span>
                       <div className="flex items-center gap-1">
                         <input
                           type="number"
-                          value={form.discounts[key] ?? ''}
+                          value={val ?? ''}
                           onChange={(e) => {
-                            const val = parseInt(e.target.value)
+                            const v = parseInt(e.target.value)
                             setForm(prev => {
-                              const newDiscounts = { ...prev.discounts }
-                              if (isNaN(val) || val <= 0) {
-                                delete newDiscounts[key]
-                              } else {
-                                newDiscounts[key] = Math.min(val, 100)
-                              }
-                              return { ...prev, discounts: newDiscounts }
+                              const d = { ...prev.discounts }
+                              if (isNaN(v) || v <= 0) delete d[key]
+                              else d[key] = Math.min(v, 100)
+                              return { ...prev, discounts: d }
                             })
                           }}
-                          placeholder="0"
-                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-center"
-                          min="0"
-                          max="100"
+                          className="w-14 px-2 py-1 border border-gray-200 rounded text-xs text-center"
+                          min="0" max="100"
                         />
                         <span className="text-xs text-gray-400">%</span>
+                      </div>
+                      <button onClick={() => setForm(prev => {
+                        const d = { ...prev.discounts }; delete d[key]; return { ...prev, discounts: d }
+                      })} className="text-red-400 hover:text-red-600 text-xs"><FaTimes /></button>
+                    </div>
+                  ))}
+                </div>
+                {/* Add discount — same role+specialty dropdown + service categories */}
+                <div className="mt-2 flex gap-2">
+                  <select id="add-discount-select" className="flex-1 px-2 py-1.5 border border-gray-200 rounded text-xs" defaultValue="">
+                    <option value="" disabled>Add discount for...</option>
+                    <optgroup label="Service Categories">
+                      {['lab', 'pharmacy', 'emergency', 'childcare'].map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </optgroup>
+                    {providerRoles.map(r => (
+                      <optgroup key={r.role} label={r.role}>
+                        <option value={r.role}>{r.role} (any)</option>
+                        {r.specialties.map(s => (
+                          <option key={`${r.role}:${s.name}`} value={`${r.role}:${s.name}`}>{r.role} — {s.name}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => {
+                      const sel = document.getElementById('add-discount-select') as HTMLSelectElement
+                      if (!sel.value || form.discounts[sel.value]) return
+                      setForm(prev => ({ ...prev, discounts: { ...prev.discounts, [sel.value]: 0 } }))
+                      sel.value = ''
+                    }}
+                    className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200"
+                  >Add</button>
+                </div>
+              </div>
+              <div className="border-t pt-3">
+                <h5 className="text-xs font-semibold text-gray-700 mb-2">Quick Service Categories</h5>
+                <div className="grid grid-cols-4 gap-2">
+                  {['lab', 'pharmacy', 'emergency', 'childcare'].map(key => (
+                    <div key={key}>
+                      <label className="block text-[10px] font-medium text-gray-500 mb-0.5">{key}</label>
+                      <div className="flex items-center gap-0.5">
+                        <input type="number" value={form.discounts[key] ?? ''} onChange={(e) => {
+                          const v = parseInt(e.target.value)
+                          setForm(prev => { const d = { ...prev.discounts }; if (isNaN(v) || v <= 0) delete d[key]; else d[key] = Math.min(v, 100); return { ...prev, discounts: d } })
+                        }} placeholder="0" className="w-full px-1 py-1 border border-gray-200 rounded text-xs text-center" min="0" max="100" />
+                        <span className="text-[10px] text-gray-400">%</span>
                       </div>
                     </div>
                   ))}

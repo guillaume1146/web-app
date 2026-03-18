@@ -93,26 +93,16 @@ jobs:
           docker push $IMAGE_TAG
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-  # ─── Deploy to VPS ─────────────────────────────────────────────────
+  # ─── Deploy to VPS (self-hosted runner — no SSH needed) ───────────
   deploy:
     name: Deploy to VPS
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, mediwyz]
     needs: build
     steps:
       - name: Deploy on VPS
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          timeout: 60s
-          command_timeout: 30m
-          envs: GH_TOKEN,GH_ACTOR,IMAGE_TAG,APP_URL,DB_URL,JWT_SECRET,GROQ_API_KEY,POSTGRES_PASSWORD,SUPER_ADMIN_EMAIL,SUPER_ADMIN_PASSWORD,SUPER_ADMIN_FIRST_NAME,SUPER_ADMIN_LAST_NAME,DEPLOY_DIR,APP_DOMAIN
-          script: |
-            # Use configurable deploy directory (default: healthtech-app for backward compat)
-            DEPLOY_DIR="${DEPLOY_DIR:-healthtech-app}"
-            cd ~/$DEPLOY_DIR
+        run: |
+            DEPLOY_DIR="${{ secrets.DEPLOY_DIR || 'healthtech-app' }}"
+            cd /root/$DEPLOY_DIR
 
             # Pull latest code (for docker-compose.yml, prisma, seeds, etc.)
             git pull origin main 2>/dev/null || true
@@ -218,8 +208,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_ACTOR: ${{ github.actor }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
-          APP_URL: ${{ secrets.APP_DOMAIN != '' && format('https://{0}', secrets.APP_DOMAIN) || secrets.VULTR_DOMAIN != '' && format('https://{0}', secrets.VULTR_DOMAIN) || format('http://{0}', secrets.VPS_HOST) }}
-          DB_URL: ${{ secrets.DATABASE_URL || format('postgresql://healthwyz:{0}@db:5432/healthwyz', secrets.POSTGRES_PASSWORD) }}
+          APP_URL: ${{ secrets.APP_DOMAIN != '' && format('https://{0}', secrets.APP_DOMAIN) || format('http://localhost:3000') }}
+          DB_URL: ${{ secrets.DATABASE_URL || format('postgresql://mediwyz:{0}@db:5432/mediwyz', secrets.POSTGRES_PASSWORD) }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -230,71 +220,14 @@ jobs:
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
           APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
 
-      - name: Setup HTTPS with Let's Encrypt
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER || 'root' }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          timeout: 60s
-          command_timeout: 15m
-          envs: VULTR_DOMAIN,DEPLOY_DIR
-          script: |
-            if [ -z "$VULTR_DOMAIN" ]; then
-              echo "No VULTR_DOMAIN set, skipping HTTPS setup"
-              exit 0
-            fi
-
-            if [ -f "/etc/letsencrypt/live/$VULTR_DOMAIN/fullchain.pem" ]; then
-              echo "Certificate already exists for $VULTR_DOMAIN"
-              exit 0
-            fi
-
-            echo "Setting up Let's Encrypt for $VULTR_DOMAIN..."
-
-            if ! which certbot > /dev/null 2>&1; then
-              sudo apt-get update -qq
-              sudo apt-get install -y -qq certbot python3-certbot-nginx
-            fi
-
-            # Try both old and new nginx site config names
-            NGINX_SITE=""
-            for name in healthwyz omd mediwyz default; do
-              if [ -f "/etc/nginx/sites-enabled/$name" ]; then
-                NGINX_SITE="$name"
-                break
-              fi
-            done
-            if [ -n "$NGINX_SITE" ]; then
-              sudo sed -i "s/server_name .*;/server_name $VULTR_DOMAIN;/g" /etc/nginx/sites-enabled/$NGINX_SITE
-            fi
-            sudo nginx -t && sudo systemctl reload nginx
-
-            sudo certbot --nginx -d "$VULTR_DOMAIN" --non-interactive --agree-tos --email admin@mediwyz.com --redirect
-
-            echo "HTTPS certificate installed for $VULTR_DOMAIN"
-        env:
-          VULTR_DOMAIN: ${{ secrets.VULTR_DOMAIN }}
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
-
       - name: Verify deployment
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER || 'root' }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          timeout: 60s
-          envs: VULTR_DOMAIN
-          script: |
-            DOMAIN="${VULTR_DOMAIN:-localhost}"
+        run: |
             echo "=== Container Status ==="
-            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "(mediwyz|omd|healthwyz)"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "mediwyz" || true
 
             echo ""
             echo "=== Health Check ==="
-            if curl -sk "https://$DOMAIN/api/auth/me" 2>/dev/null; then
+            if curl -sk https://mediwyz.com/ > /dev/null 2>&1; then
               echo "App responding on HTTPS"
             elif curl -s http://localhost:3000 > /dev/null 2>&1; then
               echo "App responding on HTTP"
@@ -309,5 +242,3 @@ jobs:
             echo ""
             echo "=== Disk Usage ==="
             df -h / | tail -1
-        env:
-          VULTR_DOMAIN: ${{ secrets.VULTR_DOMAIN }}
