@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
-import { FaStethoscope, FaPills, FaFileAlt, FaShieldAlt, FaTimes, FaUser, FaChevronRight } from 'react-icons/fa'
+import { FaStethoscope, FaPills, FaFileAlt, FaShieldAlt, FaTimes, FaUser, FaChevronRight, FaPlus } from 'react-icons/fa'
 import { useProviderRoles } from '@/hooks/useProviderRoles'
 
 const ConsultationsContent = dynamic(() => import('@/components/health/MyConsultations'), { ssr: false, loading: () => <Loading /> })
 const PrescriptionsContent = dynamic(() => import('@/components/health/MyPrescriptions'), { ssr: false, loading: () => <Loading /> })
 const HealthRecordsContent = dynamic(() => import('@/components/health/MyHealthRecords'), { ssr: false, loading: () => <Loading /> })
 const InsuranceContent = dynamic(() => import('@/components/health/MyInsurance'), { ssr: false, loading: () => <Loading /> })
+const CreateBookingModal = dynamic(() => import('@/components/shared/CreateBookingModal'), { ssr: false })
 
 function Loading() {
   return <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
@@ -34,28 +35,25 @@ function ServiceBookingsList({ providerType, title }: { providerType: string; ti
   if (loading) return <Loading />
 
   return (
-    <div className="p-4">
-      <h2 className="text-lg font-bold text-gray-900 mb-4">{title}</h2>
+    <div className="space-y-2">
       {bookings.length === 0 ? (
-        <p className="text-center py-8 text-gray-400 text-sm">No {title.toLowerCase()} bookings yet. Book from the search page.</p>
+        <p className="text-center py-8 text-gray-400 text-sm">No {title.toLowerCase()} bookings yet.</p>
       ) : (
-        <div className="space-y-2">
-          {bookings.map(b => (
-            <div key={b.id} className="bg-white rounded-lg border border-gray-200 p-3 flex items-center justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-gray-900 text-sm truncate">{b.providerName}</p>
-                <p className="text-xs text-gray-500">{b.serviceName || title}</p>
-                <p className="text-xs text-gray-400">{new Date(b.scheduledAt).toLocaleDateString()}</p>
-              </div>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                b.status === 'completed' ? 'bg-green-100 text-green-700' :
-                b.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                b.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                'bg-blue-100 text-blue-700'
-              }`}>{b.status}</span>
+        bookings.map(b => (
+          <div key={b.id} className="bg-white rounded-lg border border-gray-200 p-3 flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-gray-900 text-sm truncate">{b.providerName}</p>
+              <p className="text-xs text-gray-500">{b.serviceName || title}</p>
+              <p className="text-xs text-gray-400">{new Date(b.scheduledAt).toLocaleDateString()}</p>
             </div>
-          ))}
-        </div>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+              b.status === 'completed' ? 'bg-green-100 text-green-700' :
+              b.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+              b.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+              'bg-blue-100 text-blue-700'
+            }`}>{b.status}</span>
+          </div>
+        ))
       )}
     </div>
   )
@@ -68,6 +66,9 @@ const FIXED_SECTIONS = [
   { id: 'records', label: 'Health Records', icon: FaFileAlt, color: 'text-gray-600', bgColor: 'bg-gray-50' },
   { id: 'insurance', label: 'Insurance', icon: FaShieldAlt, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
 ]
+
+/** Roles already handled by fixed sections — exclude from dynamic list */
+const FIXED_ROLE_TYPES = new Set(['DOCTOR'])
 
 const COLOR_MAP: Record<string, { text: string; bg: string }> = {
   blue: { text: 'text-blue-600', bg: 'bg-blue-50' },
@@ -87,14 +88,18 @@ const COLOR_MAP: Record<string, { text: string; bg: string }> = {
 export default function MyHealthSidebar() {
   const [activeSection, setActiveSection] = useState('consult')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showBookingModal, setShowBookingModal] = useState(false)
   const { roles } = useProviderRoles()
 
-  // Build sections: fixed + dynamic from DB
+  // Filter out roles already represented in fixed sections
+  const dynamicRoles = useMemo(() => roles.filter(r => !FIXED_ROLE_TYPES.has(r.role)), [roles])
+
+  // Build all sections: fixed + dynamic from DB
   const allSections = useMemo(() => {
-    const dynamic = roles.map(r => ({
+    const dynamic = dynamicRoles.map(r => ({
       id: `role:${r.role}`,
       label: r.label,
-      icon: FaUser, // Generic icon — could map per role but FaUser works
+      icon: FaUser,
       color: COLOR_MAP[r.color]?.text || 'text-gray-600',
       bgColor: COLOR_MAP[r.color]?.bg || 'bg-gray-50',
       providerType: r.role,
@@ -103,9 +108,11 @@ export default function MyHealthSidebar() {
       ...FIXED_SECTIONS.map(s => ({ ...s, providerType: undefined as string | undefined })),
       ...dynamic,
     ]
-  }, [roles])
+  }, [dynamicRoles])
 
   const activeItem = allSections.find(s => s.id === activeSection) || allSections[0]
+  const isProviderSection = activeSection.startsWith('role:')
+  const activeProviderType = isProviderSection ? activeSection.replace('role:', '') : null
 
   return (
     <div className="flex h-full flex-row-reverse">
@@ -150,11 +157,11 @@ export default function MyHealthSidebar() {
           </nav>
         </div>
 
-        {/* Dynamic role sections from DB */}
+        {/* Dynamic role sections from DB (excluding Doctor — already in fixed) */}
         <div className="px-2 pt-3">
           <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider px-2 mb-1">Provider Services</p>
           <nav className="space-y-0.5 pb-20">
-            {roles.map(r => {
+            {dynamicRoles.map(r => {
               const sectionId = `role:${r.role}`
               const colors = COLOR_MAP[r.color] || COLOR_MAP.gray
               return (
@@ -173,18 +180,43 @@ export default function MyHealthSidebar() {
 
       {/* Content area */}
       <div className="flex-1 min-w-0 pb-24 sm:pb-0">
-        {activeSection === 'consult' && <ConsultationsContent />}
-        {activeSection === 'rx' && <PrescriptionsContent />}
-        {activeSection === 'records' && <HealthRecordsContent />}
-        {activeSection === 'insurance' && <InsuranceContent />}
-        {/* Dynamic role sections — all use ServiceBookingsList */}
-        {activeSection.startsWith('role:') && (
-          <ServiceBookingsList
-            providerType={activeSection.replace('role:', '')}
-            title={allSections.find(s => s.id === activeSection)?.label || 'Services'}
-          />
+        {/* Header with Book button (only for provider role sections) */}
+        {isProviderSection && (
+          <div className="flex items-center justify-between p-4 pb-0">
+            <h2 className="text-lg font-bold text-gray-900">{activeItem?.label || 'Services'}</h2>
+            <button
+              onClick={() => setShowBookingModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition"
+            >
+              <FaPlus className="text-[10px]" /> Book
+            </button>
+          </div>
         )}
+
+        <div className="p-4">
+          {activeSection === 'consult' && <ConsultationsContent />}
+          {activeSection === 'rx' && <PrescriptionsContent />}
+          {activeSection === 'records' && <HealthRecordsContent />}
+          {activeSection === 'insurance' && <InsuranceContent />}
+          {/* Dynamic role sections — all use ServiceBookingsList */}
+          {isProviderSection && (
+            <ServiceBookingsList
+              providerType={activeSection.replace('role:', '')}
+              title={activeItem?.label || 'Services'}
+            />
+          )}
+        </div>
       </div>
+
+      {/* Booking modal — only for provider sections */}
+      {showBookingModal && activeProviderType && (
+        <CreateBookingModal
+          isOpen={showBookingModal}
+          onClose={() => setShowBookingModal(false)}
+          onCreated={() => { setShowBookingModal(false); window.location.reload() }}
+          defaultProviderType={activeProviderType}
+        />
+      )}
     </div>
   )
 }

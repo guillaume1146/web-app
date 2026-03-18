@@ -10,12 +10,6 @@ export default function SearchDentistsPage() {
       singularLabel: 'Dentist',
       slug: 'dentists',
       accentColor: 'border-sky-100',
-      searchExamples: [
-        'General dentistry check-up',
-        'Orthodontist for braces',
-        'Teeth whitening specialist',
-        'Pediatric dentist for kids',
-      ],
     }} />
   )
 }

@@ -10,12 +10,6 @@ export default function SearchOptometristsPage() {
       singularLabel: 'Optometrist',
       slug: 'optometrists',
       accentColor: 'border-violet-100',
-      searchExamples: [
-        'Eye exam near me',
-        'Contact lens fitting',
-        'Pediatric eye care',
-        'Glasses prescription update',
-      ],
     }} />
   )
 }

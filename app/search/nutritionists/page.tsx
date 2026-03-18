@@ -10,12 +10,6 @@ export default function SearchNutritionistsPage() {
       singularLabel: 'Nutritionist',
       slug: 'nutritionists',
       accentColor: 'border-orange-100',
-      searchExamples: [
-        'Weight management specialist',
-        'Sports nutrition consultant',
-        'Pediatric nutritionist',
-        'Meal plan creation',
-      ],
     }} />
   )
 }

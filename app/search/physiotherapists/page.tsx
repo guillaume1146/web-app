@@ -10,12 +10,6 @@ export default function SearchPhysiotherapistsPage() {
       singularLabel: 'Physiotherapist',
       slug: 'physiotherapists',
       accentColor: 'border-lime-100',
-      searchExamples: [
-        'Sports injury rehabilitation',
-        'Back pain physiotherapy',
-        'Post-surgery rehab specialist',
-        'Orthopedic physiotherapist',
-      ],
     }} />
   )
 }

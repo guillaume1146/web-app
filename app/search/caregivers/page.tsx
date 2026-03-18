@@ -10,12 +10,6 @@ export default function SearchCaregiversPage() {
       singularLabel: 'Caregiver',
       slug: 'caregivers',
       accentColor: 'border-pink-100',
-      searchExamples: [
-        'Elder care specialist near me',
-        'Dementia companion care',
-        'Post-surgery home aide',
-        'Disability care specialist',
-      ],
     }} />
   )
 }
