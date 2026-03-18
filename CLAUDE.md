@@ -168,6 +168,13 @@ Booking flow: check subscription quota → apply discount off provider market pr
 /api/patients/[id]/...    — Patient-specific (appointments, prescriptions, health-records, etc.)
 /api/doctors/[id]/...     — Doctor-specific (appointments, patients, schedule, notifications)
 /api/bookings/doctor|nurse|nanny|lab-test|emergency — Booking with subscription cost check
+/api/bookings/service     — POST/GET generic booking (caregiver, physio, dentist, optometrist, nutritionist)
+/api/bookings/unified     — GET all bookings across all types with dynamic actions
+/api/programs             — GET/POST health programs (vaccination, rehab, mental health)
+/api/programs/[id]/enroll — POST patient enrollment in a program
+/api/programs/[id]/providers — POST add collaborating provider
+/api/roles                — GET all provider roles with specialties (DB-driven)
+/api/search/providers     — GET search providers by type (all roles)
 /api/video/room           — Video room management
 /api/webrtc/session       — WebRTC session CRUD
 /api/webrtc/recovery      — Session recovery
@@ -203,4 +210,9 @@ Booking flow: check subscription quota → apply discount off provider market pr
 | CORPORATE_ADMIN | /corporate/ | corporate | 1 user |
 | REFERRAL_PARTNER | /referral-partner/ | referral-partner | 1 user |
 | REGIONAL_ADMIN | /regional/ | regional-admin | 7 users (MU×2, MG, KE, TG, BJ, RW) |
+| CAREGIVER | /caregiver/ | caregiver | 2 users |
+| PHYSIOTHERAPIST | /physiotherapist/ | physiotherapist | 1 user |
+| DENTIST | /dentist/ | dentist | 1 user |
+| OPTOMETRIST | /optometrist/ | optometrist | 1 user |
+| NUTRITIONIST | /nutritionist/ | nutritionist | 1 user |
 | Super Admin (env) | /admin/ | admin | 1 user (auto-created) |
