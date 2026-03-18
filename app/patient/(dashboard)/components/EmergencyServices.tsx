@@ -70,7 +70,7 @@ const EmergencyServices: React.FC<Props> = ({ patientData }) => {
         const res = await fetch(`/api/patients/${patientData.id}/prescriptions?active=true`)
         if (res.ok) {
           const json = await res.json()
-          if (json.data) {
+          if (json.success && json.data) {
             setActiveMedications(json.data.map((p: any) => ({
               medicines: (p.medicines ?? []).map((m: any) => ({
                 name: m.medicine?.name ?? m.name ?? '',
