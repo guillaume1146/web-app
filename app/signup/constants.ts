@@ -213,7 +213,35 @@ export const documentRequirements: Record<string, Document[]> = {
     { id: 'regional-research', name: 'Market Research Report', required: true, description: 'Market analysis for target region/country', accepted: '.pdf', uploaded: false },
     { id: 'legal-clearance', name: 'Legal Clearance Certificate', required: true, description: 'Police clearance and legal background check', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
     { id: 'reference-letters', name: 'Professional Reference Letters', required: true, description: 'At least 2 professional references', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false }
-  ]
+  ],
+  caregiver: [
+    { id: 'national-id', name: 'National ID/Passport', required: true, description: 'Valid government-issued identification', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+    { id: 'police-clearance', name: 'Police Clearance Certificate', required: true, description: 'Background check', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+    { id: 'first-aid-cert', name: 'First Aid Certification', required: true, description: 'First aid training certificate', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+    { id: 'caregiver-training', name: 'Caregiver Training Certificate', required: false, description: 'Caregiving skills certificate', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+  ],
+  physiotherapist: [
+    { id: 'national-id', name: 'National ID/Passport', required: true, description: 'Valid government-issued identification', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+    { id: 'physio-degree', name: 'Physiotherapy Degree', required: true, description: 'BSc/MSc Physiotherapy', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+    { id: 'physio-license', name: 'Professional License', required: true, description: 'License to practice physiotherapy', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+    { id: 'registration-cert', name: 'Registration Certificate', required: true, description: 'Professional body registration', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+  ],
+  dentist: [
+    { id: 'national-id', name: 'National ID/Passport', required: true, description: 'Valid government-issued identification', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+    { id: 'dental-degree', name: 'Dental Degree (BDS/DDS)', required: true, description: 'Bachelor of Dental Surgery or equivalent', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+    { id: 'dental-license', name: 'Dental License', required: true, description: 'License to practice dentistry', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+    { id: 'dental-registration', name: 'Dental Council Registration', required: true, description: 'Registration with dental regulatory body', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+  ],
+  optometrist: [
+    { id: 'national-id', name: 'National ID/Passport', required: true, description: 'Valid government-issued identification', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+    { id: 'optometry-degree', name: 'Optometry Degree', required: true, description: 'BSc/OD in Optometry', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+    { id: 'optometry-license', name: 'Professional License', required: true, description: 'License to practice optometry', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+  ],
+  nutritionist: [
+    { id: 'national-id', name: 'National ID/Passport', required: true, description: 'Valid government-issued identification', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+    { id: 'nutrition-cert', name: 'Nutrition Certification', required: true, description: 'Certified dietitian or nutritionist credential', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+    { id: 'nutrition-degree', name: 'Nutrition/Dietetics Degree', required: false, description: 'BSc in Nutrition, Food Science, or Dietetics', accepted: '.pdf,.jpg,.jpeg,.png', uploaded: false },
+  ],
 }
 
 export const steps = [

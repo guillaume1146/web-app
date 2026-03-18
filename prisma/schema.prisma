@@ -1503,6 +1503,33 @@ model EmergencyBooking {
   @@index([status])
 }
 
+// ─── Generic Service Booking (for new roles: caregiver, physio, dentist, etc.) ─
+
+model ServiceBooking {
+  id             String   @id @default(uuid())
+  patientId      String
+  providerUserId String
+  providerType   UserType // CAREGIVER, PHYSIOTHERAPIST, DENTIST, OPTOMETRIST, NUTRITIONIST
+  providerName   String?
+  scheduledAt    DateTime
+  duration       Int      @default(30)
+  type           String   @default("in_person") // in_person, home_visit, video
+  status         String   @default("pending") // pending, accepted, in_progress, completed, cancelled
+  reason         String?
+  notes          String?
+  serviceName    String?
+  servicePrice   Float?
+  specialty      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([providerUserId])
+  @@index([providerType])
+  @@index([scheduledAt])
+  @@index([status])
+}
+
 // ─── Provider Availability ──────────────────────────────────────────────────
 
 model ProviderAvailability {

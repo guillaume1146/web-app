@@ -125,6 +125,7 @@ async function main() {
 
   // 4. Scheduling + Provider Availability
   await prisma.providerAvailability.deleteMany()
+  await prisma.serviceBooking.deleteMany()
   await prisma.emergencyBooking.deleteMany()
   await prisma.labTestBooking.deleteMany()
   await prisma.childcareBooking.deleteMany()

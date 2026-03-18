@@ -81,6 +81,20 @@ export const createEmergencyBookingSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
 })
 
+export const createServiceBookingSchema = z.object({
+  providerUserId: z.string().min(1, 'Provider ID is required'),
+  providerType: z.enum(['CAREGIVER', 'PHYSIOTHERAPIST', 'DENTIST', 'OPTOMETRIST', 'NUTRITIONIST']),
+  scheduledDate: z.string().min(1, 'Date is required'),
+  scheduledTime: z.string().min(1, 'Time is required'),
+  type: z.enum(['in_person', 'home_visit', 'video']).default('in_person'),
+  reason: z.string().max(500).optional(),
+  notes: z.string().max(1000).optional(),
+  duration: z.number().int().min(15).max(1440).optional(),
+  serviceName: z.string().optional(),
+  servicePrice: z.number().min(0).optional(),
+  specialty: z.string().optional(),
+})
+
 export const bookingActionSchema = z.object({
   action: z.enum(['accept', 'deny', 'cancel', 'en_route', 'complete']),
   reason: z.string().max(500).optional(),
