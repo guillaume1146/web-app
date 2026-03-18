@@ -58,6 +58,11 @@ const COOKIE_TO_SLUG: Record<string, string> = {
   'referral-partner': 'referral-partner',
   admin: 'admin',
   'regional-admin': 'regional',
+  caregiver: 'caregiver',
+  physiotherapist: 'physiotherapist',
+  dentist: 'dentist',
+  optometrist: 'optometrist',
+  nutritionist: 'nutritionist',
 }
 
 const Navbar: React.FC = () => {

@@ -73,6 +73,11 @@ export async function middleware(request: NextRequest) {
     '/corporate': ['corporate'],
     '/insurance': ['insurance'],
     '/referral-partner': ['referral-partner'],
+    '/caregiver': ['caregiver'],
+    '/physiotherapist': ['physiotherapist'],
+    '/dentist': ['dentist'],
+    '/optometrist': ['optometrist'],
+    '/nutritionist': ['nutritionist'],
   }
 
   const protectedRoute = Object.keys(protectedRoutes).find(route =>
@@ -121,6 +126,11 @@ function getUserTypeRedirectPath(userType: string): string {
     'corporate': '/corporate/feed',
     'insurance': '/insurance/feed',
     'referral-partner': '/referral-partner/feed',
+    'caregiver': '/caregiver/feed',
+    'physiotherapist': '/physiotherapist/feed',
+    'dentist': '/dentist/feed',
+    'optometrist': '/optometrist/feed',
+    'nutritionist': '/nutritionist/feed',
   }
 
   return redirectPaths[userType] || '/'
@@ -140,5 +150,10 @@ export const config = {
     '/insurance/:path*',
     '/referral-partner/:path*',
     '/regional/:path*',
+    '/caregiver/:path*',
+    '/physiotherapist/:path*',
+    '/dentist/:path*',
+    '/optometrist/:path*',
+    '/nutritionist/:path*',
   ]
 }

@@ -59,18 +59,19 @@ interface PlanServiceLink {
   monthlyLimit: number
 }
 
+interface QuotaEntry {
+  role: string
+  specialty?: string | null
+  limit: number
+}
+
 const EMPTY_FORM: {
   name: string
   type: 'individual' | 'corporate'
   price: number
   currency: string
   targetAudience: string
-  gpConsultsPerMonth: number
-  specialistConsultsPerMonth: number
-  nurseConsultsPerMonth: number
-  mentalHealthConsultsPerMonth: number
-  nutritionConsultsPerMonth: number
-  ambulanceFreePerMonth: number
+  quotas: QuotaEntry[]
   discounts: Record<string, number>
   features: string[]
   serviceLinks: PlanServiceLink[]
@@ -80,12 +81,7 @@ const EMPTY_FORM: {
   price: 0,
   currency: 'MUR',
   targetAudience: '',
-  gpConsultsPerMonth: 0,
-  specialistConsultsPerMonth: 0,
-  nurseConsultsPerMonth: 0,
-  mentalHealthConsultsPerMonth: 0,
-  nutritionConsultsPerMonth: 0,
-  ambulanceFreePerMonth: 0,
+  quotas: [],
   discounts: {},
   features: [],
   serviceLinks: [],
@@ -103,17 +99,18 @@ export default function SubscriptionsManagementPage() {
   const [generatingFeatures, setGeneratingFeatures] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [services, setServices] = useState<ServiceCategory[]>([])
+  const [providerRoles, setProviderRoles] = useState<{ role: string; specialties: { name: string }[] }[]>([])
+
 
   const generateFeatures = async () => {
     setGeneratingFeatures(true)
     try {
       const quotas: Record<string, number> = {
-        'GP consultations': form.gpConsultsPerMonth,
-        'Specialist consultations': form.specialistConsultsPerMonth,
-        'Nurse consultations': form.nurseConsultsPerMonth,
-        'Mental health consultations': form.mentalHealthConsultsPerMonth,
-        'Nutrition consultations': form.nutritionConsultsPerMonth,
-        'Ambulance calls': form.ambulanceFreePerMonth,
+      }
+      // Build quotas for AI from the flexible quotas array
+      for (const q of form.quotas) {
+        const label = q.specialty ? `${q.specialty} consultations` : `${q.role} consultations`
+        quotas[label] = q.limit
       }
       // Include service details (free, discount %, name)
       const serviceDetails = form.serviceLinks.map(sl => {
@@ -169,18 +166,23 @@ export default function SubscriptionsManagementPage() {
     try {
       const res = await fetch('/api/services/catalog')
       const json = await res.json()
-      if (json.success) {
-        setServices(json.data)
-      }
-    } catch {
-      // Services list optional
-    }
+      if (json.success) setServices(json.data)
+    } catch {}
+  }, [])
+
+  const fetchRoles = useCallback(async () => {
+    try {
+      const res = await fetch('/api/roles')
+      const json = await res.json()
+      if (json.success) setProviderRoles(json.data)
+    } catch {}
   }, [])
 
   useEffect(() => {
     fetchPlans()
     fetchServices()
-  }, [fetchPlans, fetchServices])
+    fetchRoles()
+  }, [fetchPlans, fetchServices, fetchRoles])
 
   const handleEdit = (plan: Plan) => {
     setEditingPlan(plan)
@@ -202,12 +204,7 @@ export default function SubscriptionsManagementPage() {
       price: plan.price,
       currency: plan.currency,
       targetAudience: plan.targetAudience || '',
-      gpConsultsPerMonth: plan.gpConsultsPerMonth,
-      specialistConsultsPerMonth: plan.specialistConsultsPerMonth,
-      nurseConsultsPerMonth: plan.nurseConsultsPerMonth,
-      mentalHealthConsultsPerMonth: plan.mentalHealthConsultsPerMonth,
-      nutritionConsultsPerMonth: plan.nutritionConsultsPerMonth,
-      ambulanceFreePerMonth: plan.ambulanceFreePerMonth,
+      quotas: ((plan as unknown as Record<string, unknown>).quotas || []) as QuotaEntry[],
       discounts: (plan.discounts || {}) as Record<string, number>,
       features: plan.features,
       serviceLinks: existingLinks,
@@ -460,28 +457,61 @@ export default function SubscriptionsManagementPage() {
                 </div>
               </div>
 
+              {/* Dynamic quotas by role + specialty */}
               <div className="border-t pt-4">
-                <h4 className="text-sm font-semibold text-gray-800 mb-3">Monthly Consultation Limits (-1 = unlimited)</h4>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { key: 'gpConsultsPerMonth', label: 'GP' },
-                    { key: 'specialistConsultsPerMonth', label: 'Specialist' },
-                    { key: 'nurseConsultsPerMonth', label: 'Nurse' },
-                    { key: 'mentalHealthConsultsPerMonth', label: 'Mental Health' },
-                    { key: 'nutritionConsultsPerMonth', label: 'Nutrition' },
-                    { key: 'ambulanceFreePerMonth', label: 'Ambulance' },
-                  ].map(({ key, label }) => (
-                    <div key={key}>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+                <h4 className="text-sm font-semibold text-gray-800 mb-3">Monthly Consultation Quotas (-1 = unlimited)</h4>
+                <p className="text-xs text-gray-500 mb-3">Set free consultation limits per provider role and specialty.</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {form.quotas.map((q, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm">
+                      <span className="flex-1 text-gray-700 text-xs">{q.specialty ? `${q.role} — ${q.specialty}` : q.role}</span>
                       <input
                         type="number"
-                        value={(form as Record<string, unknown>)[key] as number}
-                        onChange={(e) => setForm(prev => ({ ...prev, [key]: parseInt(e.target.value) || 0 }))}
-                        className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm"
+                        value={q.limit}
+                        onChange={(e) => setForm(prev => ({
+                          ...prev,
+                          quotas: prev.quotas.map((qq, j) => j === i ? { ...qq, limit: parseInt(e.target.value) || 0 } : qq),
+                        }))}
+                        className="w-16 px-2 py-1 border border-gray-200 rounded text-xs text-center"
                         min="-1"
                       />
+                      <button onClick={() => setForm(prev => ({ ...prev, quotas: prev.quotas.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-600 text-xs">
+                        <FaTimes />
+                      </button>
                     </div>
                   ))}
+                </div>
+                {/* Add quota button */}
+                <div className="mt-2 flex gap-2">
+                  <select
+                    id="add-quota-select"
+                    className="flex-1 px-2 py-1.5 border border-gray-200 rounded text-xs"
+                    defaultValue=""
+                  >
+                    <option value="" disabled>Add quota for...</option>
+                    {providerRoles.map(r => (
+                      <optgroup key={r.role} label={r.role}>
+                        <option value={`${r.role}:`}>{r.role} (any specialty)</option>
+                        {r.specialties.map(s => (
+                          <option key={`${r.role}:${s.name}`} value={`${r.role}:${s.name}`}>{r.role} — {s.name}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => {
+                      const sel = document.getElementById('add-quota-select') as HTMLSelectElement
+                      if (!sel.value) return
+                      const [role, specialty] = sel.value.split(':')
+                      const exists = form.quotas.some(q => q.role === role && (q.specialty || '') === (specialty || ''))
+                      if (exists) return
+                      setForm(prev => ({ ...prev, quotas: [...prev.quotas, { role, specialty: specialty || null, limit: 0 }] }))
+                      sel.value = ''
+                    }}
+                    className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200"
+                  >
+                    Add
+                  </button>
                 </div>
               </div>
 

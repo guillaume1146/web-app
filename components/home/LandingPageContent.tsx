@@ -21,6 +21,11 @@ const USER_TYPE_FEEDS: Record<string, string> = {
   CORPORATE_ADMIN: '/corporate/feed',
   REFERRAL_PARTNER: '/referral-partner/feed',
   REGIONAL_ADMIN: '/regional/feed',
+  CAREGIVER: '/caregiver/feed',
+  PHYSIOTHERAPIST: '/physiotherapist/feed',
+  DENTIST: '/dentist/feed',
+  OPTOMETRIST: '/optometrist/feed',
+  NUTRITIONIST: '/nutritionist/feed',
 }
 
 export default function LandingPageContent({ sections, labels }: LandingPageContentProps) {

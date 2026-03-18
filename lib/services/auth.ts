@@ -27,6 +27,12 @@ const USER_TYPE_PATHS: Record<string, string> = {
   corporate: '/corporate/dashboard',
   insurance: '/insurance/dashboard',
   'referral-partner': '/referral-partner/dashboard',
+  'regional-admin': '/regional/dashboard',
+  caregiver: '/caregiver/dashboard',
+  physiotherapist: '/physiotherapist/dashboard',
+  dentist: '/dentist/dashboard',
+  optometrist: '/optometrist/dashboard',
+  nutritionist: '/nutritionist/dashboard',
 }
 
 export class AuthService {

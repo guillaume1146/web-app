@@ -194,20 +194,13 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
             )}
           </div>
 
-          {/* Usage summary */}
-          {current.usage && (
+          {/* Usage summary — dynamic from quotas */}
+          {current.usage?.quotas && ((current.usage as unknown as { quotas: { key: string; label: string; used: number; limit: number }[] }).quotas).length > 0 && (
             <div className="mt-3 pt-3 border-t border-blue-200 grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {[
-                { label: 'GP', used: current.usage.gpConsultsUsed, limit: current.usage.gpConsultsLimit },
-                { label: 'Specialist', used: current.usage.specialistConsultsUsed, limit: current.usage.specialistConsultsLimit },
-                { label: 'Nurse', used: current.usage.nurseConsultsUsed, limit: current.usage.nurseConsultsLimit },
-                { label: 'Mental Health', used: current.usage.mentalHealthConsultsUsed, limit: current.usage.mentalHealthConsultsLimit },
-                { label: 'Nutrition', used: current.usage.nutritionConsultsUsed, limit: current.usage.nutritionConsultsLimit },
-                { label: 'Ambulance', used: current.usage.ambulanceUsed, limit: current.usage.ambulanceLimit },
-              ].filter(s => (s.limit ?? 0) !== 0).map(s => (
-                <div key={s.label} className="text-xs">
-                  <span className="text-gray-500">{s.label}:</span>{' '}
-                  <span className="font-medium">{s.used ?? 0}/{s.limit === -1 ? '∞' : s.limit}</span>
+              {((current.usage as unknown as { quotas: { key: string; label: string; used: number; limit: number }[] }).quotas).map(q => (
+                <div key={q.key} className="text-xs">
+                  <span className="text-gray-500">{q.label}:</span>{' '}
+                  <span className="font-medium">{q.used}/{q.limit === -1 ? '∞' : q.limit}</span>
                 </div>
               ))}
             </div>
