@@ -10,178 +10,178 @@ import type { BookingSubmitData } from '@/components/booking/BookingForm'
 import { getUserId } from '@/hooks/useUser'
 
 interface NurseInfo {
-  id: string
-  firstName: string
-  lastName: string
-  profileImage: string
-  specialization: string[]
-  location: string
-  hourlyRate: number
+ id: string
+ firstName: string
+ lastName: string
+ profileImage: string
+ specialization: string[]
+ location: string
+ hourlyRate: number
 }
 
 interface BookingResult {
-  ticketId: string
-  type: string
-  scheduledAt: string
-  status: string
+ ticketId: string
+ type: string
+ scheduledAt: string
+ status: string
 }
 
 export default function GenericBookNursePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const pathname = usePathname()
-  const baseSlug = pathname.split('/')[1]
+ const { id } = use(params)
+ const pathname = usePathname()
+ const baseSlug = pathname.split('/')[1]
 
-  const [nurse, setNurse] = useState<NurseInfo | null>(null)
-  const [walletBalance, setWalletBalance] = useState<number | undefined>(undefined)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [bookingResult, setBookingResult] = useState<BookingResult | null>(null)
-  const [submitData, setSubmitData] = useState<BookingSubmitData | null>(null)
+ const [nurse, setNurse] = useState<NurseInfo | null>(null)
+ const [walletBalance, setWalletBalance] = useState<number | undefined>(undefined)
+ const [loading, setLoading] = useState(true)
+ const [error, setError] = useState<string | null>(null)
+ const [isSubmitting, setIsSubmitting] = useState(false)
+ const [bookingResult, setBookingResult] = useState<BookingResult | null>(null)
+ const [submitData, setSubmitData] = useState<BookingSubmitData | null>(null)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
+ useEffect(() => {
+ const fetchData = async () => {
+ try {
+ setLoading(true)
 
-        const nursesRes = await fetch('/api/search/nurses')
-        const nursesData = await nursesRes.json()
+ const nursesRes = await fetch('/api/search/nurses')
+ const nursesData = await nursesRes.json()
 
-        if (nursesData.success && nursesData.data) {
-          const found = nursesData.data.find((n: NurseInfo) => n.id === id)
-          if (found) {
-            setNurse(found)
-          } else {
-            setError('Nurse not found')
-          }
-        } else {
-          setError('Failed to load nurse information')
-        }
+ if (nursesData.success && nursesData.data) {
+ const found = nursesData.data.find((n: NurseInfo) => n.id === id)
+ if (found) {
+ setNurse(found)
+ } else {
+ setError('Nurse not found')
+ }
+ } else {
+ setError('Failed to load nurse information')
+ }
 
-        const userId = getUserId()
-        if (userId) {
-          const walletRes = await fetch(`/api/users/${userId}/wallet`)
-          const walletData = await walletRes.json()
-          if (walletData.success && walletData.data) {
-            setWalletBalance(walletData.data.balance)
-          }
-        }
-      } catch {
-        setError('Failed to load booking information')
-      } finally {
-        setLoading(false)
-      }
-    }
+ const userId = getUserId()
+ if (userId) {
+ const walletRes = await fetch(`/api/users/${userId}/wallet`)
+ const walletData = await walletRes.json()
+ if (walletData.success && walletData.data) {
+ setWalletBalance(walletData.data.balance)
+ }
+ }
+ } catch {
+ setError('Failed to load booking information')
+ } finally {
+ setLoading(false)
+ }
+ }
 
-    fetchData()
-  }, [id])
+ fetchData()
+ }, [id])
 
-  const handleSubmit = async (data: BookingSubmitData) => {
-    setIsSubmitting(true)
-    setSubmitData(data)
+ const handleSubmit = async (data: BookingSubmitData) => {
+ setIsSubmitting(true)
+ setSubmitData(data)
 
-    try {
-      const res = await fetch('/api/bookings/nurse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nurseId: id,
-          consultationType: data.consultationType,
-          scheduledDate: data.scheduledDate,
-          scheduledTime: data.scheduledTime,
-          reason: data.reason,
-          notes: data.notes,
-          duration: data.duration,
-        }),
-      })
+ try {
+ const res = await fetch('/api/bookings/nurse', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({
+ nurseId: id,
+ consultationType: data.consultationType,
+ scheduledDate: data.scheduledDate,
+ scheduledTime: data.scheduledTime,
+ reason: data.reason,
+ notes: data.notes,
+ duration: data.duration,
+ }),
+ })
 
-      const result = await res.json()
+ const result = await res.json()
 
-      if (!result.success) {
-        throw new Error(result.message || 'Booking failed')
-      }
+ if (!result.success) {
+ throw new Error(result.message || 'Booking failed')
+ }
 
-      setBookingResult(result.booking)
-      if (result.newBalance !== undefined) {
-        setWalletBalance(result.newBalance)
-      }
-    } catch (err) {
-      throw err
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+ setBookingResult(result.booking)
+ if (result.newBalance !== undefined) {
+ setWalletBalance(result.newBalance)
+ }
+ } catch (err) {
+ throw err
+ } finally {
+ setIsSubmitting(false)
+ }
+ }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading nurse information...</p>
-        </div>
-      </div>
-    )
-  }
+ if (loading) {
+ return (
+ <div className="flex items-center justify-center min-h-[400px]">
+ <div className="text-center">
+ <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4" />
+ <p className="text-gray-600">Loading nurse information...</p>
+ </div>
+ </div>
+ )
+ }
 
-  if (error || !nurse) {
-    return (
-      <div className="max-w-lg mx-auto mt-12">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-          <p className="text-red-700 font-medium mb-4">{error || 'Nurse not found'}</p>
-          <Link
-            href={`/${baseSlug}/feed`}
-            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
-          >
-            <FaArrowLeft /> Back to Dashboard
-          </Link>
-        </div>
-      </div>
-    )
-  }
+ if (error || !nurse) {
+ return (
+ <div className="max-w-lg mx-auto mt-12">
+ <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+ <p className="text-red-700 font-medium mb-4">{error || 'Nurse not found'}</p>
+ <Link
+ href={`/${baseSlug}/feed`}
+ className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+ >
+ <FaArrowLeft /> Back to Dashboard
+ </Link>
+ </div>
+ </div>
+ )
+ }
 
-  if (bookingResult) {
-    return (
-      <BookingSuccessTicket
-        providerType="nurse"
-        providerName={`${nurse.firstName} ${nurse.lastName}`}
-        providerDetail={nurse.specialization[0] || 'General Nursing'}
-        ticketId={bookingResult.ticketId}
-        submitData={submitData}
-        walletBalance={walletBalance}
-        viewLabel="View Bookings"
-        dashboardPath={`/${baseSlug}/feed`}
-      />
-    )
-  }
+ if (bookingResult) {
+ return (
+ <BookingSuccessTicket
+ providerType="nurse"
+ providerName={`${nurse.firstName} ${nurse.lastName}`}
+ providerDetail={nurse.specialization[0] || 'General Nursing'}
+ ticketId={bookingResult.ticketId}
+ submitData={submitData}
+ walletBalance={walletBalance}
+ viewLabel="View Bookings"
+ dashboardPath={`/${baseSlug}/feed`}
+ />
+ )
+ }
 
-  return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-6">
-        <Link
-          href={`/${baseSlug}/find-nurse`}
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-pink-600 transition-colors"
-        >
-          <FaArrowLeft /> Back to Find Nurse
-        </Link>
-      </div>
+ return (
+ <div className="max-w-3xl mx-auto">
+ <div className="mb-6">
+ <Link
+ href={`/${baseSlug}/find-nurse`}
+ className="inline-flex items-center gap-2 text-gray-600 hover:text-pink-600 transition-colors"
+ >
+ <FaArrowLeft /> Back to Find Nurse
+ </Link>
+ </div>
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">
-        Book Nurse Service with {nurse.firstName} {nurse.lastName}
-      </h1>
+ <h1 className="text-2xl font-bold text-gray-900 mb-6">
+ Book Nurse Service with {nurse.firstName} {nurse.lastName}
+ </h1>
 
-      <BookingForm
-        providerType="nurse"
-        providerId={id}
-        providerName={`${nurse.firstName} ${nurse.lastName}`}
-        providerSpecialty={nurse.specialization.join(', ')}
-        providerImage={nurse.profileImage}
-        providerLocation={nurse.location}
-        showConsultationType={true}
-        price={nurse.hourlyRate}
-        onSubmit={handleSubmit}
-        isSubmitting={isSubmitting}
-        walletBalance={walletBalance}
-      />
-    </div>
-  )
+ <BookingForm
+ providerType="nurse"
+ providerId={id}
+ providerName={`${nurse.firstName} ${nurse.lastName}`}
+ providerSpecialty={nurse.specialization.join(', ')}
+ providerImage={nurse.profileImage}
+ providerLocation={nurse.location}
+ showConsultationType={true}
+ price={nurse.hourlyRate}
+ onSubmit={handleSubmit}
+ isSubmitting={isSubmitting}
+ walletBalance={walletBalance}
+ />
+ </div>
+ )
 }

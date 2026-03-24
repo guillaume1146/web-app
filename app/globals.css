@@ -1,5 +1,16 @@
 ﻿@import 'tailwindcss';
 
+@theme {
+  --color-brand-navy: #001E40;
+  --color-brand-teal: #0C6780;
+  --color-brand-sky: #9AE1FF;
+  --color-brand-white: #FFFFFF;
+  --color-primary: #001E40;
+  --color-primary-blue: #001E40;
+  --color-primary-teal: #0C6780;
+  --color-secondary-green: #0C6780;
+}
+
 /* Prevent horizontal overflow on mobile */
 html, body {
   overflow-x: hidden;
@@ -65,7 +76,7 @@ body.capacitor-app .fixed.inset-0 [class*="max-h-"][class*="overflow-y-auto"] {
 
 @layer components {
   .btn-gradient {
-    background: linear-gradient(90deg, #125ff9 0%, #00a542 100%);
+    background: #001E40;
     color: white;
     padding: 0.75rem 1.5rem;
     border-radius: 0.75rem;
@@ -74,9 +85,10 @@ body.capacitor-app .fixed.inset-0 [class*="max-h-"][class*="overflow-y-auto"] {
     border: none;
     cursor: pointer;
   }
-  
+
   .btn-gradient:hover {
-    box-shadow: 0 10px 15px -3px rgba(18, 95, 249, 0.3);
+    background: #0C6780;
+    box-shadow: 0 10px 15px -3px rgba(0, 30, 64, 0.3);
     transform: translateY(-2px);
   }
   
@@ -99,22 +111,22 @@ body.capacitor-app .fixed.inset-0 [class*="max-h-"][class*="overflow-y-auto"] {
   }
 }
 
-/* Force gradient backgrounds with higher specificity */
+/* Solid color backgrounds — no gradients */
 @layer utilities {
   .bg-gradient-main {
-    background: linear-gradient(135deg, #125ff9 0%, #008fa3 50%, #00a542 100%) !important;
+    background: #001E40 !important;
   }
-  
+
   .bg-gradient-hero {
-    background: linear-gradient(135deg, #125ff9 0%, #125ff9 30%, #008fa3 70%, #00a542 100%) !important;
+    background: #FFFFFF !important;
   }
-  
+
   .bg-gradient-footer {
-    background: linear-gradient(135deg, #125ff9 0%, #125ff9 30%, #008fa3 70%, #00a542 100%) !important;
+    background: #001E40 !important;
   }
-  
+
   .bg-gradient-footer-dark {
-    background: linear-gradient(135deg, #0d1421 0%, #125ff9 20%, #008fa3 60%, #00a542 100%) !important;
+    background: #001E40 !important;
   }
 }
 
@@ -129,17 +141,18 @@ body.capacitor-app .fixed.inset-0 [class*="max-h-"][class*="overflow-y-auto"] {
 }
 
 .btn-gradient {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #001E40;
   transition: all 0.3s ease;
 }
 
 .btn-gradient:hover {
+  background: #0C6780;
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 10px 20px rgba(0,30,64,0.2);
 }
 
 .bg-gradient-hero {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #FFFFFF;
 }
 
 
@@ -151,7 +164,7 @@ body.capacitor-app .fixed.inset-0 [class*="max-h-"][class*="overflow-y-auto"] {
 
 .image-fit-contain {
   object-fit: contain;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #001E40;
 }
 
 .image-fit-fill {

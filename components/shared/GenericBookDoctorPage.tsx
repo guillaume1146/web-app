@@ -10,201 +10,201 @@ import BookingSuccessTicket from '@/components/booking/BookingSuccessTicket'
 import { getUserId } from '@/hooks/useUser'
 
 interface ServiceOption {
-  id: string
-  serviceName: string
-  category: string
-  description: string
-  price: number
-  duration?: number
+ id: string
+ serviceName: string
+ category: string
+ description: string
+ price: number
+ duration?: number
 }
 
 interface DoctorInfo {
-  id: string
-  firstName: string
-  lastName: string
-  profileImage: string
-  specialty: string[]
-  location: string
-  consultationFee: number
-  videoConsultationFee: number
+ id: string
+ firstName: string
+ lastName: string
+ profileImage: string
+ specialty: string[]
+ location: string
+ consultationFee: number
+ videoConsultationFee: number
 }
 
 interface BookingResult {
-  ticketId: string
-  type: string
-  scheduledAt: string
-  status: string
+ ticketId: string
+ type: string
+ scheduledAt: string
+ status: string
 }
 
 export default function GenericBookDoctorPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const pathname = usePathname()
-  const baseSlug = pathname.split('/')[1]
+ const { id } = use(params)
+ const pathname = usePathname()
+ const baseSlug = pathname.split('/')[1]
 
-  const [doctor, setDoctor] = useState<DoctorInfo | null>(null)
-  const [services, setServices] = useState<ServiceOption[]>([])
-  const [walletBalance, setWalletBalance] = useState<number | undefined>(undefined)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [bookingResult, setBookingResult] = useState<BookingResult | null>(null)
-  const [submitData, setSubmitData] = useState<BookingSubmitData | null>(null)
+ const [doctor, setDoctor] = useState<DoctorInfo | null>(null)
+ const [services, setServices] = useState<ServiceOption[]>([])
+ const [walletBalance, setWalletBalance] = useState<number | undefined>(undefined)
+ const [loading, setLoading] = useState(true)
+ const [error, setError] = useState<string | null>(null)
+ const [isSubmitting, setIsSubmitting] = useState(false)
+ const [bookingResult, setBookingResult] = useState<BookingResult | null>(null)
+ const [submitData, setSubmitData] = useState<BookingSubmitData | null>(null)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
+ useEffect(() => {
+ const fetchData = async () => {
+ try {
+ setLoading(true)
 
-        const doctorsRes = await fetch('/api/search/doctors')
-        const doctorsData = await doctorsRes.json()
+ const doctorsRes = await fetch('/api/search/doctors')
+ const doctorsData = await doctorsRes.json()
 
-        if (doctorsData.success && doctorsData.data) {
-          const found = doctorsData.data.find((d: DoctorInfo) => d.id === id)
-          if (found) {
-            setDoctor(found)
-          } else {
-            setError('Doctor not found')
-          }
-        } else {
-          setError('Failed to load doctor information')
-        }
+ if (doctorsData.success && doctorsData.data) {
+ const found = doctorsData.data.find((d: DoctorInfo) => d.id === id)
+ if (found) {
+ setDoctor(found)
+ } else {
+ setError('Doctor not found')
+ }
+ } else {
+ setError('Failed to load doctor information')
+ }
 
-        try {
-          const servicesRes = await fetch(`/api/doctor/services?userId=${id}`)
-          const servicesData = await servicesRes.json()
-          if (servicesData.success && servicesData.data) {
-            setServices(servicesData.data)
-          }
-        } catch {
-          // Services are optional
-        }
+ try {
+ const servicesRes = await fetch(`/api/doctor/services?userId=${id}`)
+ const servicesData = await servicesRes.json()
+ if (servicesData.success && servicesData.data) {
+ setServices(servicesData.data)
+ }
+ } catch {
+ // Services are optional
+ }
 
-        const userId = getUserId()
-        if (userId) {
-          const walletRes = await fetch(`/api/users/${userId}/wallet`)
-          const walletData = await walletRes.json()
-          if (walletData.success && walletData.data) {
-            setWalletBalance(walletData.data.balance)
-          }
-        }
-      } catch {
-        setError('Failed to load booking information')
-      } finally {
-        setLoading(false)
-      }
-    }
+ const userId = getUserId()
+ if (userId) {
+ const walletRes = await fetch(`/api/users/${userId}/wallet`)
+ const walletData = await walletRes.json()
+ if (walletData.success && walletData.data) {
+ setWalletBalance(walletData.data.balance)
+ }
+ }
+ } catch {
+ setError('Failed to load booking information')
+ } finally {
+ setLoading(false)
+ }
+ }
 
-    fetchData()
-  }, [id])
+ fetchData()
+ }, [id])
 
-  const handleSubmit = async (data: BookingSubmitData) => {
-    setIsSubmitting(true)
-    setSubmitData(data)
+ const handleSubmit = async (data: BookingSubmitData) => {
+ setIsSubmitting(true)
+ setSubmitData(data)
 
-    try {
-      const res = await fetch('/api/bookings/doctor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          doctorId: id,
-          consultationType: data.consultationType,
-          scheduledDate: data.scheduledDate,
-          scheduledTime: data.scheduledTime,
-          reason: data.reason,
-          notes: data.notes,
-          duration: data.duration,
-          serviceId: data.serviceId,
-        }),
-      })
+ try {
+ const res = await fetch('/api/bookings/doctor', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({
+ doctorId: id,
+ consultationType: data.consultationType,
+ scheduledDate: data.scheduledDate,
+ scheduledTime: data.scheduledTime,
+ reason: data.reason,
+ notes: data.notes,
+ duration: data.duration,
+ serviceId: data.serviceId,
+ }),
+ })
 
-      const result = await res.json()
+ const result = await res.json()
 
-      if (!result.success) {
-        throw new Error(result.message || 'Booking failed')
-      }
+ if (!result.success) {
+ throw new Error(result.message || 'Booking failed')
+ }
 
-      setBookingResult(result.booking)
-      if (result.newBalance !== undefined) {
-        setWalletBalance(result.newBalance)
-      }
-    } catch (err) {
-      throw err
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+ setBookingResult(result.booking)
+ if (result.newBalance !== undefined) {
+ setWalletBalance(result.newBalance)
+ }
+ } catch (err) {
+ throw err
+ } finally {
+ setIsSubmitting(false)
+ }
+ }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading doctor information...</p>
-        </div>
-      </div>
-    )
-  }
+ if (loading) {
+ return (
+ <div className="flex items-center justify-center min-h-[400px]">
+ <div className="text-center">
+ <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+ <p className="text-gray-600">Loading doctor information...</p>
+ </div>
+ </div>
+ )
+ }
 
-  if (error || !doctor) {
-    return (
-      <div className="max-w-lg mx-auto mt-12">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-          <p className="text-red-700 font-medium mb-4">{error || 'Doctor not found'}</p>
-          <Link
-            href={`/${baseSlug}/feed`}
-            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
-          >
-            <FaArrowLeft /> Back to Dashboard
-          </Link>
-        </div>
-      </div>
-    )
-  }
+ if (error || !doctor) {
+ return (
+ <div className="max-w-lg mx-auto mt-12">
+ <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+ <p className="text-red-700 font-medium mb-4">{error || 'Doctor not found'}</p>
+ <Link
+ href={`/${baseSlug}/feed`}
+ className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+ >
+ <FaArrowLeft /> Back to Dashboard
+ </Link>
+ </div>
+ </div>
+ )
+ }
 
-  if (bookingResult) {
-    return (
-      <BookingSuccessTicket
-        providerType="doctor"
-        providerName={`Dr. ${doctor.firstName} ${doctor.lastName}`}
-        providerDetail={doctor.specialty[0] || 'General'}
-        ticketId={bookingResult.ticketId}
-        submitData={submitData}
-        walletBalance={walletBalance}
-        viewLabel="View Appointments"
-        dashboardPath={`/${baseSlug}/feed`}
-      />
-    )
-  }
+ if (bookingResult) {
+ return (
+ <BookingSuccessTicket
+ providerType="doctor"
+ providerName={`Dr. ${doctor.firstName} ${doctor.lastName}`}
+ providerDetail={doctor.specialty[0] || 'General'}
+ ticketId={bookingResult.ticketId}
+ submitData={submitData}
+ walletBalance={walletBalance}
+ viewLabel="View Appointments"
+ dashboardPath={`/${baseSlug}/feed`}
+ />
+ )
+ }
 
-  return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-6">
-        <Link
-          href={`/${baseSlug}/find-doctor`}
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
-        >
-          <FaArrowLeft /> Back to Find Doctor
-        </Link>
-      </div>
+ return (
+ <div className="max-w-3xl mx-auto">
+ <div className="mb-6">
+ <Link
+ href={`/${baseSlug}/find-doctor`}
+ className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+ >
+ <FaArrowLeft /> Back to Find Doctor
+ </Link>
+ </div>
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">
-        Book Consultation with Dr. {doctor.firstName} {doctor.lastName}
-      </h1>
+ <h1 className="text-2xl font-bold text-gray-900 mb-6">
+ Book Consultation with Dr. {doctor.firstName} {doctor.lastName}
+ </h1>
 
-      <BookingForm
-        providerType="doctor"
-        providerId={id}
-        providerName={`Dr. ${doctor.firstName} ${doctor.lastName}`}
-        providerSpecialty={doctor.specialty.join(', ')}
-        providerImage={doctor.profileImage}
-        providerLocation={doctor.location}
-        showConsultationType={true}
-        price={doctor.consultationFee}
-        services={services}
-        onSubmit={handleSubmit}
-        isSubmitting={isSubmitting}
-        walletBalance={walletBalance}
-      />
-    </div>
-  )
+ <BookingForm
+ providerType="doctor"
+ providerId={id}
+ providerName={`Dr. ${doctor.firstName} ${doctor.lastName}`}
+ providerSpecialty={doctor.specialty.join(', ')}
+ providerImage={doctor.profileImage}
+ providerLocation={doctor.location}
+ showConsultationType={true}
+ price={doctor.consultationFee}
+ services={services}
+ onSubmit={handleSubmit}
+ isSubmitting={isSubmitting}
+ walletBalance={walletBalance}
+ />
+ </div>
+ )
 }

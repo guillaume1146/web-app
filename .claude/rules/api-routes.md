@@ -1,6 +1,6 @@
 ---
 description: Rules for writing API route handlers in app/api/
-globs: app/api/**/*.ts
+globs: "{app/api,lib/workflow,lib/inventory}/**/*.ts"
 ---
 
 # API Route Conventions
@@ -36,3 +36,16 @@ Never use `void error` to suppress — always log with `console.error`.
 ## Prisma Queries
 - Use `select` (not `include`) to return only needed columns
 - Import prisma from `@/lib/db` (default export)
+
+## Workflow Engine
+- Status changes go through `WorkflowEngine.transition()` (not direct DB update)
+- Import engine from `@/lib/workflow` — use `getWorkflowEngine()` singleton
+- Every status transition auto-creates notification + step log
+- Step flags (`triggers_video_call`, `triggers_stock_check`, `triggers_stock_subtract`) are executed by strategy handlers
+- Booking model `.status` field stays in sync (engine updates both WorkflowInstance and booking model)
+
+## Inventory (Health Shop)
+- Provider inventory uses `ProviderInventoryItem` model (not just `PharmacyMedicine`)
+- `PharmacyMedicine` stays for backward compatibility
+- `requiresPrescription` is per-item, not global
+- Stock decrement happens via `triggers_stock_subtract` step flag

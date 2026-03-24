@@ -5,10 +5,10 @@ import { PATIENT_SIDEBAR_ITEMS, getActiveSectionFromPath } from './sidebar-confi
 import { PatientDashboardProvider } from './context'
 
 export default createDashboardLayout({
-  userSubtitle: 'Patient',
-  sidebarItems: PATIENT_SIDEBAR_ITEMS,
-  getActiveSectionFromPath,
-  profileHref: '/patient/profile',
-  networkHref: '/patient/network',
-  ContextProvider: PatientDashboardProvider,
+ userSubtitle: 'Patient',
+ sidebarItems: PATIENT_SIDEBAR_ITEMS,
+ getActiveSectionFromPath,
+ profileHref: '/patient/profile',
+ networkHref: '/patient/network',
+ ContextProvider: PatientDashboardProvider,
 })

@@ -7,32 +7,32 @@ import UserSuggestions from '@/components/social/UserSuggestions'
 import { usePathname } from 'next/navigation'
 
 function LoadingSpinner() {
-  return (
-    <div className="flex items-center justify-center h-full">
-      <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
-    </div>
-  )
+ return (
+ <div className="flex items-center justify-center h-full">
+ <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+ </div>
+ )
 }
 
 export default function GenericFeedPage() {
-  const user = useDashboardUser()
-  const pathname = usePathname()
+ const user = useDashboardUser()
+ const pathname = usePathname()
 
-  if (!user) return <LoadingSpinner />
+ if (!user) return <LoadingSpinner />
 
-  // Derive messages path from current route: /doctor/feed -> /doctor/messages
-  const baseSlug = pathname.split('/')[1] // e.g., 'doctor', 'patient'
-  const messagesPath = baseSlug === 'patient' ? `/${baseSlug}/chat` : `/${baseSlug}/messages`
+ // Derive messages path from current route: /doctor/feed -> /doctor/messages
+ const baseSlug = pathname.split('/')[1] // e.g., 'doctor', 'patient'
+ const messagesPath = baseSlug === 'patient' ? `/${baseSlug}/chat` : `/${baseSlug}/messages`
 
-  return (
-    <div className="flex gap-6">
-      <div className="flex-1 min-w-0">
-        <PostFeed currentUserId={user.id} currentUserType={user.userType} showCreateButton={true} />
-      </div>
-      <div className="hidden lg:block w-72 flex-shrink-0 space-y-4">
-        <UserSuggestions currentUserId={user.id} maxResults={5} />
-        <ChatContactsSidebar currentUserId={user.id} messagesPath={messagesPath} />
-      </div>
-    </div>
-  )
+ return (
+ <div className="flex gap-6">
+ <div className="flex-1 min-w-0">
+ <PostFeed currentUserId={user.id} currentUserType={user.userType} showCreateButton={true} />
+ </div>
+ <div className="hidden lg:block w-72 flex-shrink-0 space-y-4">
+ <UserSuggestions currentUserId={user.id} maxResults={5} />
+ <ChatContactsSidebar currentUserId={user.id} messagesPath={messagesPath} />
+ </div>
+ </div>
+ )
 }

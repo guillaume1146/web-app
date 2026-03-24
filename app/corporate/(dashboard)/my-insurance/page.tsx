@@ -4,7 +4,7 @@ import { useUserAsPatient } from '@/lib/dashboard/useUserAsPatient'
 import InsuranceInfo from '@/app/patient/(dashboard)/components/InsuranceInfo'
 
 export default function PageName() {
-  const { patientData, loading } = useUserAsPatient()
-  if (loading || !patientData) return null
-  return <InsuranceInfo patientData={patientData} />
+ const { patientData, loading } = useUserAsPatient()
+ if (loading || !patientData) return null
+ return <InsuranceInfo patientData={patientData} />
 }

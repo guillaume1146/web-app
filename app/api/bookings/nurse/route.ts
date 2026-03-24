@@ -7,6 +7,7 @@ import { rateLimitPublic } from '@/lib/rate-limit'
 import { validateSlotAvailability } from '@/lib/booking/validate-availability'
 import { checkBookingCost } from '@/lib/booking/check-balance'
 import { ensurePatientProfile } from '@/lib/bookings/ensure-patient-profile'
+import { attachWorkflow } from '@/lib/workflow/hook'
 
 const DEFAULT_NURSE_FEE = 500 // Fallback when no service price specified
 
@@ -132,6 +133,17 @@ export async function POST(request: NextRequest) {
         scheduledAt: true,
         status: true,
       },
+    })
+
+    // Attach workflow instance
+    await attachWorkflow({
+      bookingId: booking.id,
+      bookingRoute: 'nurse',
+      patientUserId: auth.sub,
+      providerUserId: nurseProfile.userId,
+      providerType: 'NURSE',
+      consultationType,
+      servicePrice: costCheck.adjustedFee,
     })
 
     // Get patient name for notification

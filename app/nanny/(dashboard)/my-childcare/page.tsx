@@ -5,8 +5,8 @@ import { useUserAsPatient } from '@/lib/dashboard/useUserAsPatient'
 import ChildcareServices from '@/app/patient/(dashboard)/components/ChildcareServices'
 
 export default function NannyChildcarePage() {
-  const { patientData, loading } = useUserAsPatient()
-  const router = useRouter()
-  if (loading || !patientData) return null
-  return <ChildcareServices patientData={patientData} onVideoCall={() => router.push('/nanny/video')} />
+ const { patientData, loading } = useUserAsPatient()
+ const router = useRouter()
+ if (loading || !patientData) return null
+ return <ChildcareServices patientData={patientData} onVideoCall={() => router.push('/nanny/video')} />
 }

@@ -6,6 +6,7 @@ import { createServiceBookingSchema } from '@/lib/validations/api'
 import { rateLimitPublic } from '@/lib/rate-limit'
 import { checkBookingCost } from '@/lib/booking/check-balance'
 import { ensurePatientProfile } from '@/lib/bookings/ensure-patient-profile'
+import { attachWorkflow } from '@/lib/workflow/hook'
 
 const DEFAULT_FEES: Record<string, number> = {
   CAREGIVER: 600,
@@ -102,6 +103,17 @@ export async function POST(request: NextRequest) {
         scheduledAt: true,
         status: true,
       },
+    })
+
+    // Attach workflow instance
+    await attachWorkflow({
+      bookingId: booking.id,
+      bookingRoute: 'service',
+      patientUserId: auth.sub,
+      providerUserId,
+      providerType,
+      consultationType: type,
+      servicePrice: costCheck.adjustedFee,
     })
 
     // Notify provider

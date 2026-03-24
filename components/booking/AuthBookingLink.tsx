@@ -5,57 +5,57 @@ import { ReactNode, useCallback } from 'react'
 import type { BookingType } from '@/lib/booking/types'
 
 interface AuthBookingLinkProps {
-  type: BookingType
-  providerId?: string
-  children: ReactNode
-  className?: string
+ type: BookingType
+ providerId?: string
+ children: ReactNode
+ className?: string
 }
 
 function getCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
-  return match ? decodeURIComponent(match[2]) : null
+ if (typeof document === 'undefined') return null
+ const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+ return match ? decodeURIComponent(match[2]) : null
 }
 
 /** Map cookie userType value → URL route prefix */
 const USER_TYPE_SLUG: Record<string, string> = {
-  'patient': 'patient',
-  'doctor': 'doctor',
-  'nurse': 'nurse',
-  'child-care-nurse': 'nanny',
-  'pharmacy': 'pharmacist',
-  'lab': 'lab-technician',
-  'ambulance': 'responder',
-  'admin': 'admin',
-  'regional-admin': 'regional',
-  'corporate': 'corporate',
-  'insurance': 'insurance',
-  'referral-partner': 'referral-partner',
+ 'patient': 'patient',
+ 'doctor': 'doctor',
+ 'nurse': 'nurse',
+ 'child-care-nurse': 'nanny',
+ 'pharmacy': 'pharmacist',
+ 'lab': 'lab-technician',
+ 'ambulance': 'responder',
+ 'admin': 'admin',
+ 'regional-admin': 'regional',
+ 'corporate': 'corporate',
+ 'insurance': 'insurance',
+ 'referral-partner': 'referral-partner',
 }
 
 export default function AuthBookingLink({ type, providerId, children, className }: AuthBookingLinkProps) {
-  const router = useRouter()
+ const router = useRouter()
 
-  const handleClick = useCallback(() => {
-    const userType = getCookie('mediwyz_userType')
-    if (!userType) {
-      const fallbackPath = type === 'emergency'
-        ? '/patient/book/emergency'
-        : `/patient/book/${type}/${providerId}`
-      router.push(`/login?returnUrl=${encodeURIComponent(fallbackPath)}`)
-      return
-    }
+ const handleClick = useCallback(() => {
+ const userType = getCookie('mediwyz_userType')
+ if (!userType) {
+ const fallbackPath = type === 'emergency'
+ ? '/patient/book/emergency'
+ : `/patient/book/${type}/${providerId}`
+ router.push(`/login?returnUrl=${encodeURIComponent(fallbackPath)}`)
+ return
+ }
 
-    const slug = USER_TYPE_SLUG[userType] || 'patient'
-    const bookingPath = type === 'emergency'
-      ? `/${slug}/book/emergency`
-      : `/${slug}/book/${type}/${providerId}`
-    router.push(bookingPath)
-  }, [type, providerId, router])
+ const slug = USER_TYPE_SLUG[userType] || 'patient'
+ const bookingPath = type === 'emergency'
+ ? `/${slug}/book/emergency`
+ : `/${slug}/book/${type}/${providerId}`
+ router.push(bookingPath)
+ }, [type, providerId, router])
 
-  return (
-    <button onClick={handleClick} className={className}>
-      {children}
-    </button>
-  )
+ return (
+ <button onClick={handleClick} className={className}>
+ {children}
+ </button>
+ )
 }

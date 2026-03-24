@@ -53,4 +53,15 @@ export async function METHOD(request: NextRequest) {
 }
 ```
 
-5. Run `npx tsc --noEmit` to verify no type errors
+5. If this route changes booking status, use `WorkflowEngine.transition()` instead of direct DB update:
+```typescript
+import { getWorkflowEngine } from '@/lib/workflow'
+
+const engine = getWorkflowEngine()
+const result = await engine.transition({
+  bookingId, bookingType, action,
+  actionByUserId: auth.sub,
+  actionByRole: 'provider' // or 'patient'
+})
+```
+6. Run `npx tsc --noEmit` to verify no type errors

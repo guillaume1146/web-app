@@ -26,6 +26,18 @@ Add `pb-20 sm:pb-0` to content div to prevent overlap.
 - `GenericMessagesPage` — thin wrapper for ChatView, reused across all dashboards
 - `SettingsLayout` — config-driven tabs, shared by all user types
 
+## Workflow Components
+- Components in `components/workflow/` — shared across all user types
+- `WorkflowTimeline` — displays step history for a booking
+- `WorkflowCurrentStep` — shows current status with available action buttons
+- `WorkflowActionButton` — triggers transitions via `POST /api/workflow/transition`
+- `WorkflowVideoCallBanner` — shows "Join Call" when step has `triggers_video_call` flag
+
+## Health Shop Components
+- Components in `components/health-shop/` — shared item cards, filters, cart
+- All providers can sell inventory items (not just pharmacists)
+- "Health Shop" replaces "Buy Medicines" (`/search/health-shop`)
+
 ## Imports
 - Use `@/*` path alias (maps to project root)
 - Dynamic import video components with `{ ssr: false }`

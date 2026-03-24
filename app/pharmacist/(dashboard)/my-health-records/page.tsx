@@ -4,7 +4,7 @@ import { useUserAsPatient } from '@/lib/dashboard/useUserAsPatient'
 import HealthRecords from '@/app/patient/(dashboard)/components/HealthRecords'
 
 export default function PharmacistHealthRecordsPage() {
-  const { patientData, loading } = useUserAsPatient()
-  if (loading || !patientData) return null
-  return <HealthRecords patientData={patientData} />
+ const { patientData, loading } = useUserAsPatient()
+ if (loading || !patientData) return null
+ return <HealthRecords patientData={patientData} />
 }

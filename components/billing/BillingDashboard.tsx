@@ -5,27 +5,27 @@ import PaymentMethodForm from '@/components/shared/PaymentMethodForm'
 import SubscriptionTab from '@/components/settings/tabs/SubscriptionTab'
 
 interface BillingDashboardProps {
-  userId: string
+ userId: string
 }
 
 export default function BillingDashboard({ userId }: BillingDashboardProps) {
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Billing & Wallet</h1>
+ return (
+ <div className="space-y-6">
+ <h1 className="text-2xl font-bold text-gray-900">Billing & Wallet</h1>
 
-      {/* Subscription Plan — current plan + change */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
-        <SubscriptionTab userId={userId} />
-      </div>
+ {/* Subscription Plan — current plan + change */}
+ <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+ <SubscriptionTab userId={userId} />
+ </div>
 
-      {/* Wallet */}
-      <WalletBalanceCard userId={userId} />
+ {/* Wallet */}
+ <WalletBalanceCard userId={userId} />
 
-      {/* Payment Methods */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h2>
-        <PaymentMethodForm />
-      </div>
-    </div>
-  )
+ {/* Payment Methods */}
+ <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+ <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h2>
+ <PaymentMethodForm />
+ </div>
+ </div>
+ )
 }

@@ -3,5 +3,5 @@
 import ProviderPracticePage from '@/components/shared/ProviderPracticePage'
 
 export default function DentistPracticePage() {
-  return <ProviderPracticePage bookingType="service" title="Dental Practice" defaultServiceLabel="Dental Service" />
+ return <ProviderPracticePage bookingType="service" title="Dental Practice" defaultServiceLabel="Dental Service" />
 }

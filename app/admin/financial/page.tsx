@@ -3,244 +3,244 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
-  FaDollarSign, FaArrowUp, FaArrowDown, FaCalendarAlt,
-  FaUserMd, FaUserNurse, FaChild, FaAmbulance, FaPills, FaFlask,
-  FaSpinner
+ FaDollarSign, FaArrowUp, FaArrowDown, FaCalendarAlt,
+ FaUserMd, FaUserNurse, FaChild, FaAmbulance, FaPills, FaFlask,
+ FaSpinner
 } from 'react-icons/fa'
 
 interface ServiceRevenue {
-  serviceType: string
-  total: number
+ serviceType: string
+ total: number
 }
 
 interface MetricsData {
-  revenue: {
-    total: number
-    thisMonth: number
-    lastMonth: number
-    byServiceType: ServiceRevenue[]
-  }
-  bookings: {
-    total: number
-    pending: number
-    upcoming: number
-    completed: number
-    cancelled: number
-  }
-  recentActivity: {
-    bookingsThisWeek: number
-    videoSessionsThisWeek: number
-  }
+ revenue: {
+ total: number
+ thisMonth: number
+ lastMonth: number
+ byServiceType: ServiceRevenue[]
+ }
+ bookings: {
+ total: number
+ pending: number
+ upcoming: number
+ completed: number
+ cancelled: number
+ }
+ recentActivity: {
+ bookingsThisWeek: number
+ videoSessionsThisWeek: number
+ }
 }
 
 const SERVICE_ICON_MAP: Record<string, React.ReactNode> = {
-  doctor: <FaUserMd className="text-blue-600" />,
-  nurse: <FaUserNurse className="text-purple-600" />,
-  nanny: <FaChild className="text-pink-600" />,
-  childcare: <FaChild className="text-pink-600" />,
-  emergency: <FaAmbulance className="text-red-600" />,
-  pharmacy: <FaPills className="text-green-600" />,
-  lab: <FaFlask className="text-orange-600" />,
+ doctor: <FaUserMd className="text-blue-600" />,
+ nurse: <FaUserNurse className="text-purple-600" />,
+ nanny: <FaChild className="text-pink-600" />,
+ childcare: <FaChild className="text-pink-600" />,
+ emergency: <FaAmbulance className="text-red-600" />,
+ pharmacy: <FaPills className="text-green-600" />,
+ lab: <FaFlask className="text-orange-600" />,
 }
 
 function getServiceIcon(serviceType: string) {
-  const key = Object.keys(SERVICE_ICON_MAP).find(k =>
-    serviceType.toLowerCase().includes(k)
-  )
-  return key ? SERVICE_ICON_MAP[key] : <FaDollarSign className="text-gray-600" />
+ const key = Object.keys(SERVICE_ICON_MAP).find(k =>
+ serviceType.toLowerCase().includes(k)
+ )
+ return key ? SERVICE_ICON_MAP[key] : <FaDollarSign className="text-gray-600" />
 }
 
 function formatServiceLabel(serviceType: string) {
-  return serviceType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+ return serviceType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
 export default function FinancialReporting() {
-  const [metrics, setMetrics] = useState<MetricsData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+ const [metrics, setMetrics] = useState<MetricsData | null>(null)
+ const [loading, setLoading] = useState(true)
+ const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const fetchMetrics = async () => {
-      try {
-        const res = await fetch('/api/admin/metrics')
-        if (res.ok) {
-          const json = await res.json()
-          if (json.success && json.data) {
-            setMetrics(json.data)
-          } else {
-            setError('Failed to load financial data')
-          }
-        } else {
-          setError('Failed to load financial data')
-        }
-      } catch {
-        setError('Failed to load financial data')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchMetrics()
-  }, [])
+ useEffect(() => {
+ const fetchMetrics = async () => {
+ try {
+ const res = await fetch('/api/admin/metrics')
+ if (res.ok) {
+ const json = await res.json()
+ if (json.success && json.data) {
+ setMetrics(json.data)
+ } else {
+ setError('Failed to load financial data')
+ }
+ } else {
+ setError('Failed to load financial data')
+ }
+ } catch {
+ setError('Failed to load financial data')
+ } finally {
+ setLoading(false)
+ }
+ }
+ fetchMetrics()
+ }, [])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <FaSpinner className="animate-spin text-3xl text-blue-600" />
-      </div>
-    )
-  }
+ if (loading) {
+ return (
+ <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+ <FaSpinner className="animate-spin text-3xl text-blue-600" />
+ </div>
+ )
+ }
 
-  const totalRevenue = metrics?.revenue.total ?? 0
-  const thisMonth = metrics?.revenue.thisMonth ?? 0
-  const lastMonth = metrics?.revenue.lastMonth ?? 0
-  const monthGrowth = lastMonth > 0 ? ((thisMonth - lastMonth) / lastMonth) * 100 : 0
-  const byServiceType = metrics?.revenue.byServiceType ?? []
+ const totalRevenue = metrics?.revenue.total ?? 0
+ const thisMonth = metrics?.revenue.thisMonth ?? 0
+ const lastMonth = metrics?.revenue.lastMonth ?? 0
+ const monthGrowth = lastMonth > 0 ? ((thisMonth - lastMonth) / lastMonth) * 100 : 0
+ const byServiceType = metrics?.revenue.byServiceType ?? []
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Financial Reporting</h1>
-              <p className="text-gray-600">Revenue analytics and payout summary</p>
-            </div>
-            <Link href="/admin" className="px-4 py-2 border rounded-lg hover:bg-gray-50">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </div>
+ return (
+ <div className="min-h-screen bg-gray-50">
+ {/* Header */}
+ <div className="bg-white shadow-sm border-b">
+ <div className="container mx-auto px-4 py-4">
+ <div className="flex items-center justify-between">
+ <div>
+ <h1 className="text-2xl font-bold text-gray-900">Financial Reporting</h1>
+ <p className="text-gray-600">Revenue analytics and payout summary</p>
+ </div>
+ <Link href="/admin" className="px-4 py-2 border rounded-lg hover:bg-gray-50">
+ Back to Dashboard
+ </Link>
+ </div>
+ </div>
+ </div>
 
-      <div className="container mx-auto px-4 py-8">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-            {error}
-          </div>
-        )}
+ <div className="container mx-auto px-4 py-8">
+ {error && (
+ <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+ {error}
+ </div>
+ )}
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-600 text-sm">Total Revenue</span>
-              <FaDollarSign className="text-green-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">Rs {totalRevenue.toLocaleString()}</p>
-            <p className="text-sm text-gray-600 mt-2">All time</p>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-600 text-sm">This Month</span>
-              <FaDollarSign className="text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">Rs {thisMonth.toLocaleString()}</p>
-            <p className={`text-sm flex items-center gap-1 mt-2 ${monthGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {monthGrowth >= 0 ? <FaArrowUp /> : <FaArrowDown />}
-              {Math.abs(monthGrowth).toFixed(1)}% vs last month
-            </p>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-600 text-sm">Last Month</span>
-              <FaDollarSign className="text-purple-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">Rs {lastMonth.toLocaleString()}</p>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-600 text-sm">Completed Bookings</span>
-              <FaCalendarAlt className="text-orange-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">
-              {(metrics?.bookings.completed ?? 0).toLocaleString()}
-            </p>
-            <p className="text-sm text-green-600 flex items-center gap-1 mt-2">
-              <FaArrowUp /> {metrics?.recentActivity.bookingsThisWeek ?? 0} this week
-            </p>
-          </div>
-        </div>
+ {/* Summary Cards */}
+ <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+ <div className="bg-white rounded-xl p-6 shadow">
+ <div className="flex items-center justify-between mb-2">
+ <span className="text-gray-600 text-sm">Total Revenue</span>
+ <FaDollarSign className="text-green-600" />
+ </div>
+ <p className="text-2xl font-bold text-gray-900">Rs {totalRevenue.toLocaleString()}</p>
+ <p className="text-sm text-gray-600 mt-2">All time</p>
+ </div>
+ <div className="bg-white rounded-xl p-6 shadow">
+ <div className="flex items-center justify-between mb-2">
+ <span className="text-gray-600 text-sm">This Month</span>
+ <FaDollarSign className="text-blue-600" />
+ </div>
+ <p className="text-2xl font-bold text-gray-900">Rs {thisMonth.toLocaleString()}</p>
+ <p className={`text-sm flex items-center gap-1 mt-2 ${monthGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+ {monthGrowth >= 0 ? <FaArrowUp /> : <FaArrowDown />}
+ {Math.abs(monthGrowth).toFixed(1)}% vs last month
+ </p>
+ </div>
+ <div className="bg-white rounded-xl p-6 shadow">
+ <div className="flex items-center justify-between mb-2">
+ <span className="text-gray-600 text-sm">Last Month</span>
+ <FaDollarSign className="text-purple-600" />
+ </div>
+ <p className="text-2xl font-bold text-gray-900">Rs {lastMonth.toLocaleString()}</p>
+ </div>
+ <div className="bg-white rounded-xl p-6 shadow">
+ <div className="flex items-center justify-between mb-2">
+ <span className="text-gray-600 text-sm">Completed Bookings</span>
+ <FaCalendarAlt className="text-orange-600" />
+ </div>
+ <p className="text-2xl font-bold text-gray-900">
+ {(metrics?.bookings.completed ?? 0).toLocaleString()}
+ </p>
+ <p className="text-sm text-green-600 flex items-center gap-1 mt-2">
+ <FaArrowUp /> {metrics?.recentActivity.bookingsThisWeek ?? 0} this week
+ </p>
+ </div>
+ </div>
 
-        {/* Revenue by Service Type */}
-        <div className="bg-white rounded-xl p-6 shadow mb-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Revenue by Service Type</h2>
-          {byServiceType.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <FaDollarSign className="text-4xl mx-auto mb-3 text-gray-300" />
-              <p className="text-lg font-medium">No revenue data yet</p>
-              <p className="text-sm mt-1">Completed transactions will appear here</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="p-3 text-left text-sm font-medium text-gray-700">Service Type</th>
-                    <th className="p-3 text-right text-sm font-medium text-gray-700">Revenue</th>
-                    <th className="p-3 text-right text-sm font-medium text-gray-700">% of Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {byServiceType.map(row => {
-                    const percentage = totalRevenue > 0 ? (row.total / totalRevenue) * 100 : 0
-                    return (
-                      <tr key={row.serviceType} className="border-t hover:bg-gray-50">
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            {getServiceIcon(row.serviceType)}
-                            <span className="font-medium">{formatServiceLabel(row.serviceType)}</span>
-                          </div>
-                        </td>
-                        <td className="p-3 text-right font-medium">Rs {row.total.toLocaleString()}</td>
-                        <td className="p-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="w-20 bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-blue-600 h-2 rounded-full"
-                                style={{ width: `${Math.min(percentage, 100)}%` }}
-                              />
-                            </div>
-                            <span className="text-sm text-gray-600 w-12 text-right">
-                              {percentage.toFixed(1)}%
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                  <tr className="border-t bg-gray-50 font-bold">
-                    <td className="p-3">Total</td>
-                    <td className="p-3 text-right">Rs {totalRevenue.toLocaleString()}</td>
-                    <td className="p-3 text-right">100%</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+ {/* Revenue by Service Type */}
+ <div className="bg-white rounded-xl p-6 shadow mb-6">
+ <h2 className="text-xl font-bold text-gray-900 mb-6">Revenue by Service Type</h2>
+ {byServiceType.length === 0 ? (
+ <div className="text-center py-12 text-gray-500">
+ <FaDollarSign className="text-4xl mx-auto mb-3 text-gray-300" />
+ <p className="text-lg font-medium">No revenue data yet</p>
+ <p className="text-sm mt-1">Completed transactions will appear here</p>
+ </div>
+ ) : (
+ <div className="overflow-x-auto">
+ <table className="w-full">
+ <thead className="bg-gray-50">
+ <tr>
+ <th className="p-3 text-left text-sm font-medium text-gray-700">Service Type</th>
+ <th className="p-3 text-right text-sm font-medium text-gray-700">Revenue</th>
+ <th className="p-3 text-right text-sm font-medium text-gray-700">% of Total</th>
+ </tr>
+ </thead>
+ <tbody>
+ {byServiceType.map(row => {
+ const percentage = totalRevenue > 0 ? (row.total / totalRevenue) * 100 : 0
+ return (
+ <tr key={row.serviceType} className="border-t hover:bg-gray-50">
+ <td className="p-3">
+ <div className="flex items-center gap-2">
+ {getServiceIcon(row.serviceType)}
+ <span className="font-medium">{formatServiceLabel(row.serviceType)}</span>
+ </div>
+ </td>
+ <td className="p-3 text-right font-medium">Rs {row.total.toLocaleString()}</td>
+ <td className="p-3 text-right">
+ <div className="flex items-center justify-end gap-2">
+ <div className="w-20 bg-gray-200 rounded-full h-2">
+ <div
+ className="bg-blue-600 h-2 rounded-full"
+ style={{ width: `${Math.min(percentage, 100)}%` }}
+ />
+ </div>
+ <span className="text-sm text-gray-600 w-12 text-right">
+ {percentage.toFixed(1)}%
+ </span>
+ </div>
+ </td>
+ </tr>
+ )
+ })}
+ <tr className="border-t bg-gray-50 font-bold">
+ <td className="p-3">Total</td>
+ <td className="p-3 text-right">Rs {totalRevenue.toLocaleString()}</td>
+ <td className="p-3 text-right">100%</td>
+ </tr>
+ </tbody>
+ </table>
+ </div>
+ )}
+ </div>
 
-        {/* Booking Summary */}
-        {metrics && (
-          <div className="bg-white rounded-xl p-6 shadow">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Booking Status Summary</h2>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {[
-                { label: 'Total', value: metrics.bookings.total, color: 'text-gray-900' },
-                { label: 'Pending', value: metrics.bookings.pending, color: 'text-orange-600' },
-                { label: 'Upcoming', value: metrics.bookings.upcoming, color: 'text-blue-600' },
-                { label: 'Completed', value: metrics.bookings.completed, color: 'text-green-600' },
-                { label: 'Cancelled', value: metrics.bookings.cancelled, color: 'text-red-600' },
-              ].map(item => (
-                <div key={item.label} className="text-center p-4 bg-gray-50 rounded-lg">
-                  <p className={`text-2xl font-bold ${item.color}`}>{item.value.toLocaleString()}</p>
-                  <p className="text-sm text-gray-600 mt-1">{item.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
+ {/* Booking Summary */}
+ {metrics && (
+ <div className="bg-white rounded-xl p-6 shadow">
+ <h2 className="text-xl font-bold text-gray-900 mb-6">Booking Status Summary</h2>
+ <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+ {[
+ { label: 'Total', value: metrics.bookings.total, color: 'text-gray-900' },
+ { label: 'Pending', value: metrics.bookings.pending, color: 'text-orange-600' },
+ { label: 'Upcoming', value: metrics.bookings.upcoming, color: 'text-blue-600' },
+ { label: 'Completed', value: metrics.bookings.completed, color: 'text-green-600' },
+ { label: 'Cancelled', value: metrics.bookings.cancelled, color: 'text-red-600' },
+ ].map(item => (
+ <div key={item.label} className="text-center p-4 bg-gray-50 rounded-lg">
+ <p className={`text-2xl font-bold ${item.color}`}>{item.value.toLocaleString()}</p>
+ <p className="text-sm text-gray-600 mt-1">{item.label}</p>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
+ </div>
+ </div>
+ )
 }

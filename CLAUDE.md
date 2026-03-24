@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MediWyz — a digital health platform for Mauritius built with Next.js 15 (App Router), TypeScript, PostgreSQL (Prisma ORM), Socket.IO, and WebRTC. Connects patients with doctors, nurses, nannies, pharmacists, lab technicians, and emergency workers via video consultations, appointment booking, and prescription management. Supports 11 user types.
+MediWyz — a digital health platform for Mauritius built with Next.js 15 (App Router), TypeScript, PostgreSQL (Prisma ORM), Socket.IO, and WebRTC. Connects patients with doctors, nurses, nannies, pharmacists, lab technicians, emergency workers, caregivers, physiotherapists, dentists, optometrists, and nutritionists via video consultations, appointment booking, prescription management, and a Health Shop. Supports 17 user types. Features a configurable workflow engine where providers and regional admins can create custom workflows with status-triggered actions (video calls, stock management) and auto-notifications.
 
 ## Common Commands
 
@@ -17,7 +17,7 @@ npm run build
 
 # Database
 npx prisma db push        # Push schema to DB
-npx prisma db seed         # Seed demo data (13 seed files)
+npx prisma db seed         # Seed demo data (33 seed files)
 npx prisma migrate dev     # Create migration
 npx prisma studio          # Visual DB browser
 
@@ -37,8 +37,8 @@ npx tsc --noEmit
 
 ```
 prisma/
-  schema.prisma          → Normalized schema: User + 11 profile tables + 30+ domain tables
-  seeds/                 → 31 modular seed files (00-regions through 30-platform-services)
+  schema.prisma          → Normalized schema: User + 16 profile tables + 40+ domain tables
+  seeds/                 → 33 modular seed files (00-regions through 33-service-bookings)
   seed.ts                → Orchestrator: clean + seed in dependency order
 
 lib/
@@ -46,6 +46,12 @@ lib/
   db.ts                  → Prisma client singleton (default export)
   data/                  → Domain model TypeScript interfaces (Patient, Doctor, Nurse, Nanny)
   db-utils.ts            → Shared Prisma query helpers
+  workflow/              → Workflow engine: engine, registry, strategies, repositories, types
+  inventory/             → Provider inventory: types, repository, order-service
+  booking/               → Booking cost check, slot validation
+  bookings/              → Booking resolution (resolve-booking.ts)
+  commission.ts          → Commission calculation (Platform 15% / Provider 85%)
+  notifications.ts       → Notification creation + Socket.IO emission
 
 components/
   dashboard/             → Shared layout: DashboardLayout, DashboardSidebar, DashboardHeader,
@@ -54,13 +60,18 @@ components/
                            Documents, Subscription)
   shared/                → PaymentMethodForm, DashboardStatCard, StatCard, PageHeader
   video/                 → VideoConsultation (generic, any user type) + VideoCallRoom
+  workflow/              → WorkflowTimeline, WorkflowCurrentStep, WorkflowActionButton,
+                           WorkflowStepBuilder, NotificationTemplateEditor
+  health-shop/           → ShopItemCard, ShopFilters, ShopCart
 
 hooks/                   → useWebRTC, useSocket, useAuth, useCurrency, useDashboardUser
 
 app/
-  api/                   → API routes (auth, patients, doctors, users, video, webrtc)
-  [userType]/dashboard/  → Dashboard per user type (layout.tsx + sidebar-config.ts + sub-route pages)
+  api/                   → API routes (auth, patients, doctors, users, video, webrtc,
+                           workflow, inventory, bookings, search)
+  [userType]/(dashboard)/ → Dashboard per user type (layout.tsx + sidebar-config.ts + sub-route pages)
   [userType]/settings/   → Settings per user type (thin config → shared SettingsLayout)
+  search/health-shop/    → Health Shop (all providers' inventory, replaces "Buy Medicines")
   login/                 → Login page + auth utilities
   signup/                → Registration page
 ```
@@ -81,7 +92,8 @@ User (id, firstName, lastName, email, password, userType, phone, verified, accou
   ├── InsuranceRepProfile (companyName, coverageTypes, ...)
   ├── CorporateAdminProfile (companyName, employeeCount, ...)
   ├── ReferralPartnerProfile (businessType, commissionRate, referralCode, ...)
-  └── RegionalAdminProfile (region, country)
+  ├── RegionalAdminProfile (region, country)
+  └── (Caregiver, Physiotherapist, Dentist, Optometrist, Nutritionist use User fields + ServiceBooking)
 ```
 
 Clinical relations (Appointment, Prescription, MedicalRecord) reference profile IDs. Cross-cutting relations (VideoCallSession, Conversation, Notification, BillingInfo) reference User IDs.
@@ -143,6 +155,39 @@ Corporate billing: employer pays for all employees via `enrollEmployeesInPlan()`
 
 Booking flow: check subscription quota → apply discount off provider market price → charge wallet.
 
+### Workflow Engine (`lib/workflow/`)
+
+Configurable status tracking system for all booking types. See `docs/WORKFLOW-ENGINE-IMPLEMENTATION-PLAN.md` for full spec.
+
+```
+WorkflowTemplate       → Defines steps, transitions, notification messages per service+mode
+WorkflowInstance       → Tracks one booking's progress through a template
+WorkflowStepLog        → Audit trail: every status change recorded with content attachments
+NotificationTemplate   → Custom notification messages per step (provider/admin override defaults)
+```
+
+Key patterns:
+- **Strategy pattern**: Step flags (`triggers_video_call`, `triggers_stock_check`, `triggers_stock_subtract`, `requires_prescription`, `requires_content`) handled by dedicated strategy classes
+- **Registry pattern**: Template resolution — provider custom > regional admin > system default
+- **Template Method**: Transition engine always runs: validate → pre-flags → update → post-flags → log → notify
+- Single transition API: `POST /api/workflow/transition`
+- Every status change auto-creates a Notification + Socket.IO event
+- Booking model `.status` field stays in sync (backward compatibility)
+
+### Health Shop & Provider Inventory
+
+```
+ProviderInventoryItem  → Any provider can sell items (medicines, glasses, equipment, supplies)
+InventoryOrder         → Patient orders from any provider's inventory
+InventoryOrderItem     → Line items with quantity and pricing
+```
+
+- Replaces "Buy Medicines" — now "Health Shop" at `/search/health-shop`
+- `PharmacyMedicine` and `MedicineOrder` kept for backward compatibility
+- `requiresPrescription` is per-item (vitamin C = no, controlled meds = yes)
+- Stock management integrated with workflow via step flags
+- All providers can have inventory: pharmacist, optometrist, dentist, nanny, nurse, etc.
+
 ### API Routes
 
 ```
@@ -178,6 +223,18 @@ Booking flow: check subscription quota → apply discount off provider market pr
 /api/video/room           — Video room management
 /api/webrtc/session       — WebRTC session CRUD
 /api/webrtc/recovery      — Session recovery
+/api/workflow/transition  — POST status change (single entry point for all bookings)
+/api/workflow/instances   — GET user's workflow instances
+/api/workflow/instances/[id] — GET instance with state + timeline
+/api/workflow/templates   — GET/POST workflow templates
+/api/workflow/templates/[id] — GET/PATCH/DELETE template
+/api/workflow/my-templates — GET/POST provider's custom templates
+/api/inventory            — GET/POST provider inventory items
+/api/inventory/[id]       — PATCH/DELETE inventory item
+/api/inventory/orders     — GET/POST inventory orders
+/api/inventory/orders/[id] — PATCH order status
+/api/search/health-shop   — GET browse all providers' items
+/api/regional/workflow-templates — GET/POST regional workflow templates
 ```
 
 ## Path Aliases
@@ -194,6 +251,11 @@ Booking flow: check subscription quota → apply discount off provider market pr
 - `DashboardStatCard` is the single source of truth for dashboard stat cards
 - `PaymentMethodForm` supports MCB Juice + credit/debit card — used by all user types
 - Docker Compose provides PostgreSQL + App for local development
+- Booking status changes go through `WorkflowEngine.transition()` — not direct DB updates
+- Workflow templates linked to PlatformService (resolution: provider > regional admin > system default)
+- Step flags compose behavior: `triggers_video_call`, `triggers_stock_check`, `triggers_stock_subtract`
+- Health Shop: all providers can sell items via `ProviderInventoryItem`, not just pharmacists
+- Seeds: DO NOT remove existing seed files — add new ones with next available number
 
 ## User Types & Routes
 

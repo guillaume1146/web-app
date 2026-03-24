@@ -5,182 +5,182 @@ import { FaComments, FaCircle } from 'react-icons/fa'
 import Link from 'next/link'
 
 interface Participant {
-  userId: string
-  firstName: string
-  lastName: string
-  userType: string
-  avatarUrl?: string | null
+ userId: string
+ firstName: string
+ lastName: string
+ userType: string
+ avatarUrl?: string | null
 }
 
 interface ConversationSummary {
-  id: string
-  type: string
-  participants: Participant[]
-  lastMessage: { id: string; content: string; senderId: string; createdAt: string } | null
-  unreadCount: number
-  updatedAt: string
+ id: string
+ type: string
+ participants: Participant[]
+ lastMessage: { id: string; content: string; senderId: string; createdAt: string } | null
+ unreadCount: number
+ updatedAt: string
 }
 
 interface ChatContactsSidebarProps {
-  currentUserId: string
-  messagesPath: string
+ currentUserId: string
+ messagesPath: string
 }
 
 const USER_TYPE_COLORS: Record<string, string> = {
-  DOCTOR: 'text-green-500',
-  NURSE: 'text-teal-500',
-  PATIENT: 'text-blue-500',
-  PHARMACIST: 'text-purple-500',
-  NANNY: 'text-yellow-500',
-  LAB_TECHNICIAN: 'text-cyan-500',
-  EMERGENCY_WORKER: 'text-red-500',
-  INSURANCE_REP: 'text-emerald-500',
-  CORPORATE_ADMIN: 'text-indigo-500',
-  REFERRAL_PARTNER: 'text-orange-500',
-  REGIONAL_ADMIN: 'text-slate-500',
+ DOCTOR: 'text-green-500',
+ NURSE: 'text-teal-500',
+ PATIENT: 'text-blue-500',
+ PHARMACIST: 'text-purple-500',
+ NANNY: 'text-yellow-500',
+ LAB_TECHNICIAN: 'text-cyan-500',
+ EMERGENCY_WORKER: 'text-red-500',
+ INSURANCE_REP: 'text-emerald-500',
+ CORPORATE_ADMIN: 'text-indigo-500',
+ REFERRAL_PARTNER: 'text-orange-500',
+ REGIONAL_ADMIN: 'text-slate-500',
 }
 
 const USER_TYPE_LABELS: Record<string, string> = {
-  DOCTOR: 'Doctor',
-  NURSE: 'Nurse',
-  PATIENT: 'Patient',
-  PHARMACIST: 'Pharmacist',
-  NANNY: 'Nanny',
-  LAB_TECHNICIAN: 'Lab Tech',
-  EMERGENCY_WORKER: 'Emergency',
-  INSURANCE_REP: 'Insurance',
-  CORPORATE_ADMIN: 'Corporate',
-  REFERRAL_PARTNER: 'Referral',
-  REGIONAL_ADMIN: 'Admin',
+ DOCTOR: 'Doctor',
+ NURSE: 'Nurse',
+ PATIENT: 'Patient',
+ PHARMACIST: 'Pharmacist',
+ NANNY: 'Nanny',
+ LAB_TECHNICIAN: 'Lab Tech',
+ EMERGENCY_WORKER: 'Emergency',
+ INSURANCE_REP: 'Insurance',
+ CORPORATE_ADMIN: 'Corporate',
+ REFERRAL_PARTNER: 'Referral',
+ REGIONAL_ADMIN: 'Admin',
 }
 
 function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'now'
-  if (mins < 60) return `${mins}m`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h`
-  const days = Math.floor(hrs / 24)
-  return `${days}d`
+ const diff = Date.now() - new Date(dateStr).getTime()
+ const mins = Math.floor(diff / 60000)
+ if (mins < 1) return 'now'
+ if (mins < 60) return `${mins}m`
+ const hrs = Math.floor(mins / 60)
+ if (hrs < 24) return `${hrs}h`
+ const days = Math.floor(hrs / 24)
+ return `${days}d`
 }
 
 export default function ChatContactsSidebar({ currentUserId, messagesPath }: ChatContactsSidebarProps) {
-  const [conversations, setConversations] = useState<ConversationSummary[]>([])
-  const [loading, setLoading] = useState(true)
+ const [conversations, setConversations] = useState<ConversationSummary[]>([])
+ const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function fetchConversations() {
-      try {
-        const res = await fetch('/api/conversations', { credentials: 'include' })
-        if (!res.ok) return
-        const json = await res.json()
-        if (json.success) {
-          setConversations(json.data)
-        }
-      } catch {
-        // silently ignore
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchConversations()
-  }, [])
+ useEffect(() => {
+ async function fetchConversations() {
+ try {
+ const res = await fetch('/api/conversations', { credentials: 'include' })
+ if (!res.ok) return
+ const json = await res.json()
+ if (json.success) {
+ setConversations(json.data)
+ }
+ } catch {
+ // silently ignore
+ } finally {
+ setLoading(false)
+ }
+ }
+ fetchConversations()
+ }, [])
 
-  const getOtherParticipant = (conv: ConversationSummary): Participant | undefined => {
-    return conv.participants.find((p) => p.userId !== currentUserId)
-  }
+ const getOtherParticipant = (conv: ConversationSummary): Participant | undefined => {
+ return conv.participants.find((p) => p.userId !== currentUserId)
+ }
 
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-fit sticky top-4">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FaComments className="text-blue-500 text-sm" />
-          <h3 className="font-semibold text-gray-900 text-sm">Messages</h3>
-        </div>
-        <Link
-          href={messagesPath}
-          className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-        >
-          See all
-        </Link>
-      </div>
+ return (
+ <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-fit sticky top-4">
+ {/* Header */}
+ <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+ <div className="flex items-center gap-2">
+ <FaComments className="text-blue-500 text-sm" />
+ <h3 className="font-semibold text-gray-900 text-sm">Messages</h3>
+ </div>
+ <Link
+ href={messagesPath}
+ className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+ >
+ See all
+ </Link>
+ </div>
 
-      {/* Contacts list */}
-      <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
-        {loading ? (
-          <div className="p-4 space-y-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-center gap-3 animate-pulse">
-                <div className="w-9 h-9 rounded-full bg-gray-200 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="h-3 bg-gray-200 rounded w-24" />
-                  <div className="h-2.5 bg-gray-200 rounded w-16 mt-1.5" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : conversations.length === 0 ? (
-          <div className="p-4 text-center">
-            <p className="text-xs text-gray-400">No conversations yet</p>
-          </div>
-        ) : (
-          <div className="py-1">
-            {conversations.map((conv) => {
-              const other = getOtherParticipant(conv)
-              if (!other) return null
-              const typeColor = USER_TYPE_COLORS[other.userType] || 'text-gray-500'
-              const typeLabel = USER_TYPE_LABELS[other.userType] || other.userType
+ {/* Contacts list */}
+ <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
+ {loading ? (
+ <div className="p-4 space-y-3">
+ {[1, 2, 3, 4].map((i) => (
+ <div key={i} className="flex items-center gap-3 animate-pulse">
+ <div className="w-9 h-9 rounded-full bg-gray-200 flex-shrink-0" />
+ <div className="flex-1 min-w-0">
+ <div className="h-3 bg-gray-200 rounded w-24" />
+ <div className="h-2.5 bg-gray-200 rounded w-16 mt-1.5" />
+ </div>
+ </div>
+ ))}
+ </div>
+ ) : conversations.length === 0 ? (
+ <div className="p-4 text-center">
+ <p className="text-xs text-gray-400">No conversations yet</p>
+ </div>
+ ) : (
+ <div className="py-1">
+ {conversations.map((conv) => {
+ const other = getOtherParticipant(conv)
+ if (!other) return null
+ const typeColor = USER_TYPE_COLORS[other.userType] || 'text-gray-500'
+ const typeLabel = USER_TYPE_LABELS[other.userType] || other.userType
 
-              return (
-                <Link
-                  key={conv.id}
-                  href={`${messagesPath}?conversationId=${conv.id}`}
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors group"
-                >
-                  {/* Avatar */}
-                  <div className="relative flex-shrink-0">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
-                      {other.firstName?.[0]}{other.lastName?.[0]}
-                    </div>
-                    {conv.unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
-                        {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
-                      </span>
-                    )}
-                  </div>
+ return (
+ <Link
+ key={conv.id}
+ href={`${messagesPath}?conversationId=${conv.id}`}
+ className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors group"
+ >
+ {/* Avatar */}
+ <div className="relative flex-shrink-0">
+ <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold">
+ {other.firstName?.[0]}{other.lastName?.[0]}
+ </div>
+ {conv.unreadCount > 0 && (
+ <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+ {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
+ </span>
+ )}
+ </div>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className={`text-sm font-medium truncate ${conv.unreadCount > 0 ? 'text-gray-900' : 'text-gray-700'}`}>
-                        {other.firstName} {other.lastName}
-                      </p>
-                      {conv.lastMessage && (
-                        <span className="text-[10px] text-gray-400 flex-shrink-0 ml-1">
-                          {timeAgo(conv.lastMessage.createdAt)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <FaCircle className={`text-[6px] ${typeColor} flex-shrink-0`} />
-                      <span className="text-[11px] text-gray-400 truncate">
-                        {typeLabel}
-                      </span>
-                    </div>
-                    {conv.lastMessage && (
-                      <p className={`text-xs truncate mt-0.5 ${conv.unreadCount > 0 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
-                        {conv.lastMessage.senderId === currentUserId ? 'You: ' : ''}{conv.lastMessage.content}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  )
+ {/* Info */}
+ <div className="flex-1 min-w-0">
+ <div className="flex items-center justify-between">
+ <p className={`text-sm font-medium truncate ${conv.unreadCount > 0 ? 'text-gray-900' : 'text-gray-700'}`}>
+ {other.firstName} {other.lastName}
+ </p>
+ {conv.lastMessage && (
+ <span className="text-[10px] text-gray-400 flex-shrink-0 ml-1">
+ {timeAgo(conv.lastMessage.createdAt)}
+ </span>
+ )}
+ </div>
+ <div className="flex items-center gap-1">
+ <FaCircle className={`text-[6px] ${typeColor} flex-shrink-0`} />
+ <span className="text-[11px] text-gray-400 truncate">
+ {typeLabel}
+ </span>
+ </div>
+ {conv.lastMessage && (
+ <p className={`text-xs truncate mt-0.5 ${conv.unreadCount > 0 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+ {conv.lastMessage.senderId === currentUserId ? 'You: ' : ''}{conv.lastMessage.content}
+ </p>
+ )}
+ </div>
+ </Link>
+ )
+ })}
+ </div>
+ )}
+ </div>
+ </div>
+ )
 }

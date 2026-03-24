@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#001E40"/>
+      <stop offset="100%" stop-color="#0C6780"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0C6780"/>
+      <stop offset="100%" stop-color="#9AE1FF"/>
+    </linearGradient>
+    <linearGradient id="pulse" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#9AE1FF" stop-opacity="0.3"/>
+      <stop offset="50%" stop-color="#9AE1FF"/>
+      <stop offset="100%" stop-color="#9AE1FF" stop-opacity="0.3"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="96" fill="url(#bg)"/>
+
+  <!-- Letter M -->
+  <path d="M55 150 L55 75 L80 115 L100 85 L120 115 L145 75 L145 150 L130 150 L130 110 L120 130 L100 100 L80 130 L70 110 L70 150 Z"
+        fill="#FFFFFF"/>
+
+  <!-- Heartbeat pulse -->
+  <polyline points="28,108 38,108 43,98 48,118 53,105 58,108"
+            fill="none" stroke="url(#pulse)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Leaf -->
+  <path d="M135 48 C135 48 158 38 163 58 C168 78 150 83 140 78 C130 73 127 55 135 48 Z"
+        fill="url(#leaf)"/>
+
+  <!-- Plus in leaf -->
+  <rect x="146" y="57" width="10" height="3" rx="1.5" fill="#FFFFFF"/>
+  <rect x="149.5" y="53.5" width="3" height="10" rx="1.5" fill="#FFFFFF"/>
+</svg>

@@ -32,6 +32,7 @@ import { seedPlatformServices } from './seeds/30-platform-services.seed'
 import { seedProviderSpecialties } from './seeds/31-provider-specialties.seed'
 import { seedNewProviderRoles } from './seeds/32-new-provider-roles.seed'
 import { seedServiceBookings } from './seeds/33-service-bookings.seed'
+import { seedWorkflowTemplates } from './seeds/34-workflow-templates.seed'
 
 const prisma = new PrismaClient()
 
@@ -39,6 +40,18 @@ async function main() {
   console.log('Cleaning database...')
 
   // Delete in reverse dependency order
+
+  // 0. Workflow Engine tables
+  await prisma.workflowStepLog.deleteMany()
+  await prisma.workflowNotificationTemplate.deleteMany()
+  await prisma.workflowInstance.deleteMany()
+  await prisma.workflowTemplate.deleteMany()
+
+  // 0. Provider Inventory tables
+  await prisma.inventoryOrderItem.deleteMany()
+  await prisma.inventoryOrder.deleteMany()
+  await prisma.providerInventoryItem.deleteMany()
+
   // 0. Programs
   await prisma.programSessionProgress.deleteMany()
   await prisma.programEnrollment.deleteMany()
@@ -203,6 +216,7 @@ async function main() {
   await seedProviderSpecialties(prisma)
   await seedNewProviderRoles(prisma)
   await seedServiceBookings(prisma)
+  await seedWorkflowTemplates(prisma)
 
   // ── Final step: ensure ALL users have subscriptions ──────────────
   console.log('  Ensuring all users have subscriptions...')

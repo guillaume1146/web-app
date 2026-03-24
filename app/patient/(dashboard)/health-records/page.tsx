@@ -4,6 +4,6 @@ import { usePatientData } from '../context'
 import HealthRecords from '../components/HealthRecords'
 
 export default function HealthRecordsPage() {
-  const patientData = usePatientData()
-  return <HealthRecords patientData={patientData} />
+ const patientData = usePatientData()
+ return <HealthRecords patientData={patientData} />
 }

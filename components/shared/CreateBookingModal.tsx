@@ -6,542 +6,542 @@ import { useProviderRoles, ProviderRole } from '@/hooks/useProviderRoles'
 import { FaTimes, FaSpinner, FaCalendarAlt, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 
 interface Provider {
-  id: string
-  firstName: string
-  lastName: string
-  address: string | null
-  specializations: string[]
-  profileImage: string | null
-  verified: boolean
+ id: string
+ firstName: string
+ lastName: string
+ address: string | null
+ specializations: string[]
+ profileImage: string | null
+ verified: boolean
 }
 
 interface Service {
-  id: string
-  serviceName: string
-  defaultPrice: number
-  category: string
-  duration: number | null
+ id: string
+ serviceName: string
+ defaultPrice: number
+ category: string
+ duration: number | null
 }
 
 interface CreateBookingModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onCreated: () => void
-  /** Pre-select provider type (skip step 1) */
-  defaultProviderType?: string
-  /** Pre-select a specific provider (skip step 1 + 2) */
-  defaultProvider?: { id: string; firstName: string; lastName: string }
+ isOpen: boolean
+ onClose: () => void
+ onCreated: () => void
+ /** Pre-select provider type (skip step 1) */
+ defaultProviderType?: string
+ /** Pre-select a specific provider (skip step 1 + 2) */
+ defaultProvider?: { id: string; firstName: string; lastName: string }
 }
 
 /** Map UserType to the providerType string used by the available-slots API. */
 function getSlotProviderType(role: string): string {
-  const map: Record<string, string> = {
-    DOCTOR: 'doctor', NURSE: 'nurse', NANNY: 'nanny',
-    LAB_TECHNICIAN: 'lab-test', EMERGENCY_WORKER: 'emergency',
-    CAREGIVER: 'caregiver', PHYSIOTHERAPIST: 'physiotherapist',
-    DENTIST: 'dentist', OPTOMETRIST: 'optometrist', NUTRITIONIST: 'nutritionist',
-  }
-  return map[role] || role.toLowerCase()
+ const map: Record<string, string> = {
+ DOCTOR: 'doctor', NURSE: 'nurse', NANNY: 'nanny',
+ LAB_TECHNICIAN: 'lab-test', EMERGENCY_WORKER: 'emergency',
+ CAREGIVER: 'caregiver', PHYSIOTHERAPIST: 'physiotherapist',
+ DENTIST: 'dentist', OPTOMETRIST: 'optometrist', NUTRITIONIST: 'nutritionist',
+ }
+ return map[role] || role.toLowerCase()
 }
 
 /** Generate Mon–Sun dates for a given week offset (0 = this week, 1 = next, etc.) */
 function getWeekDates(weekOffset: number): { date: string; dayName: string; dayNum: number; monthShort: string; isToday: boolean; isPast: boolean }[] {
-  const now = new Date()
-  const dayOfWeek = now.getDay() // 0=Sun, 1=Mon
-  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-  const monday = new Date(now)
-  monday.setDate(now.getDate() + diffToMonday + weekOffset * 7)
+ const now = new Date()
+ const dayOfWeek = now.getDay() // 0=Sun, 1=Mon
+ const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+ const monday = new Date(now)
+ monday.setDate(now.getDate() + diffToMonday + weekOffset * 7)
 
-  const days = []
-  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday)
-    d.setDate(monday.getDate() + i)
-    const dateStr = d.toISOString().split('T')[0]
-    const todayStr = now.toISOString().split('T')[0]
-    days.push({
-      date: dateStr,
-      dayName: dayNames[i],
-      dayNum: d.getDate(),
-      monthShort: monthNames[d.getMonth()],
-      isToday: dateStr === todayStr,
-      isPast: d < new Date(now.getFullYear(), now.getMonth(), now.getDate()),
-    })
-  }
-  return days
+ const days = []
+ const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+ const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+ for (let i = 0; i < 7; i++) {
+ const d = new Date(monday)
+ d.setDate(monday.getDate() + i)
+ const dateStr = d.toISOString().split('T')[0]
+ const todayStr = now.toISOString().split('T')[0]
+ days.push({
+ date: dateStr,
+ dayName: dayNames[i],
+ dayNum: d.getDate(),
+ monthShort: monthNames[d.getMonth()],
+ isToday: dateStr === todayStr,
+ isPast: d < new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+ })
+ }
+ return days
 }
 
 export default function CreateBookingModal({ isOpen, onClose, onCreated, defaultProviderType, defaultProvider }: CreateBookingModalProps) {
-  const user = useDashboardUser()
-  const { roles } = useProviderRoles()
+ const user = useDashboardUser()
+ const { roles } = useProviderRoles()
 
-  // Steps: 1=role, 2=specialty+provider, 3=service+type, 4=date/time, 5=confirm
-  const [step, setStep] = useState(1)
-  const [selectedRole, setSelectedRole] = useState<ProviderRole | null>(null)
-  const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null)
-  const [providers, setProviders] = useState<Provider[]>([])
-  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
-  const [services, setServices] = useState<Service[]>([])
-  const [selectedService, setSelectedService] = useState<Service | null>(null)
-  const [consultType, setConsultType] = useState<'in_person' | 'home_visit' | 'video'>('in_person')
-  const [selectedDate, setSelectedDate] = useState('')
-  const [selectedTime, setSelectedTime] = useState('')
-  const [weekOffset, setWeekOffset] = useState(0)
-  const [weekSlots, setWeekSlots] = useState<Record<string, string[]>>({}) // { "2026-03-19": ["08:00","08:30",...] }
-  const [reason, setReason] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [slotsLoading, setSlotsLoading] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+ // Steps: 1=role, 2=specialty+provider, 3=service+type, 4=date/time, 5=confirm
+ const [step, setStep] = useState(1)
+ const [selectedRole, setSelectedRole] = useState<ProviderRole | null>(null)
+ const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null)
+ const [providers, setProviders] = useState<Provider[]>([])
+ const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
+ const [services, setServices] = useState<Service[]>([])
+ const [selectedService, setSelectedService] = useState<Service | null>(null)
+ const [consultType, setConsultType] = useState<'in_person' | 'home_visit' | 'video'>('in_person')
+ const [selectedDate, setSelectedDate] = useState('')
+ const [selectedTime, setSelectedTime] = useState('')
+ const [weekOffset, setWeekOffset] = useState(0)
+ const [weekSlots, setWeekSlots] = useState<Record<string, string[]>>({}) // { "2026-03-19": ["08:00","08:30",...] }
+ const [reason, setReason] = useState('')
+ const [loading, setLoading] = useState(false)
+ const [slotsLoading, setSlotsLoading] = useState(false)
+ const [submitting, setSubmitting] = useState(false)
+ const [error, setError] = useState<string | null>(null)
 
-  const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset])
+ const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset])
 
-  // Determine initial step based on defaults
-  useEffect(() => {
-    if (!isOpen) return
-    if (defaultProvider && defaultProviderType && roles.length > 0) {
-      const role = roles.find(r => r.role === defaultProviderType)
-      if (role) {
-        setSelectedRole(role)
-        setSelectedProvider({
-          id: defaultProvider.id,
-          firstName: defaultProvider.firstName,
-          lastName: defaultProvider.lastName,
-          address: null, specializations: [], profileImage: null, verified: true,
-        })
-        setStep(3)
-      }
-    } else if (defaultProviderType && roles.length > 0) {
-      const role = roles.find(r => r.role === defaultProviderType)
-      if (role) {
-        setSelectedRole(role)
-        setStep(2)
-      }
-    }
-  }, [defaultProviderType, defaultProvider, roles, isOpen])
+ // Determine initial step based on defaults
+ useEffect(() => {
+ if (!isOpen) return
+ if (defaultProvider && defaultProviderType && roles.length > 0) {
+ const role = roles.find(r => r.role === defaultProviderType)
+ if (role) {
+ setSelectedRole(role)
+ setSelectedProvider({
+ id: defaultProvider.id,
+ firstName: defaultProvider.firstName,
+ lastName: defaultProvider.lastName,
+ address: null, specializations: [], profileImage: null, verified: true,
+ })
+ setStep(3)
+ }
+ } else if (defaultProviderType && roles.length > 0) {
+ const role = roles.find(r => r.role === defaultProviderType)
+ if (role) {
+ setSelectedRole(role)
+ setStep(2)
+ }
+ }
+ }, [defaultProviderType, defaultProvider, roles, isOpen])
 
-  // Fetch providers when role selected
-  useEffect(() => {
-    if (!selectedRole) return
-    setLoading(true)
-    fetch(`/api/search/providers?type=${selectedRole.role}`)
-      .then(r => r.json())
-      .then(json => { if (json.success) setProviders(json.data) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [selectedRole])
+ // Fetch providers when role selected
+ useEffect(() => {
+ if (!selectedRole) return
+ setLoading(true)
+ fetch(`/api/search/providers?type=${selectedRole.role}`)
+ .then(r => r.json())
+ .then(json => { if (json.success) setProviders(json.data) })
+ .catch(() => {})
+ .finally(() => setLoading(false))
+ }, [selectedRole])
 
-  // Fetch services when role selected
-  useEffect(() => {
-    if (!selectedRole) return
-    fetch(`/api/services/catalog?providerType=${selectedRole.role}`)
-      .then(r => r.json())
-      .then(json => {
-        if (json.success) {
-          const allServices = json.data.flatMap((cat: { services: Service[] }) => cat.services)
-          setServices(allServices)
-        }
-      })
-      .catch(() => {})
-  }, [selectedRole])
+ // Fetch services when role selected
+ useEffect(() => {
+ if (!selectedRole) return
+ fetch(`/api/services/catalog?providerType=${selectedRole.role}`)
+ .then(r => r.json())
+ .then(json => {
+ if (json.success) {
+ const allServices = json.data.flatMap((cat: { services: Service[] }) => cat.services)
+ setServices(allServices)
+ }
+ })
+ .catch(() => {})
+ }, [selectedRole])
 
-  // Fetch available slots for the whole week when provider + week changes
-  const fetchWeekSlots = useCallback(async () => {
-    if (!selectedProvider || !selectedRole) return
-    setSlotsLoading(true)
-    const providerType = getSlotProviderType(selectedRole.role)
-    const slotMap: Record<string, string[]> = {}
+ // Fetch available slots for the whole week when provider + week changes
+ const fetchWeekSlots = useCallback(async () => {
+ if (!selectedProvider || !selectedRole) return
+ setSlotsLoading(true)
+ const providerType = getSlotProviderType(selectedRole.role)
+ const slotMap: Record<string, string[]> = {}
 
-    // Fetch all 7 days in parallel
-    const promises = weekDates.filter(d => !d.isPast).map(async (day) => {
-      try {
-        const res = await fetch(`/api/bookings/available-slots?providerId=${selectedProvider.id}&date=${day.date}&providerType=${providerType}`)
-        const json = await res.json()
-        if (json.success && json.slots && json.slots.length > 0) {
-          slotMap[day.date] = json.slots
-        } else {
-          // Default slots for days without configured availability
-          const defaultSlots = []
-          for (let h = 8; h <= 17; h++) {
-            defaultSlots.push(`${h.toString().padStart(2, '0')}:00`)
-            defaultSlots.push(`${h.toString().padStart(2, '0')}:30`)
-          }
-          slotMap[day.date] = defaultSlots
-        }
-      } catch {
-        slotMap[day.date] = []
-      }
-    })
-    await Promise.all(promises)
-    setWeekSlots(slotMap)
-    setSlotsLoading(false)
-  }, [selectedProvider, selectedRole, weekDates])
+ // Fetch all 7 days in parallel
+ const promises = weekDates.filter(d => !d.isPast).map(async (day) => {
+ try {
+ const res = await fetch(`/api/bookings/available-slots?providerId=${selectedProvider.id}&date=${day.date}&providerType=${providerType}`)
+ const json = await res.json()
+ if (json.success && json.slots && json.slots.length > 0) {
+ slotMap[day.date] = json.slots
+ } else {
+ // Default slots for days without configured availability
+ const defaultSlots = []
+ for (let h = 8; h <= 17; h++) {
+ defaultSlots.push(`${h.toString().padStart(2, '0')}:00`)
+ defaultSlots.push(`${h.toString().padStart(2, '0')}:30`)
+ }
+ slotMap[day.date] = defaultSlots
+ }
+ } catch {
+ slotMap[day.date] = []
+ }
+ })
+ await Promise.all(promises)
+ setWeekSlots(slotMap)
+ setSlotsLoading(false)
+ }, [selectedProvider, selectedRole, weekDates])
 
-  useEffect(() => {
-    if (step === 4) fetchWeekSlots()
-  }, [step, fetchWeekSlots])
+ useEffect(() => {
+ if (step === 4) fetchWeekSlots()
+ }, [step, fetchWeekSlots])
 
-  // Filtered providers by selected specialty
-  const filteredProviders = useMemo(() => {
-    if (!selectedSpecialty) return providers
-    return providers.filter(p => p.specializations.some(s => s.toLowerCase() === selectedSpecialty.toLowerCase()))
-  }, [providers, selectedSpecialty])
+ // Filtered providers by selected specialty
+ const filteredProviders = useMemo(() => {
+ if (!selectedSpecialty) return providers
+ return providers.filter(p => p.specializations.some(s => s.toLowerCase() === selectedSpecialty.toLowerCase()))
+ }, [providers, selectedSpecialty])
 
-  // All specialties from the selected role (from useProviderRoles hook)
-  const roleSpecialties = useMemo(() => {
-    if (!selectedRole) return []
-    return selectedRole.specialties || []
-  }, [selectedRole])
+ // All specialties from the selected role (from useProviderRoles hook)
+ const roleSpecialties = useMemo(() => {
+ if (!selectedRole) return []
+ return selectedRole.specialties || []
+ }, [selectedRole])
 
-  const handleSubmit = async () => {
-    if (!user || !selectedProvider || !selectedDate || !selectedTime) return
-    setSubmitting(true)
-    setError(null)
+ const handleSubmit = async () => {
+ if (!user || !selectedProvider || !selectedDate || !selectedTime) return
+ setSubmitting(true)
+ setError(null)
 
-    try {
-      const isOldRole = ['DOCTOR', 'NURSE', 'NANNY', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER'].includes(selectedRole?.role || '')
-      const roleToEndpoint: Record<string, string> = {
-        DOCTOR: 'doctor', NURSE: 'nurse', NANNY: 'nanny',
-        LAB_TECHNICIAN: 'lab-test', EMERGENCY_WORKER: 'emergency',
-      }
-      const endpoint = isOldRole
-        ? `/api/bookings/${roleToEndpoint[selectedRole?.role || '']}`
-        : '/api/bookings/service'
+ try {
+ const isOldRole = ['DOCTOR', 'NURSE', 'NANNY', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER'].includes(selectedRole?.role || '')
+ const roleToEndpoint: Record<string, string> = {
+ DOCTOR: 'doctor', NURSE: 'nurse', NANNY: 'nanny',
+ LAB_TECHNICIAN: 'lab-test', EMERGENCY_WORKER: 'emergency',
+ }
+ const endpoint = isOldRole
+ ? `/api/bookings/${roleToEndpoint[selectedRole?.role || '']}`
+ : '/api/bookings/service'
 
-      const roleToBodyKey: Record<string, string> = {
-        DOCTOR: 'doctorId', NURSE: 'nurseId', NANNY: 'nannyId',
-        LAB_TECHNICIAN: 'labTechId', EMERGENCY_WORKER: 'emergencyWorkerId',
-      }
+ const roleToBodyKey: Record<string, string> = {
+ DOCTOR: 'doctorId', NURSE: 'nurseId', NANNY: 'nannyId',
+ LAB_TECHNICIAN: 'labTechId', EMERGENCY_WORKER: 'emergencyWorkerId',
+ }
 
-      const body = isOldRole
-        ? {
-            [roleToBodyKey[selectedRole?.role || '']]: selectedProvider.id,
-            consultationType: consultType,
-            scheduledDate: selectedDate,
-            scheduledTime: selectedTime,
-            reason,
-            serviceName: selectedService?.serviceName,
-            servicePrice: selectedService?.defaultPrice,
-          }
-        : {
-            providerUserId: selectedProvider.id,
-            providerType: selectedRole?.role,
-            scheduledDate: selectedDate,
-            scheduledTime: selectedTime,
-            type: consultType,
-            reason: reason || undefined,
-            serviceName: selectedService?.serviceName || undefined,
-            servicePrice: selectedService?.defaultPrice,
-            specialty: selectedProvider.specializations?.[0] || selectedSpecialty || undefined,
-          }
+ const body = isOldRole
+ ? {
+ [roleToBodyKey[selectedRole?.role || '']]: selectedProvider.id,
+ consultationType: consultType,
+ scheduledDate: selectedDate,
+ scheduledTime: selectedTime,
+ reason,
+ serviceName: selectedService?.serviceName,
+ servicePrice: selectedService?.defaultPrice,
+ }
+ : {
+ providerUserId: selectedProvider.id,
+ providerType: selectedRole?.role,
+ scheduledDate: selectedDate,
+ scheduledTime: selectedTime,
+ type: consultType,
+ reason: reason || undefined,
+ serviceName: selectedService?.serviceName || undefined,
+ servicePrice: selectedService?.defaultPrice,
+ specialty: selectedProvider.specializations?.[0] || selectedSpecialty || undefined,
+ }
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      const json = await res.json()
+ const res = await fetch(endpoint, {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify(body),
+ })
+ const json = await res.json()
 
-      if (json.success || json.booking) {
-        onCreated()
-        onClose()
-        resetForm()
-      } else {
-        setError(json.message || 'Failed to create booking')
-      }
-    } catch {
-      setError('Network error')
-    } finally {
-      setSubmitting(false)
-    }
-  }
+ if (json.success || json.booking) {
+ onCreated()
+ onClose()
+ resetForm()
+ } else {
+ setError(json.message || 'Failed to create booking')
+ }
+ } catch {
+ setError('Network error')
+ } finally {
+ setSubmitting(false)
+ }
+ }
 
-  const resetForm = () => {
-    setStep(1)
-    setSelectedRole(null)
-    setSelectedSpecialty(null)
-    setSelectedProvider(null)
-    setSelectedService(null)
-    setSelectedDate('')
-    setSelectedTime('')
-    setWeekOffset(0)
-    setWeekSlots({})
-    setReason('')
-    setError(null)
-  }
+ const resetForm = () => {
+ setStep(1)
+ setSelectedRole(null)
+ setSelectedSpecialty(null)
+ setSelectedProvider(null)
+ setSelectedService(null)
+ setSelectedDate('')
+ setSelectedTime('')
+ setWeekOffset(0)
+ setWeekSlots({})
+ setReason('')
+ setError(null)
+ }
 
-  const handleBack = () => {
-    if (step === 2 && defaultProviderType) { onClose(); resetForm(); return }
-    if (step === 3 && defaultProvider) { onClose(); resetForm(); return }
-    setStep(step - 1)
-  }
+ const handleBack = () => {
+ if (step === 2 && defaultProviderType) { onClose(); resetForm(); return }
+ if (step === 3 && defaultProvider) { onClose(); resetForm(); return }
+ setStep(step - 1)
+ }
 
-  // Count total steps dynamically
-  const totalSteps = defaultProvider ? 3 : defaultProviderType ? 4 : 5
-  const currentStepNum = defaultProvider ? step - 2 : defaultProviderType ? step - 1 : step
+ // Count total steps dynamically
+ const totalSteps = defaultProvider ? 3 : defaultProviderType ? 4 : 5
+ const currentStepNum = defaultProvider ? step - 2 : defaultProviderType ? step - 1 : step
 
-  if (!isOpen) return null
+ if (!isOpen) return null
 
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
-          <div className="flex items-center gap-2">
-            {step > 1 && (
-              <button onClick={handleBack} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-                <FaChevronLeft className="text-xs" />
-              </button>
-            )}
-            <h3 className="text-lg font-bold text-gray-900">Book {selectedRole?.label?.replace(/s$/, '') || 'Appointment'}</h3>
-          </div>
-          <button onClick={() => { onClose(); resetForm() }} className="p-2 text-gray-400 hover:text-gray-600"><FaTimes /></button>
-        </div>
+ return (
+ <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+ <div className="bg-white rounded-xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+ {/* Header */}
+ <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
+ <div className="flex items-center gap-2">
+ {step > 1 && (
+ <button onClick={handleBack} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+ <FaChevronLeft className="text-xs" />
+ </button>
+ )}
+ <h3 className="text-lg font-bold text-gray-900">Book {selectedRole?.label?.replace(/s$/, '') || 'Appointment'}</h3>
+ </div>
+ <button onClick={() => { onClose(); resetForm() }} className="p-2 text-gray-400 hover:text-gray-600"><FaTimes /></button>
+ </div>
 
-        <div className="p-4 space-y-4">
-          {/* Step indicator */}
-          <div className="flex items-center gap-1 mb-1">
-            {Array.from({ length: totalSteps }, (_, i) => (
-              <div key={i} className={`flex-1 h-1.5 rounded-full transition-colors ${currentStepNum >= i + 1 ? 'bg-blue-600' : 'bg-gray-200'}`} />
-            ))}
-          </div>
+ <div className="p-4 space-y-4">
+ {/* Step indicator */}
+ <div className="flex items-center gap-1 mb-1">
+ {Array.from({ length: totalSteps }, (_, i) => (
+ <div key={i} className={`flex-1 h-1.5 rounded-full transition-colors ${currentStepNum >= i + 1 ? 'bg-blue-600' : 'bg-gray-200'}`} />
+ ))}
+ </div>
 
-          {/* Step 1: Choose provider type (skipped if defaultProviderType) */}
-          {step === 1 && (
-            <div>
-              <h4 className="text-sm font-semibold text-gray-800 mb-3">What type of provider?</h4>
-              <div className="grid grid-cols-2 gap-2">
-                {roles.map(r => (
-                  <button key={r.role} onClick={() => { setSelectedRole(r); setStep(2) }}
-                    className="p-3 border rounded-xl text-left hover:border-blue-300 hover:bg-blue-50 transition">
-                    <p className="font-medium text-sm text-gray-900">{r.label}</p>
-                    <p className="text-[10px] text-gray-400">{r.providerCount} available</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+ {/* Step 1: Choose provider type (skipped if defaultProviderType) */}
+ {step === 1 && (
+ <div>
+ <h4 className="text-sm font-semibold text-gray-800 mb-3">What type of provider?</h4>
+ <div className="grid grid-cols-2 gap-2">
+ {roles.map(r => (
+ <button key={r.role} onClick={() => { setSelectedRole(r); setStep(2) }}
+ className="p-3 border rounded-xl text-left hover:border-blue-300 hover:bg-blue-50 transition">
+ <p className="font-medium text-sm text-gray-900">{r.label}</p>
+ <p className="text-[10px] text-gray-400">{r.providerCount} available</p>
+ </button>
+ ))}
+ </div>
+ </div>
+ )}
 
-          {/* Step 2: Choose specialty + provider */}
-          {step === 2 && (
-            <div>
-              {/* Specialty filter */}
-              {roleSpecialties.length > 0 && (
-                <div className="mb-3">
-                  <h4 className="text-sm font-semibold text-gray-800 mb-2">Specialty</h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button onClick={() => setSelectedSpecialty(null)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition ${!selectedSpecialty ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                      All
-                    </button>
-                    {roleSpecialties.map(s => (
-                      <button key={s.name} onClick={() => setSelectedSpecialty(s.name)}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition ${selectedSpecialty === s.name ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                        {s.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+ {/* Step 2: Choose specialty + provider */}
+ {step === 2 && (
+ <div>
+ {/* Specialty filter */}
+ {roleSpecialties.length > 0 && (
+ <div className="mb-3">
+ <h4 className="text-sm font-semibold text-gray-800 mb-2">Specialty</h4>
+ <div className="flex flex-wrap gap-1.5">
+ <button onClick={() => setSelectedSpecialty(null)}
+ className={`px-2.5 py-1 rounded-full text-xs font-medium transition ${!selectedSpecialty ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+ All
+ </button>
+ {roleSpecialties.map(s => (
+ <button key={s.name} onClick={() => setSelectedSpecialty(s.name)}
+ className={`px-2.5 py-1 rounded-full text-xs font-medium transition ${selectedSpecialty === s.name ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+ {s.name}
+ </button>
+ ))}
+ </div>
+ </div>
+ )}
 
-              <h4 className="text-sm font-semibold text-gray-800 mb-2">
-                Choose a {selectedRole?.label?.replace(/s$/, '') || 'provider'}
-                {filteredProviders.length > 0 && <span className="text-gray-400 font-normal ml-1">({filteredProviders.length})</span>}
-              </h4>
-              {loading ? <div className="flex justify-center py-8"><FaSpinner className="animate-spin text-blue-500" /></div> : (
-                <div className="space-y-2 max-h-52 overflow-y-auto">
-                  {filteredProviders.map(p => (
-                    <button key={p.id} onClick={() => { setSelectedProvider(p); setStep(3) }}
-                      className="w-full p-3 border rounded-lg text-left hover:border-blue-300 hover:bg-blue-50 transition flex items-center gap-3">
-                      {p.profileImage ? (
-                        <img src={p.profileImage} alt="" className="w-10 h-10 rounded-full object-cover border-2 border-blue-100 flex-shrink-0" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm flex-shrink-0">
-                          {p.firstName[0]}{p.lastName[0]}
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-gray-900">
-                          {selectedRole?.role === 'DOCTOR' ? 'Dr. ' : ''}{p.firstName} {p.lastName}
-                          {p.verified && <span className="ml-1 text-green-500 text-[10px]">✓</span>}
-                        </p>
-                        {p.specializations.length > 0 && <p className="text-[10px] text-blue-600 truncate">{p.specializations.join(', ')}</p>}
-                        {p.address && <p className="text-[10px] text-gray-400 truncate">{p.address}</p>}
-                      </div>
-                    </button>
-                  ))}
-                  {filteredProviders.length === 0 && <p className="text-center py-4 text-gray-400 text-sm">No providers found{selectedSpecialty ? ` for "${selectedSpecialty}"` : ''}</p>}
-                </div>
-              )}
-            </div>
-          )}
+ <h4 className="text-sm font-semibold text-gray-800 mb-2">
+ Choose a {selectedRole?.label?.replace(/s$/, '') || 'provider'}
+ {filteredProviders.length > 0 && <span className="text-gray-400 font-normal ml-1">({filteredProviders.length})</span>}
+ </h4>
+ {loading ? <div className="flex justify-center py-8"><FaSpinner className="animate-spin text-blue-500" /></div> : (
+ <div className="space-y-2 max-h-52 overflow-y-auto">
+ {filteredProviders.map(p => (
+ <button key={p.id} onClick={() => { setSelectedProvider(p); setStep(3) }}
+ className="w-full p-3 border rounded-lg text-left hover:border-blue-300 hover:bg-blue-50 transition flex items-center gap-3">
+ {p.profileImage ? (
+ <img src={p.profileImage} alt="" className="w-10 h-10 rounded-full object-cover border-2 border-blue-100 flex-shrink-0" />
+ ) : (
+ <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm flex-shrink-0">
+ {p.firstName[0]}{p.lastName[0]}
+ </div>
+ )}
+ <div className="flex-1 min-w-0">
+ <p className="font-medium text-sm text-gray-900">
+ {selectedRole?.role === 'DOCTOR' ? 'Dr. ' : ''}{p.firstName} {p.lastName}
+ {p.verified && <span className="ml-1 text-green-500 text-[10px]">✓</span>}
+ </p>
+ {p.specializations.length > 0 && <p className="text-[10px] text-blue-600 truncate">{p.specializations.join(', ')}</p>}
+ {p.address && <p className="text-[10px] text-gray-400 truncate">{p.address}</p>}
+ </div>
+ </button>
+ ))}
+ {filteredProviders.length === 0 && <p className="text-center py-4 text-gray-400 text-sm">No providers found{selectedSpecialty ? ` for "${selectedSpecialty}"` : ''}</p>}
+ </div>
+ )}
+ </div>
+ )}
 
-          {/* Step 3: Choose service + consultation type */}
-          {step === 3 && (
-            <div>
-              <h4 className="text-sm font-semibold text-gray-800 mb-3">Service & consultation type</h4>
-              {services.length > 0 && (
-                <div className="space-y-1 max-h-40 overflow-y-auto mb-3">
-                  {services.map(s => (
-                    <button key={s.id || s.serviceName} onClick={() => setSelectedService(s)}
-                      className={`w-full p-2.5 border rounded-lg text-left text-sm transition ${selectedService?.serviceName === s.serviceName ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-gray-50'}`}>
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <span className="font-medium text-gray-900">{s.serviceName}</span>
-                          {s.duration && <span className="text-[10px] text-gray-400 ml-2">{s.duration} min</span>}
-                        </div>
-                        <span className="text-gray-600 font-semibold text-xs">Rs {(s.defaultPrice ?? 0).toLocaleString()}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {services.length === 0 && (
-                <p className="text-xs text-gray-400 mb-3">No specific services listed — general consultation will be booked.</p>
-              )}
-              <p className="text-xs font-medium text-gray-600 mb-2">Consultation type</p>
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                {(['in_person', 'home_visit', 'video'] as const).map(t => (
-                  <button key={t} onClick={() => setConsultType(t)}
-                    className={`p-2.5 border rounded-lg text-xs font-medium transition ${consultType === t ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-200' : 'text-gray-600 hover:bg-gray-50'}`}>
-                    {t === 'in_person' ? 'At Office' : t === 'home_visit' ? 'At Home' : 'Video Call'}
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => setStep(4)} disabled={!selectedService && services.length > 0}
-                className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-blue-700 transition">Continue</button>
-            </div>
-          )}
+ {/* Step 3: Choose service + consultation type */}
+ {step === 3 && (
+ <div>
+ <h4 className="text-sm font-semibold text-gray-800 mb-3">Service & consultation type</h4>
+ {services.length > 0 && (
+ <div className="space-y-1 max-h-40 overflow-y-auto mb-3">
+ {services.map(s => (
+ <button key={s.id || s.serviceName} onClick={() => setSelectedService(s)}
+ className={`w-full p-2.5 border rounded-lg text-left text-sm transition ${selectedService?.serviceName === s.serviceName ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-gray-50'}`}>
+ <div className="flex justify-between items-center">
+ <div>
+ <span className="font-medium text-gray-900">{s.serviceName}</span>
+ {s.duration && <span className="text-[10px] text-gray-400 ml-2">{s.duration} min</span>}
+ </div>
+ <span className="text-gray-600 font-semibold text-xs">Rs {(s.defaultPrice ?? 0).toLocaleString()}</span>
+ </div>
+ </button>
+ ))}
+ </div>
+ )}
+ {services.length === 0 && (
+ <p className="text-xs text-gray-400 mb-3">No specific services listed — general consultation will be booked.</p>
+ )}
+ <p className="text-xs font-medium text-gray-600 mb-2">Consultation type</p>
+ <div className="grid grid-cols-3 gap-2 mb-3">
+ {(['in_person', 'home_visit', 'video'] as const).map(t => (
+ <button key={t} onClick={() => setConsultType(t)}
+ className={`p-2.5 border rounded-lg text-xs font-medium transition ${consultType === t ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-200' : 'text-gray-600 hover:bg-gray-50'}`}>
+ {t === 'in_person' ? 'At Office' : t === 'home_visit' ? 'At Home' : 'Video Call'}
+ </button>
+ ))}
+ </div>
+ <button onClick={() => setStep(4)} disabled={!selectedService && services.length > 0}
+ className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-blue-700 transition">Continue</button>
+ </div>
+ )}
 
-          {/* Step 4: Weekly calendar with time slots */}
-          {step === 4 && (
-            <div>
-              <h4 className="text-sm font-semibold text-gray-800 mb-3">Choose date & time</h4>
+ {/* Step 4: Weekly calendar with time slots */}
+ {step === 4 && (
+ <div>
+ <h4 className="text-sm font-semibold text-gray-800 mb-3">Choose date & time</h4>
 
-              {/* Week navigation */}
-              <div className="flex items-center justify-between mb-3">
-                <button onClick={() => { setWeekOffset(Math.max(0, weekOffset - 1)); setSelectedDate(''); setSelectedTime('') }}
-                  disabled={weekOffset === 0}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30">
-                  <FaChevronLeft className="text-xs" />
-                </button>
-                <span className="text-xs font-medium text-gray-600">
-                  {weekDates[0]?.dayNum} {weekDates[0]?.monthShort} — {weekDates[6]?.dayNum} {weekDates[6]?.monthShort}
-                </span>
-                <button onClick={() => { setWeekOffset(weekOffset + 1); setSelectedDate(''); setSelectedTime('') }}
-                  disabled={weekOffset >= 4}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30">
-                  <FaChevronRight className="text-xs" />
-                </button>
-              </div>
+ {/* Week navigation */}
+ <div className="flex items-center justify-between mb-3">
+ <button onClick={() => { setWeekOffset(Math.max(0, weekOffset - 1)); setSelectedDate(''); setSelectedTime('') }}
+ disabled={weekOffset === 0}
+ className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30">
+ <FaChevronLeft className="text-xs" />
+ </button>
+ <span className="text-xs font-medium text-gray-600">
+ {weekDates[0]?.dayNum} {weekDates[0]?.monthShort} — {weekDates[6]?.dayNum} {weekDates[6]?.monthShort}
+ </span>
+ <button onClick={() => { setWeekOffset(weekOffset + 1); setSelectedDate(''); setSelectedTime('') }}
+ disabled={weekOffset >= 4}
+ className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30">
+ <FaChevronRight className="text-xs" />
+ </button>
+ </div>
 
-              {/* Day pills */}
-              <div className="grid grid-cols-7 gap-1 mb-4">
-                {weekDates.map(day => {
-                  const hasSlots = (weekSlots[day.date] || []).length > 0
-                  const isSelected = selectedDate === day.date
-                  return (
-                    <button
-                      key={day.date}
-                      onClick={() => { if (!day.isPast) { setSelectedDate(day.date); setSelectedTime('') } }}
-                      disabled={day.isPast}
-                      className={`flex flex-col items-center py-2 rounded-lg text-center transition ${
-                        isSelected ? 'bg-blue-600 text-white' :
-                        day.isPast ? 'bg-gray-50 text-gray-300 cursor-not-allowed' :
-                        day.isToday ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                        'bg-white border border-gray-200 text-gray-700 hover:border-blue-200 hover:bg-blue-50'
-                      }`}
-                    >
-                      <span className="text-[9px] font-medium uppercase">{day.dayName}</span>
-                      <span className="text-sm font-bold">{day.dayNum}</span>
-                      {!day.isPast && hasSlots && !isSelected && (
-                        <span className="w-1 h-1 rounded-full bg-green-500 mt-0.5" />
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
+ {/* Day pills */}
+ <div className="grid grid-cols-7 gap-1 mb-4">
+ {weekDates.map(day => {
+ const hasSlots = (weekSlots[day.date] || []).length > 0
+ const isSelected = selectedDate === day.date
+ return (
+ <button
+ key={day.date}
+ onClick={() => { if (!day.isPast) { setSelectedDate(day.date); setSelectedTime('') } }}
+ disabled={day.isPast}
+ className={`flex flex-col items-center py-2 rounded-lg text-center transition ${
+ isSelected ? 'bg-blue-600 text-white' :
+ day.isPast ? 'bg-gray-50 text-gray-300 cursor-not-allowed' :
+ day.isToday ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+ 'bg-white border border-gray-200 text-gray-700 hover:border-blue-200 hover:bg-blue-50'
+ }`}
+ >
+ <span className="text-[9px] font-medium uppercase">{day.dayName}</span>
+ <span className="text-sm font-bold">{day.dayNum}</span>
+ {!day.isPast && hasSlots && !isSelected && (
+ <span className="w-1 h-1 rounded-full bg-green-500 mt-0.5" />
+ )}
+ </button>
+ )
+ })}
+ </div>
 
-              {/* Time slots for selected day */}
-              {slotsLoading && <div className="flex justify-center py-6"><FaSpinner className="animate-spin text-blue-500" /></div>}
+ {/* Time slots for selected day */}
+ {slotsLoading && <div className="flex justify-center py-6"><FaSpinner className="animate-spin text-blue-500" /></div>}
 
-              {!slotsLoading && selectedDate && (
-                <div className="mb-4">
-                  {(() => {
-                    const daySlots = weekSlots[selectedDate] || []
-                    if (daySlots.length === 0) {
-                      return <p className="text-center py-4 text-gray-400 text-xs">No available slots for this day</p>
-                    }
-                    const morning = daySlots.filter(t => { const h = parseInt(t); return h >= 6 && h < 12 })
-                    const afternoon = daySlots.filter(t => { const h = parseInt(t); return h >= 12 && h < 17 })
-                    const evening = daySlots.filter(t => { const h = parseInt(t); return h >= 17 })
+ {!slotsLoading && selectedDate && (
+ <div className="mb-4">
+ {(() => {
+ const daySlots = weekSlots[selectedDate] || []
+ if (daySlots.length === 0) {
+ return <p className="text-center py-4 text-gray-400 text-xs">No available slots for this day</p>
+ }
+ const morning = daySlots.filter(t => { const h = parseInt(t); return h >= 6 && h < 12 })
+ const afternoon = daySlots.filter(t => { const h = parseInt(t); return h >= 12 && h < 17 })
+ const evening = daySlots.filter(t => { const h = parseInt(t); return h >= 17 })
 
-                    const SlotGroup = ({ label, slots }: { label: string; slots: string[] }) => slots.length === 0 ? null : (
-                      <div className="mb-2">
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
-                        <div className="grid grid-cols-4 gap-1.5">
-                          {slots.map(time => (
-                            <button key={time} onClick={() => setSelectedTime(time)}
-                              className={`px-2 py-2 border rounded-lg text-xs font-medium transition ${
-                                selectedTime === time ? 'border-blue-500 bg-blue-600 text-white' : 'text-gray-700 hover:bg-blue-50 hover:border-blue-200'
-                              }`}>
-                              {time}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )
+ const SlotGroup = ({ label, slots }: { label: string; slots: string[] }) => slots.length === 0 ? null : (
+ <div className="mb-2">
+ <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
+ <div className="grid grid-cols-4 gap-1.5">
+ {slots.map(time => (
+ <button key={time} onClick={() => setSelectedTime(time)}
+ className={`px-2 py-2 border rounded-lg text-xs font-medium transition ${
+ selectedTime === time ? 'border-blue-500 bg-blue-600 text-white' : 'text-gray-700 hover:bg-blue-50 hover:border-blue-200'
+ }`}>
+ {time}
+ </button>
+ ))}
+ </div>
+ </div>
+ )
 
-                    return (
-                      <>
-                        <SlotGroup label="Morning" slots={morning} />
-                        <SlotGroup label="Afternoon" slots={afternoon} />
-                        <SlotGroup label="Evening" slots={evening} />
-                      </>
-                    )
-                  })()}
-                </div>
-              )}
+ return (
+ <>
+ <SlotGroup label="Morning" slots={morning} />
+ <SlotGroup label="Afternoon" slots={afternoon} />
+ <SlotGroup label="Evening" slots={evening} />
+ </>
+ )
+ })()}
+ </div>
+ )}
 
-              {!selectedDate && !slotsLoading && (
-                <p className="text-center py-4 text-gray-400 text-xs">Select a day above to see available time slots</p>
-              )}
+ {!selectedDate && !slotsLoading && (
+ <p className="text-center py-4 text-gray-400 text-xs">Select a day above to see available time slots</p>
+ )}
 
-              <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for visit (optional)"
-                className="w-full px-3 py-2 border rounded-lg text-sm mb-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none" rows={2} />
+ <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for visit (optional)"
+ className="w-full px-3 py-2 border rounded-lg text-sm mb-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none" rows={2} />
 
-              <button onClick={() => setStep(5)} disabled={!selectedDate || !selectedTime}
-                className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-blue-700 transition">Review Booking</button>
-            </div>
-          )}
+ <button onClick={() => setStep(5)} disabled={!selectedDate || !selectedTime}
+ className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-blue-700 transition">Review Booking</button>
+ </div>
+ )}
 
-          {/* Step 5: Confirm */}
-          {step === 5 && (
-            <div>
-              <h4 className="text-sm font-semibold text-gray-800 mb-3">Review & Confirm</h4>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2.5 text-sm mb-4">
-                <div className="flex justify-between"><span className="text-gray-500">Provider</span><span className="font-medium">{selectedRole?.role === 'DOCTOR' ? 'Dr. ' : ''}{selectedProvider?.firstName} {selectedProvider?.lastName}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Type</span><span className="font-medium text-blue-600">{selectedRole?.label}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Service</span><span className="font-medium">{selectedService?.serviceName || 'General Consultation'}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Format</span><span className="font-medium">{consultType === 'in_person' ? 'At Office' : consultType === 'home_visit' ? 'At Home' : 'Video Call'}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Date</span><span className="font-medium">{new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Time</span><span className="font-medium">{selectedTime}</span></div>
-                {reason && <div className="flex justify-between"><span className="text-gray-500">Reason</span><span className="font-medium text-right max-w-[200px] truncate">{reason}</span></div>}
-                {selectedService?.defaultPrice != null && (
-                  <div className="flex justify-between border-t pt-2 mt-1"><span className="text-gray-600 font-medium">Estimated Price</span><span className="font-bold text-lg">Rs {(selectedService.defaultPrice ?? 0).toLocaleString()}</span></div>
-                )}
-              </div>
-              {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3"><p className="text-red-600 text-xs">{error}</p></div>}
-              <button onClick={handleSubmit} disabled={submitting}
-                className="w-full py-3 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2 transition">
-                {submitting ? <FaSpinner className="animate-spin" /> : <FaCalendarAlt />}
-                {submitting ? 'Booking...' : 'Confirm Booking'}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
+ {/* Step 5: Confirm */}
+ {step === 5 && (
+ <div>
+ <h4 className="text-sm font-semibold text-gray-800 mb-3">Review & Confirm</h4>
+ <div className="bg-gray-50 rounded-lg p-4 space-y-2.5 text-sm mb-4">
+ <div className="flex justify-between"><span className="text-gray-500">Provider</span><span className="font-medium">{selectedRole?.role === 'DOCTOR' ? 'Dr. ' : ''}{selectedProvider?.firstName} {selectedProvider?.lastName}</span></div>
+ <div className="flex justify-between"><span className="text-gray-500">Type</span><span className="font-medium text-blue-600">{selectedRole?.label}</span></div>
+ <div className="flex justify-between"><span className="text-gray-500">Service</span><span className="font-medium">{selectedService?.serviceName || 'General Consultation'}</span></div>
+ <div className="flex justify-between"><span className="text-gray-500">Format</span><span className="font-medium">{consultType === 'in_person' ? 'At Office' : consultType === 'home_visit' ? 'At Home' : 'Video Call'}</span></div>
+ <div className="flex justify-between"><span className="text-gray-500">Date</span><span className="font-medium">{new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
+ <div className="flex justify-between"><span className="text-gray-500">Time</span><span className="font-medium">{selectedTime}</span></div>
+ {reason && <div className="flex justify-between"><span className="text-gray-500">Reason</span><span className="font-medium text-right max-w-[200px] truncate">{reason}</span></div>}
+ {selectedService?.defaultPrice != null && (
+ <div className="flex justify-between border-t pt-2 mt-1"><span className="text-gray-600 font-medium">Estimated Price</span><span className="font-bold text-lg">Rs {(selectedService.defaultPrice ?? 0).toLocaleString()}</span></div>
+ )}
+ </div>
+ {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3"><p className="text-red-600 text-xs">{error}</p></div>}
+ <button onClick={handleSubmit} disabled={submitting}
+ className="w-full py-3 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2 transition">
+ {submitting ? <FaSpinner className="animate-spin" /> : <FaCalendarAlt />}
+ {submitting ? 'Booking...' : 'Confirm Booking'}
+ </button>
+ </div>
+ )}
+ </div>
+ </div>
+ </div>
+ )
 }

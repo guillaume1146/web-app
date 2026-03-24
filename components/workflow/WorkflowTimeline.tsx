@@ -1,0 +1,111 @@
+'use client'
+
+import { FiCheck, FiX, FiClock, FiPlay, FiVideo, FiPackage, FiFileText } from 'react-icons/fi'
+
+interface StepLogEntry {
+ id: string
+ fromStatus: string | null
+ toStatus: string
+ action: string
+ actionByRole: string
+ label: string
+ message?: string | null
+ contentType?: string | null
+ triggeredVideoCallId?: string | null
+ createdAt: string
+}
+
+interface WorkflowTimelineProps {
+ steps: StepLogEntry[]
+ currentStatus: string
+}
+
+const STATUS_COLORS: Record<string, string> = {
+ completed: 'bg-green-500',
+ resolved: 'bg-green-500',
+ cancelled: 'bg-red-500',
+ pending: 'bg-yellow-500',
+ in_progress: 'bg-blue-500',
+ in_call: 'bg-blue-500',
+ in_consultation: 'bg-blue-500',
+}
+
+function getStepIcon(step: StepLogEntry) {
+ if (step.toStatus === 'completed' || step.toStatus === 'resolved') return <FiCheck className="w-4 h-4" />
+ if (step.toStatus === 'cancelled') return <FiX className="w-4 h-4" />
+ if (step.toStatus.includes('call') || step.toStatus.includes('video')) return <FiVideo className="w-4 h-4" />
+ if (step.toStatus.includes('stock') || step.toStatus.includes('preparing')) return <FiPackage className="w-4 h-4" />
+ if (step.contentType) return <FiFileText className="w-4 h-4" />
+ if (step.toStatus.includes('progress') || step.toStatus.includes('consultation')) return <FiPlay className="w-4 h-4" />
+ return <FiClock className="w-4 h-4" />
+}
+
+function getStepColor(step: StepLogEntry, isLast: boolean): string {
+ if (isLast) return STATUS_COLORS[step.toStatus] || 'bg-blue-500'
+ return 'bg-gray-400'
+}
+
+export default function WorkflowTimeline({ steps, currentStatus }: WorkflowTimelineProps) {
+ if (!steps || steps.length === 0) {
+ return <p className="text-gray-500 text-sm">No workflow history yet.</p>
+ }
+
+ return (
+ <div className="flow-root">
+ <ul className="-mb-8">
+ {steps.map((step, idx) => {
+ const isLast = idx === steps.length - 1
+ const isCurrent = step.toStatus === currentStatus
+ const color = isCurrent ? (STATUS_COLORS[step.toStatus] || 'bg-blue-500') : getStepColor(step, isLast)
+
+ return (
+ <li key={step.id}>
+ <div className="relative pb-8">
+ {!isLast && (
+ <span className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
+ )}
+ <div className="relative flex space-x-3">
+ <div>
+ <span className={`${color} h-8 w-8 rounded-full flex items-center justify-center ring-4 ring-white text-white`}>
+ {getStepIcon(step)}
+ </span>
+ </div>
+ <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1">
+ <div>
+ <p className={`text-sm font-medium ${isCurrent ? 'text-gray-900' : 'text-gray-600'}`}>
+ {step.label}
+ </p>
+ {step.message && (
+ <p className="mt-0.5 text-xs text-gray-500">{step.message}</p>
+ )}
+ {step.contentType && (
+ <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+ <FiFileText className="w-3 h-3" />
+ {step.contentType.replace(/_/g, ' ')}
+ </span>
+ )}
+ {step.triggeredVideoCallId && (
+ <span className="inline-flex items-center gap-1 mt-1 ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+ <FiVideo className="w-3 h-3" />
+ Video call
+ </span>
+ )}
+ </div>
+ <div className="whitespace-nowrap text-right text-xs text-gray-400">
+ <time dateTime={step.createdAt}>
+ {new Date(step.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+ </time>
+ <p className="text-gray-300">
+ {step.actionByRole === 'patient' ? 'Patient' : step.actionByRole === 'provider' ? 'Provider' : 'System'}
+ </p>
+ </div>
+ </div>
+ </div>
+ </div>
+ </li>
+ )
+ })}
+ </ul>
+ </div>
+ )
+}

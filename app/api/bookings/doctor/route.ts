@@ -8,6 +8,7 @@ import { rateLimitPublic } from '@/lib/rate-limit'
 import { validateSlotAvailability } from '@/lib/booking/validate-availability'
 import { checkBookingCost } from '@/lib/booking/check-balance'
 import { ensurePatientProfile } from '@/lib/bookings/ensure-patient-profile'
+import { attachWorkflow } from '@/lib/workflow/hook'
 
 export async function POST(request: NextRequest) {
   const limited = rateLimitPublic(request)
@@ -126,6 +127,17 @@ export async function POST(request: NextRequest) {
         scheduledAt: true,
         status: true,
       },
+    })
+
+    // Attach workflow instance (non-blocking)
+    await attachWorkflow({
+      bookingId: appointment.id,
+      bookingRoute: 'doctor',
+      patientUserId: auth.sub,
+      providerUserId: doctorProfile.userId,
+      providerType: 'DOCTOR',
+      consultationType,
+      servicePrice: costCheck.adjustedFee,
     })
 
     // Get patient name for notification

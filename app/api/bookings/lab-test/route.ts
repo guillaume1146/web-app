@@ -7,6 +7,7 @@ import { rateLimitPublic } from '@/lib/rate-limit'
 import { validateSlotAvailability } from '@/lib/booking/validate-availability'
 import { checkBookingCost } from '@/lib/booking/check-balance'
 import { ensurePatientProfile } from '@/lib/bookings/ensure-patient-profile'
+import { attachWorkflow } from '@/lib/workflow/hook'
 
 const DEFAULT_LAB_TEST_PRICE = 500
 
@@ -116,6 +117,19 @@ export async function POST(request: NextRequest) {
         status: true,
       },
     })
+
+    // Attach workflow instance
+    if (labTechUserId) {
+      await attachWorkflow({
+        bookingId: booking.id,
+        bookingRoute: 'lab-test',
+        patientUserId: auth.sub,
+        providerUserId: labTechUserId,
+        providerType: 'LAB_TECHNICIAN',
+        consultationType: 'in_person',
+        servicePrice: costCheck.adjustedFee,
+      })
+    }
 
     // Notify lab technician if assigned
     if (labTechUserId) {

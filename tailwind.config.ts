@@ -1,4 +1,4 @@
-﻿/** @type {import('tailwindcss').Config} */
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -11,22 +11,19 @@ module.exports = {
         'xs': '375px',
       },
       colors: {
-        'primary-blue': '#125ff9',
-        'primary-teal': '#008fa3', 
-        'secondary-green': '#00a542',
-        'highlight-yellow': '#ffd700',
+        // New MediWyz brand palette
+        'brand-navy': '#001E40',
+        'brand-teal': '#0C6780',
+        'brand-sky': '#9AE1FF',
+        'brand-white': '#FFFFFF',
+        // Semantic aliases
+        'primary': '#001E40',
+        'primary-blue': '#001E40',
+        'primary-teal': '#0C6780',
+        'secondary-green': '#0C6780',
+        'highlight-yellow': '#9AE1FF',
       },
-      backgroundImage: {
-        'gradient-main': 'linear-gradient(135deg, #125ff9 0%, #008fa3 50%, #00a542 100%)',
-        'gradient-hero': 'linear-gradient(135deg, #125ff9 0%, #125ff9 30%, #008fa3 70%, #00a542 100%)',
-        'gradient-button': 'linear-gradient(90deg, #125ff9 0%, #00a542 100%)',
-        'gradient-blue': 'linear-gradient(135deg, #125ff9 0%, #008fa3 100%)',
-        'gradient-green': 'linear-gradient(135deg, #00a542 0%, #008fa3 100%)',
-        'gradient-purple': 'linear-gradient(135deg, #008fa3 0%, #125ff9 100%)',
-        'gradient-orange': 'linear-gradient(135deg, #00a542 0%, #125ff9 100%)',
-        'gradient-footer': 'linear-gradient(135deg, #125ff9 0%, #125ff9 30%, #008fa3 70%, #00a542 100%)',
-        'gradient-footer-dark': 'linear-gradient(135deg, #0a0f1a 0%, #0d1f4d 15%, #0e3a6b 30%, #0d6e7e 50%, #0a7a4f 70%, #063d28 90%, #041a12 100%)',
-      },
+      // No gradient backgrounds — solid colors only from brand palette
       animation: {
         'blob': 'blob 7s infinite',
       },

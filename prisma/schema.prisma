@@ -30,13 +30,8 @@ enum UserType {
 
 // ─── Booking & Appointment Status Enums ────────────────────────────────────
 
-enum BookingStatus {
-  pending
-  upcoming
-  confirmed
-  completed
-  cancelled
-}
+// BookingStatus enum removed — all booking models use String for status
+// (kept as comment for historical reference)
 
 enum AppointmentType {
   video
@@ -44,13 +39,8 @@ enum AppointmentType {
   home_visit
 }
 
-enum EmergencyStatus {
-  pending
-  dispatched
-  en_route
-  resolved
-  cancelled
-}
+// EmergencyStatus enum removed — EmergencyBooking uses String for status
+// (kept as comment for historical reference)
 
 enum Priority {
   low
@@ -1972,9 +1962,10 @@ model PlatformService {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  providerConfigs ProviderServiceConfig[]
-  planServices    SubscriptionPlanService[]
-  groupItems      ServiceGroupItem[]
+  providerConfigs    ProviderServiceConfig[]
+  planServices       SubscriptionPlanService[]
+  groupItems         ServiceGroupItem[]
+  workflowTemplates  WorkflowTemplate[]
 
   @@index([providerType])
   @@index([providerType, serviceName])
@@ -2051,4 +2042,266 @@ model SubscriptionPlanService {
   @@index([planId])
   @@index([platformServiceId])
   @@index([serviceGroupId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WORKFLOW ENGINE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Workflow Template (defines steps, transitions, notifications per service+mode) ─
+
+model WorkflowTemplate {
+  id                  String   @id @default(uuid())
+  name                String   // "Doctor Consultation - Office"
+  slug                String   @unique // "doctor-consultation-office"
+  description         String?
+  providerType        String   // DOCTOR, NURSE, DENTIST, etc.
+  serviceMode         String   // office, home, video
+  isDefault           Boolean  @default(false) // system seed = true
+  isActive            Boolean  @default(true)
+
+  // Ownership — null = system default
+  createdByProviderId String?  // provider custom workflow
+  createdByAdminId    String?  // regional admin default
+  regionCode          String?  // null = global, "MU" = Mauritius only
+
+  // Link to service catalog
+  platformServiceId   String?
+  platformService     PlatformService? @relation(fields: [platformServiceId], references: [id], onDelete: SetNull)
+
+  // Steps definition (ordered JSON array)
+  // Each: { order, statusCode, label, description,
+  //         actionsForPatient: [{ action, label, targetStatus, style }],
+  //         actionsForProvider: [{ action, label, targetStatus, style }],
+  //         flags: { triggers_video_call?, triggers_stock_check?,
+  //                  triggers_stock_subtract?, requires_prescription?,
+  //                  requires_content? },
+  //         notifyPatient?: { title, message },
+  //         notifyProvider?: { title, message } }
+  steps               Json
+
+  // Allowed transitions (JSON array)
+  // Each: { from, to, action, allowedRoles: ["patient"|"provider"|"system"],
+  //         conditions?: { requiresPayment?, requiresPrescription? } }
+  transitions         Json
+
+  instances           WorkflowInstance[]
+  notificationTemplates WorkflowNotificationTemplate[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([providerType, serviceMode])
+  @@index([platformServiceId])
+  @@index([createdByProviderId])
+  @@index([createdByAdminId])
+  @@index([isDefault])
+}
+
+// ─── Workflow Instance (tracks one booking's progress through a template) ────
+
+model WorkflowInstance {
+  id              String   @id @default(uuid())
+  templateId      String
+  template        WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  // Polymorphic booking reference
+  bookingId       String
+  bookingType     String   // appointment, nurse_booking, childcare_booking, lab_test_booking, emergency_booking, service_booking
+
+  currentStatus   String   // current step statusCode
+  previousStatus  String?
+
+  patientUserId   String
+  providerUserId  String
+
+  serviceMode     String   // office, home, video
+
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+
+  metadata        Json?    // extra data per instance
+
+  steps           WorkflowStepLog[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([bookingId, bookingType])
+  @@index([patientUserId])
+  @@index([providerUserId])
+  @@index([currentStatus])
+  @@index([templateId])
+}
+
+// ─── Workflow Step Log (audit trail: every status change recorded) ───────────
+
+model WorkflowStepLog {
+  id              String   @id @default(uuid())
+  instanceId      String
+  instance        WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  fromStatus      String?  // null for first step
+  toStatus        String
+  action          String   // "accept", "start_care", "complete", etc.
+  actionByUserId  String
+  actionByRole    String   // "patient", "provider", "system"
+
+  // Display
+  label           String   // "Consultation en cours"
+  message         String?  // detailed message
+
+  // Content attachment (prescription, lab results, care notes, etc.)
+  contentType     String?  // "prescription", "lab_result", "care_notes", "report", "dental_chart", "eye_prescription", "meal_plan", "exercise_plan"
+  contentData     Json?    // { medications: [...] } or { findings: "...", values: [...] }
+
+  // Triggered actions results
+  triggeredVideoCallId  String?  // if video call was created
+  triggeredStockActions Json?    // [{ itemId, qty, action: "check"|"subtract" }]
+
+  // Notification tracking
+  notificationId  String?  // Notification.id that was created
+
+  createdAt       DateTime @default(now())
+
+  @@index([instanceId])
+  @@index([toStatus])
+  @@index([createdAt])
+}
+
+// ─── Workflow Notification Template (custom notification messages per step) ──
+
+model WorkflowNotificationTemplate {
+  id                   String   @id @default(uuid())
+  workflowTemplateId   String
+  workflowTemplate     WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
+
+  statusCode           String   // which step this notification is for
+  targetRole           String   // "patient" or "provider"
+  title                String   // supports {{variables}} like {{patientName}}, {{providerName}}
+  message              String   // supports {{variables}}
+  notificationType     String   @default("workflow") // notification type code
+
+  // Ownership (null = system default)
+  createdByProviderId  String?
+  createdByAdminId     String?
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([workflowTemplateId, statusCode, targetRole, createdByProviderId])
+  @@index([workflowTemplateId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROVIDER INVENTORY (generalized from PharmacyMedicine — all providers can sell)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Provider Inventory Item (any provider, not just pharmacist) ─────────────
+
+model ProviderInventoryItem {
+  id                   String   @id @default(uuid())
+  providerUserId       String   // any provider's User.id
+  providerType         String   // PHARMACIST, OPTOMETRIST, DENTIST, NANNY, etc.
+
+  // Product info
+  name                 String
+  genericName          String?  // for medicines
+  category             String   // "medication", "equipment", "accessory", "supply", "eyewear", etc.
+  description          String?
+  imageUrl             String?
+
+  // Measurement
+  unitOfMeasure        String   @default("unit") // unit, box, bottle, pair, ml, mg, kg
+  strength             String?  // "500mg" for medicines
+  dosageForm           String?  // tablet, capsule, syrup, etc. (medicines only)
+
+  // Pricing
+  price                Float
+  currency             String   @default("MUR")
+  discountPercent      Float?   // optional discount
+
+  // Stock
+  quantity             Int      @default(0)
+  minStockAlert        Int      @default(5) // alert when stock <= this
+  inStock              Boolean  @default(true)
+
+  // Flags
+  requiresPrescription Boolean  @default(false) // medicines needing Rx
+  isActive             Boolean  @default(true)
+  isFeatured           Boolean  @default(false) // show in Health Shop highlights
+
+  // Medicine-specific (nullable for non-medicines)
+  sideEffects          String[] @default([])
+  expiryDate           DateTime?
+
+  // Relations
+  orderItems           InventoryOrderItem[]
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([providerUserId])
+  @@index([providerType, category])
+  @@index([category])
+  @@index([inStock])
+  @@index([name])
+}
+
+// ─── Inventory Order (patient orders from any provider's inventory) ──────────
+
+model InventoryOrder {
+  id                   String   @id @default(uuid())
+  patientUserId        String
+  providerUserId       String
+  providerType         String
+
+  status               String   @default("pending") // pending, confirmed, preparing, ready_for_pickup, ready_for_delivery, delivery_in_progress, delivered, picked_up, completed, cancelled
+
+  totalAmount          Float
+  currency             String   @default("MUR")
+  deliveryType         String?  // pickup, delivery
+  deliveryAddress      String?
+  deliveryFee          Float    @default(0)
+
+  // Prescription
+  prescriptionRequired Boolean  @default(false)
+  prescriptionId       String?  // reference to uploaded prescription
+
+  // Workflow
+  workflowInstanceId   String?  // linked workflow for order tracking
+
+  items                InventoryOrderItem[]
+
+  orderedAt            DateTime @default(now())
+  confirmedAt          DateTime?
+  deliveredAt          DateTime?
+  cancelledAt          DateTime?
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([patientUserId])
+  @@index([providerUserId])
+  @@index([status])
+}
+
+// ─── Inventory Order Item (line items with quantity and pricing) ─────────────
+
+model InventoryOrderItem {
+  id                   String   @id @default(uuid())
+  orderId              String
+  order                InventoryOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  inventoryItemId      String
+  inventoryItem        ProviderInventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  quantity             Int
+  unitPrice            Float
+  totalPrice           Float
+
+  createdAt            DateTime @default(now())
+
+  @@index([orderId])
+  @@index([inventoryItemId])
 }

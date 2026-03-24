@@ -5,8 +5,8 @@ import { useUserAsPatient } from '@/lib/dashboard/useUserAsPatient'
 import NurseServices from '@/app/patient/(dashboard)/components/NurseServices'
 
 export default function PharmacistNurseServicesPage() {
-  const { patientData, loading } = useUserAsPatient()
-  const router = useRouter()
-  if (loading || !patientData) return null
-  return <NurseServices patientData={patientData} onVideoCall={() => router.push('/pharmacist/video')} />
+ const { patientData, loading } = useUserAsPatient()
+ const router = useRouter()
+ if (loading || !patientData) return null
+ return <NurseServices patientData={patientData} onVideoCall={() => router.push('/pharmacist/video')} />
 }
