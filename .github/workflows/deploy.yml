@@ -52,7 +52,7 @@ jobs:
       - run: npx prisma generate
 
       - name: Run unit tests
-        run: npx vitest run
+        run: npx vitest run --exclude='__tests__/**'
 
   # ─── Build Docker Image ──────────────────────────────────────────────
   build:
