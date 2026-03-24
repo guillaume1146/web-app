@@ -93,7 +93,8 @@
       "Bash(node -e \"console.log\\(require\\(''tailwindcss/package.json''\\).version\\)\")",
       "Bash(npx kill-port:*)",
       "Bash(rm -rf \"C:/Github Repositories/healthways-typescript/.next\")",
-      "Bash(cd \"C:/Github Repositories/healthways-typescript\" echo \"=== Doctor sidebar ===\" grep -n \"id:\" app/doctor/\\\\\\(dashboard\\\\\\)/sidebar-config.ts)"
+      "Bash(cd \"C:/Github Repositories/healthways-typescript\" echo \"=== Doctor sidebar ===\" grep -n \"id:\" app/doctor/\\\\\\(dashboard\\\\\\)/sidebar-config.ts)",
+      "Bash(gh run:*)"
     ]
   }
 }

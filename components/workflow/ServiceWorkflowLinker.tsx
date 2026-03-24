@@ -100,7 +100,7 @@ export default function ServiceWorkflowLinker({ serviceId, providerType, createW
         </div>
       ))}
       {linked.length === 0 && <p className="text-[9px] text-gray-400">No workflow assigned</p>}
-      <div className="relative inline-block">
+      {linked.length >= 1 ? null : <div className="relative inline-block">
         <button onClick={() => setShowDropdown(!showDropdown)} className="inline-flex items-center gap-1 px-2 py-1 text-[10px] text-brand-teal border border-brand-teal/30 rounded-lg hover:border-brand-teal font-medium">
           <FiLink className="w-2.5 h-2.5" /> Assign <FiChevronDown className="w-2.5 h-2.5" />
         </button>
@@ -120,7 +120,7 @@ export default function ServiceWorkflowLinker({ serviceId, providerType, createW
             </Link>
           </div>
         )}
-      </div>
+      </div>}
     </div>
   )
 }
