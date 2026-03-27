@@ -1,7 +1,7 @@
 'use client'
 
-import ProviderPracticePage from '@/components/shared/ProviderPracticePage'
+import UnifiedPracticePage from '@/components/shared/UnifiedPracticePage'
 
 export default function PhysioPracticePage() {
- return <ProviderPracticePage bookingType="service" title="Physiotherapy Practice" defaultServiceLabel="Physio Session" />
+  return <UnifiedPracticePage />
 }

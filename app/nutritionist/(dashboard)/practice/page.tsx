@@ -1,7 +1,7 @@
 'use client'
 
-import ProviderPracticePage from '@/components/shared/ProviderPracticePage'
+import UnifiedPracticePage from '@/components/shared/UnifiedPracticePage'
 
 export default function NutritionistPracticePage() {
- return <ProviderPracticePage bookingType="service" title="Nutrition Practice" defaultServiceLabel="Nutrition Consultation" />
+  return <UnifiedPracticePage />
 }

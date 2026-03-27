@@ -1,7 +1,7 @@
 'use client'
 
-import ProviderPracticePage from '@/components/shared/ProviderPracticePage'
+import UnifiedPracticePage from '@/components/shared/UnifiedPracticePage'
 
 export default function DentistPracticePage() {
- return <ProviderPracticePage bookingType="service" title="Dental Practice" defaultServiceLabel="Dental Service" />
+  return <UnifiedPracticePage />
 }
