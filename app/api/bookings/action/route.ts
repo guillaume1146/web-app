@@ -5,6 +5,8 @@ import { processServicePayment } from '@/lib/commission'
 import { createNotification } from '@/lib/notifications'
 import { rateLimitPublic } from '@/lib/rate-limit'
 import { resolveAndConfirmBooking, resolveAndDenyBooking } from '@/lib/bookings/resolve-booking'
+import { attachWorkflow } from '@/lib/workflow/hook'
+import { transition } from '@/lib/workflow'
 import { z } from 'zod'
 
 const actionSchema = z.object({
@@ -77,35 +79,59 @@ export async function POST(request: NextRequest) {
         data: { status: 'dispatched', responderId: responderProfile.id },
       })
 
-      // Auto-create conversation between responder and patient
-      try {
-        const existing = await prisma.conversation.findFirst({
-          where: {
-            type: 'direct',
-            AND: [
-              { participants: { some: { userId: auth.sub } } },
-              { participants: { some: { userId: booking.patient.userId } } },
-            ],
-          },
-        })
-        if (!existing) {
-          await prisma.conversation.create({
-            data: {
+      // Attach workflow (creates instance at 'pending') then transition to 'dispatched'
+      // Workflow handles: conversation creation (triggers_conversation) + patient notification
+      const wf = await attachWorkflow({
+        bookingId,
+        bookingRoute: 'emergency',
+        patientUserId: booking.patient.userId,
+        providerUserId: auth.sub,
+        providerType: 'EMERGENCY_WORKER',
+        consultationType: 'home_visit',
+      })
+
+      if (wf.workflowInstanceId) {
+        try {
+          await transition({
+            instanceId: wf.workflowInstanceId,
+            action: 'accept',
+            actionByUserId: auth.sub,
+            actionByRole: 'provider',
+          })
+        } catch (err) {
+          console.warn('Emergency workflow transition to dispatched failed:', err)
+        }
+      } else {
+        // Fallback: manual conversation + notification if workflow not available
+        try {
+          const existing = await prisma.conversation.findFirst({
+            where: {
               type: 'direct',
-              participants: { create: [{ userId: auth.sub }, { userId: booking.patient.userId }] },
+              AND: [
+                { participants: { some: { userId: auth.sub } } },
+                { participants: { some: { userId: booking.patient.userId } } },
+              ],
             },
           })
-        }
-      } catch { /* conversation creation is best-effort */ }
+          if (!existing) {
+            await prisma.conversation.create({
+              data: {
+                type: 'direct',
+                participants: { create: [{ userId: auth.sub }, { userId: booking.patient.userId }] },
+              },
+            })
+          }
+        } catch { /* conversation creation is best-effort */ }
 
-      await createNotification({
-        userId: booking.patient.userId,
-        type: 'booking_confirmed',
-        title: 'Emergency Responder Dispatched',
-        message: 'An emergency responder has been dispatched to your location.',
-        referenceId: bookingId,
-        referenceType: 'emergency_booking',
-      })
+        await createNotification({
+          userId: booking.patient.userId,
+          type: 'booking_confirmed',
+          title: 'Emergency Responder Dispatched',
+          message: 'An emergency responder has been dispatched to your location.',
+          referenceId: bookingId,
+          referenceType: 'emergency_booking',
+        })
+      }
 
       return NextResponse.json({ success: true, message: 'Emergency booking accepted — responder dispatched' })
     }

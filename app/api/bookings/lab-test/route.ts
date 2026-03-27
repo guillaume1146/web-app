@@ -118,9 +118,10 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Attach workflow instance
+    // Attach workflow instance — workflow handles provider notification
+    let wfAttached = false
     if (labTechUserId) {
-      await attachWorkflow({
+      const wf = await attachWorkflow({
         bookingId: booking.id,
         bookingRoute: 'lab-test',
         patientUserId: auth.sub,
@@ -129,10 +130,11 @@ export async function POST(request: NextRequest) {
         consultationType: 'in_person',
         servicePrice: costCheck.adjustedFee,
       })
+      wfAttached = !!wf.workflowInstanceId
     }
 
-    // Notify lab technician if assigned
-    if (labTechUserId) {
+    // Fallback notification only if workflow was not attached
+    if (labTechUserId && !wfAttached) {
       const patientUser = await prisma.user.findUnique({
         where: { id: auth.sub },
         select: { firstName: true, lastName: true },

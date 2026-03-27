@@ -30,7 +30,7 @@ describe('WorkflowTemplate model', () => {
         slug: 'test-consultation-office-' + Date.now(),
         providerType: 'DOCTOR',
         serviceMode: 'office',
-        isDefault: true,
+        isDefault: false,
         steps: [
           {
             order: 1,
@@ -73,7 +73,7 @@ describe('WorkflowTemplate model', () => {
     expect(template.name).toBe('Test Consultation - Office')
     expect(template.providerType).toBe('DOCTOR')
     expect(template.serviceMode).toBe('office')
-    expect(template.isDefault).toBe(true)
+    expect(template.isDefault).toBe(false)
     expect(template.isActive).toBe(true)
     expect(template.createdByProviderId).toBeNull()
     expect(template.createdByAdminId).toBeNull()

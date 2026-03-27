@@ -220,17 +220,21 @@ export async function transition(input: TransitionInput): Promise<TransitionResu
   }
 
   // 5. Execute PRE-transition flag handlers (validation)
+  // Skip flag execution for self-transitions (e.g. leave_review on completed → completed)
+  const isSelfTransition = instance.currentStatus === targetStatus
   const preErrors: string[] = []
-  for (const [flagKey, handler] of flagHandlers) {
-    if (targetStep.flags[flagKey as keyof StepFlags] && handler.validate) {
-      const result = await handler.validate(ctx)
-      if (!result.valid) {
-        preErrors.push(...result.errors)
+  if (!isSelfTransition) {
+    for (const [flagKey, handler] of flagHandlers) {
+      if (targetStep.flags[flagKey as keyof StepFlags] && handler.validate) {
+        const result = await handler.validate(ctx)
+        if (!result.valid) {
+          preErrors.push(...result.errors)
+        }
       }
     }
-  }
-  if (preErrors.length > 0) {
-    throw new WorkflowError(`Pre-transition validation failed: ${preErrors.join(', ')}`)
+    if (preErrors.length > 0) {
+      throw new WorkflowError(`Pre-transition validation failed: ${preErrors.join(', ')}`)
+    }
   }
 
   // 6. Execute transition in a transaction
@@ -248,17 +252,19 @@ export async function transition(input: TransitionInput): Promise<TransitionResu
     ...(isCancelled ? { cancelledAt: new Date() } : {}),
   })
 
-  // 7. Execute POST-transition flag handlers
-  for (const [flagKey, handler] of flagHandlers) {
-    if (targetStep.flags[flagKey as keyof StepFlags] && handler.execute) {
-      const result = await handler.execute(ctx)
-      if (result.videoCallId) triggeredActions.videoCallId = result.videoCallId
-      if (result.stockCheckResult) triggeredActions.stockCheckResult = result.stockCheckResult
-      if (result.stockSubtracted) triggeredActions.stockSubtracted = result.stockSubtracted
-      if (result.paymentProcessed) triggeredActions.paymentProcessed = result.paymentProcessed
-      if (result.refundProcessed) triggeredActions.refundProcessed = result.refundProcessed
-      if (result.conversationId) triggeredActions.conversationId = result.conversationId
-      if (result.reviewRequestSent) triggeredActions.reviewRequestSent = result.reviewRequestSent
+  // 7. Execute POST-transition flag handlers (skip for self-transitions)
+  if (!isSelfTransition) {
+    for (const [flagKey, handler] of flagHandlers) {
+      if (targetStep.flags[flagKey as keyof StepFlags] && handler.execute) {
+        const result = await handler.execute(ctx)
+        if (result.videoCallId) triggeredActions.videoCallId = result.videoCallId
+        if (result.stockCheckResult) triggeredActions.stockCheckResult = result.stockCheckResult
+        if (result.stockSubtracted) triggeredActions.stockSubtracted = result.stockSubtracted
+        if (result.paymentProcessed) triggeredActions.paymentProcessed = result.paymentProcessed
+        if (result.refundProcessed) triggeredActions.refundProcessed = result.refundProcessed
+        if (result.conversationId) triggeredActions.conversationId = result.conversationId
+        if (result.reviewRequestSent) triggeredActions.reviewRequestSent = result.reviewRequestSent
+      }
     }
   }
 

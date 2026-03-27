@@ -18,15 +18,15 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const templates = await templateRepo.findTemplates({
+      createdByProviderId: auth.sub,
       providerType: searchParams.get('providerType') || undefined,
       serviceMode: searchParams.get('serviceMode') || undefined,
-      isDefault: searchParams.get('isDefault') === 'true' ? true : undefined,
       platformServiceId: searchParams.get('platformServiceId') || undefined,
     })
 
     return NextResponse.json({ success: true, data: templates })
   } catch (error) {
-    console.error('GET /api/workflow/templates error:', error)
+    console.error('GET /api/workflow/my-templates error:', error)
     return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 })
   }
 }
@@ -55,7 +55,6 @@ const createTemplateSchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(1),
   description: z.string().optional(),
-  providerType: z.string().min(1),
   serviceMode: z.enum(['office', 'home', 'video']),
   platformServiceId: z.string().optional(),
   regionCode: z.string().optional(),
@@ -73,6 +72,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const user = await prisma.user.findUnique({
+      where: { id: auth.sub },
+      select: { userType: true },
+    })
+
+    if (!user) {
+      return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 })
+    }
+
     const body = await request.json()
     const parsed = createTemplateSchema.safeParse(body)
     if (!parsed.success) {
@@ -82,26 +90,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Auto-detect role and set creator fields
-    const user = await prisma.user.findUnique({
-      where: { id: auth.sub },
-      select: { userType: true },
-    })
-
-    const isAdmin = user?.userType === 'REGIONAL_ADMIN'
-
     const template = await templateRepo.createTemplate({
       ...parsed.data,
+      providerType: user.userType,
+      isDefault: false,
       steps: parsed.data.steps as unknown as Prisma.InputJsonValue,
       transitions: parsed.data.transitions as unknown as Prisma.InputJsonValue,
-      createdByProviderId: isAdmin ? undefined : auth.sub,
-      createdByAdminId: isAdmin ? auth.sub : undefined,
-      regionCode: isAdmin ? (parsed.data.regionCode || undefined) : undefined,
+      createdByProviderId: auth.sub,
     })
 
     return NextResponse.json({ success: true, data: template }, { status: 201 })
   } catch (error) {
-    console.error('POST /api/workflow/templates error:', error)
+    console.error('POST /api/workflow/my-templates error:', error)
     return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 })
   }
 }

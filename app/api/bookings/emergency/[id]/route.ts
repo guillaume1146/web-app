@@ -5,6 +5,7 @@ import { bookingActionSchema } from '@/lib/validations/api'
 import { rateLimitPublic } from '@/lib/rate-limit'
 import prisma from '@/lib/db'
 import { createNotification } from '@/lib/notifications'
+import { transition, instanceRepo } from '@/lib/workflow'
 
 /**
  * Verify that the caller is the assigned responder for a given emergency booking.
@@ -67,6 +68,23 @@ export async function PATCH(
         return NextResponse.json({ success: false, message: 'Booking must be in dispatched state' }, { status: 400 })
       }
 
+      // Use workflow transition if instance exists
+      const wfInstance = await instanceRepo.findInstanceByBooking(id, 'emergency_booking')
+      if (wfInstance) {
+        try {
+          const result = await transition({
+            instanceId: wfInstance.id,
+            action: 'en_route',
+            actionByUserId: auth.sub,
+            actionByRole: 'provider',
+          })
+          return NextResponse.json({ success: true, data: result })
+        } catch (err) {
+          console.warn('Workflow transition for en_route failed, falling back to direct update:', err)
+        }
+      }
+
+      // Fallback: direct DB update
       await prisma.emergencyBooking.update({
         where: { id },
         data: { status: 'en_route' },
@@ -91,6 +109,24 @@ export async function PATCH(
         return NextResponse.json({ success: false, message: 'Booking must be dispatched or en_route to complete' }, { status: 400 })
       }
 
+      // Use workflow transition if instance exists — resolve through available path
+      const wfInstance = await instanceRepo.findInstanceByBooking(id, 'emergency_booking')
+      if (wfInstance) {
+        try {
+          // The workflow may be at various intermediate steps; try 'resolve' action
+          const result = await transition({
+            instanceId: wfInstance.id,
+            action: 'resolve',
+            actionByUserId: auth.sub,
+            actionByRole: 'provider',
+          })
+          return NextResponse.json({ success: true, data: result })
+        } catch {
+          // May fail if not at 'stabilized' status — fall through to direct update
+        }
+      }
+
+      // Fallback: direct DB update
       await prisma.emergencyBooking.update({
         where: { id },
         data: { status: 'resolved' },

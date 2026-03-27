@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { validateRequest } from '@/lib/auth/validate'
 import { rateLimitAuth } from '@/lib/rate-limit'
+import type { UserType } from '@prisma/client'
 import { z } from 'zod'
 
 const createCustomServiceSchema = z.object({
@@ -11,6 +12,7 @@ const createCustomServiceSchema = z.object({
   defaultPrice: z.number().min(0, 'Price must be non-negative'),
   duration: z.number().int().min(1).optional(),
   priceOverride: z.number().min(0).optional(),
+  providerType: z.string().optional(), // Required for REGIONAL_ADMIN creating services for a provider type
 })
 
 /**
@@ -40,9 +42,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 })
     }
 
-    const providerTypes = ['DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER']
-    if (!providerTypes.includes(user.userType)) {
-      return NextResponse.json({ success: false, message: 'Only service providers can create services' }, { status: 403 })
+    const allowedTypes = [
+      'DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER',
+      'CAREGIVER', 'PHYSIOTHERAPIST', 'DENTIST', 'OPTOMETRIST', 'NUTRITIONIST',
+      'REGIONAL_ADMIN',
+    ]
+    if (!allowedTypes.includes(user.userType)) {
+      return NextResponse.json({ success: false, message: 'Only service providers or regional admins can create services' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -52,18 +58,33 @@ export async function POST(request: NextRequest) {
     }
 
     const data = parsed.data
+    const isAdmin = user.userType === 'REGIONAL_ADMIN'
+
+    // Regional admins must specify which provider type the service is for
+    if (isAdmin && !data.providerType) {
+      return NextResponse.json({ success: false, message: 'providerType is required for regional admins' }, { status: 400 })
+    }
+    const targetProviderType = (isAdmin ? data.providerType : user.userType) as UserType
 
     // Check if service with this name already exists for this provider type
     const existing = await prisma.platformService.findFirst({
       where: {
-        providerType: user.userType,
+        providerType: targetProviderType,
         serviceName: data.serviceName,
         countryCode: null,
       },
     })
 
     if (existing) {
-      // Service already exists — just create/update config for this provider
+      if (isAdmin) {
+        // Admin — service already exists globally, nothing to do
+        return NextResponse.json({
+          success: true,
+          data: { platformServiceId: existing.id, isNew: false },
+          message: 'Service already exists in the catalog',
+        })
+      }
+      // Provider — add to their catalog
       await prisma.providerServiceConfig.upsert({
         where: {
           platformServiceId_providerUserId: {
@@ -100,11 +121,11 @@ export async function POST(request: NextRequest) {
       countryCode = region?.countryCode ?? null
     }
 
-    // Create new platform service + provider config in transaction
+    // Create new platform service (+ provider config for providers only)
     const result = await prisma.$transaction(async (tx) => {
       const platformService = await tx.platformService.create({
         data: {
-          providerType: user.userType,
+          providerType: targetProviderType!,
           serviceName: data.serviceName,
           category: data.category,
           description: data.description,
@@ -112,18 +133,21 @@ export async function POST(request: NextRequest) {
           duration: data.duration ?? null,
           isDefault: false,
           countryCode,
-          createdByProviderId: user.id,
+          createdByProviderId: isAdmin ? null : user.id,
         },
       })
 
-      await tx.providerServiceConfig.create({
-        data: {
-          platformServiceId: platformService.id,
-          providerUserId: user.id,
-          priceOverride: data.priceOverride ?? null,
-          isActive: true,
-        },
-      })
+      // Providers auto-add to their own catalog; admins don't
+      if (!isAdmin) {
+        await tx.providerServiceConfig.create({
+          data: {
+            platformServiceId: platformService.id,
+            providerUserId: user.id,
+            priceOverride: data.priceOverride ?? null,
+            isActive: true,
+          },
+        })
+      }
 
       return platformService
     })

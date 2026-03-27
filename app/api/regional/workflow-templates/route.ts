@@ -18,15 +18,15 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const templates = await templateRepo.findTemplates({
+      createdByAdminId: auth.sub,
       providerType: searchParams.get('providerType') || undefined,
       serviceMode: searchParams.get('serviceMode') || undefined,
-      isDefault: searchParams.get('isDefault') === 'true' ? true : undefined,
       platformServiceId: searchParams.get('platformServiceId') || undefined,
     })
 
     return NextResponse.json({ success: true, data: templates })
   } catch (error) {
-    console.error('GET /api/workflow/templates error:', error)
+    console.error('GET /api/regional/workflow-templates error:', error)
     return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 })
   }
 }
@@ -58,7 +58,6 @@ const createTemplateSchema = z.object({
   providerType: z.string().min(1),
   serviceMode: z.enum(['office', 'home', 'video']),
   platformServiceId: z.string().optional(),
-  regionCode: z.string().optional(),
   steps: z.array(stepSchema).min(1),
   transitions: z.array(transitionDefSchema),
 })
@@ -73,6 +72,27 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const user = await prisma.user.findUnique({
+      where: { id: auth.sub },
+      select: { userType: true },
+    })
+
+    if (!user || user.userType !== 'REGIONAL_ADMIN') {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 })
+    }
+
+    const adminProfile = await prisma.regionalAdminProfile.findUnique({
+      where: { userId: auth.sub },
+      select: { region: true, countryCode: true },
+    })
+
+    if (!adminProfile) {
+      return NextResponse.json(
+        { success: false, message: 'Regional admin profile not found' },
+        { status: 400 }
+      )
+    }
+
     const body = await request.json()
     const parsed = createTemplateSchema.safeParse(body)
     if (!parsed.success) {
@@ -82,26 +102,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Auto-detect role and set creator fields
-    const user = await prisma.user.findUnique({
-      where: { id: auth.sub },
-      select: { userType: true },
-    })
-
-    const isAdmin = user?.userType === 'REGIONAL_ADMIN'
-
     const template = await templateRepo.createTemplate({
       ...parsed.data,
       steps: parsed.data.steps as unknown as Prisma.InputJsonValue,
       transitions: parsed.data.transitions as unknown as Prisma.InputJsonValue,
-      createdByProviderId: isAdmin ? undefined : auth.sub,
-      createdByAdminId: isAdmin ? auth.sub : undefined,
-      regionCode: isAdmin ? (parsed.data.regionCode || undefined) : undefined,
+      createdByAdminId: auth.sub,
+      regionCode: adminProfile.countryCode || adminProfile.region,
+      isDefault: false,
     })
 
     return NextResponse.json({ success: true, data: template }, { status: 201 })
   } catch (error) {
-    console.error('POST /api/workflow/templates error:', error)
+    console.error('POST /api/regional/workflow-templates error:', error)
     return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 })
   }
 }

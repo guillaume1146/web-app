@@ -136,8 +136,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Attach workflow instance
-    await attachWorkflow({
+    // Attach workflow instance — workflow handles provider notification
+    const wf = await attachWorkflow({
       bookingId: booking.id,
       bookingRoute: 'nanny',
       patientUserId: auth.sub,
@@ -147,20 +147,22 @@ export async function POST(request: NextRequest) {
       servicePrice: costCheck.adjustedFee,
     })
 
-    // Get patient name for notification
-    const patientUser = await prisma.user.findUnique({
-      where: { id: auth.sub },
-      select: { firstName: true, lastName: true },
-    })
+    // Fallback notification only if workflow was not attached
+    if (!wf.workflowInstanceId) {
+      const patientUser = await prisma.user.findUnique({
+        where: { id: auth.sub },
+        select: { firstName: true, lastName: true },
+      })
 
-    await createNotification({
-      userId: nannyProfile.userId,
-      type: 'booking_request',
-      title: 'New Booking Request',
-      message: `${patientUser?.firstName} ${patientUser?.lastName} has requested a ${consultationType.replace('_', ' ')} childcare session on ${scheduledDate} at ${scheduledTime}`,
-      referenceId: booking.id,
-      referenceType: 'childcare_booking',
-    })
+      await createNotification({
+        userId: nannyProfile.userId,
+        type: 'booking_request',
+        title: 'New Booking Request',
+        message: `${patientUser?.firstName} ${patientUser?.lastName} has requested a ${consultationType.replace('_', ' ')} childcare session on ${scheduledDate} at ${scheduledTime}`,
+        referenceId: booking.id,
+        referenceType: 'childcare_booking',
+      })
+    }
 
     return NextResponse.json({
       success: true,

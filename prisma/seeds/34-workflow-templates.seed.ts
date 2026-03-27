@@ -177,12 +177,15 @@ function standardOfficeTransitions() {
     t('pending', 'confirmed', 'accept', ['provider']),
     t('pending', 'cancelled', 'deny', ['provider']),
     t('pending', 'cancelled', 'cancel', ['patient']),
+    t('pending', 'pending', 'reschedule', ['patient']),
     t('confirmed', 'waiting_room', 'check_in', ['provider', 'system']),
     t('confirmed', 'cancelled', 'cancel', ['patient', 'provider']),
     t('waiting_room', 'in_progress', 'start', ['provider']),
     t('in_progress', 'writing_notes', 'write_notes', ['provider']),
     t('in_progress', 'completed', 'complete', ['provider']),
     t('writing_notes', 'completed', 'send_notes', ['provider']),
+    t('completed', 'completed', 'leave_review', ['patient']),
+    t('cancelled', 'cancelled', 'rebook', ['patient']),
   ]
 }
 
@@ -252,6 +255,7 @@ function standardHomeTransitions() {
     t('provider_travelling', 'provider_arrived', 'arrived', ['provider']),
     t('provider_arrived', 'in_progress', 'start', ['provider']),
     t('in_progress', 'completed', 'complete', ['provider']),
+    t('completed', 'completed', 'leave_review', ['patient']),
   ]
 }
 
@@ -311,6 +315,7 @@ function standardVideoTransitions() {
     t('confirmed', 'cancelled', 'cancel', ['patient', 'provider']),
     t('call_ready', 'in_call', 'join_call', ['patient', 'provider']),
     t('in_call', 'completed', 'end_call', ['provider']),
+    t('completed', 'completed', 'leave_review', ['patient']),
   ]
 }
 
@@ -342,6 +347,7 @@ function makeSurgeryWorkflow() {
       t('in_procedure', 'post_op_observation', 'end_procedure', ['provider']),
       t('post_op_observation', 'recovery_instructions', 'discharge', ['provider']),
       t('recovery_instructions', 'completed', 'complete', ['provider']),
+      t('completed', 'completed', 'leave_review', ['patient']),
     ],
   }
 }
@@ -365,7 +371,9 @@ function makeDiagnosticWorkflow() {
       t('pending', 'confirmed', 'accept', ['provider']), t('pending', 'cancelled', 'cancel', ['patient']),
       t('confirmed', 'examination', 'start_exam', ['provider']), t('confirmed', 'cancelled', 'cancel', ['patient', 'provider']),
       t('examination', 'results_ready', 'enter_results', ['provider']),
+      t('results_ready', 'results_ready', 'view_results', ['patient']),
       t('results_ready', 'completed', 'complete', ['provider']),
+      t('completed', 'completed', 'leave_review', ['patient']),
     ],
   }
 }
@@ -398,6 +406,7 @@ function makeSampleCollectionWorkflow() {
       t('sample_collected', 'sample_in_transit', 'depart_lab', ['provider']),
       t('sample_in_transit', 'sample_delivered', 'delivered_lab', ['provider']),
       t('sample_delivered', 'completed', 'complete', ['provider']),
+      t('completed', 'completed', 'leave_review', ['patient']),
     ],
   }
 }
@@ -427,7 +436,9 @@ function makeLabTestWorkflows() {
         t('analysis_in_progress', 'quality_check', 'enter_results', ['provider']),
         t('quality_check', 'results_ready', 'validate', ['provider']),
         t('quality_check', 'analysis_in_progress', 'redo', ['provider']),
+        t('results_ready', 'results_ready', 'view_results', ['patient']),
         t('results_ready', 'completed', 'complete', ['provider']),
+        t('completed', 'completed', 'leave_review', ['patient']),
       ],
     },
     {
@@ -471,6 +482,7 @@ function makeEmergencyWorkflow() {
       t('stabilized', 'transporting', 'transport', ['provider']),
       t('stabilized', 'resolved', 'resolve', ['provider']),
       t('transporting', 'resolved', 'delivered', ['provider']),
+      t('resolved', 'resolved', 'leave_review', ['patient']),
     ],
   }
 }
@@ -500,6 +512,7 @@ function makePharmacyWorkflows() {
         t('order_confirmed', 'preparing', 'prepare', ['provider']),
         t('preparing', 'ready_for_pickup', 'ready', ['provider']),
         t('ready_for_pickup', 'completed', 'picked_up', ['provider']),
+        t('completed', 'completed', 'leave_review', ['patient']),
       ],
     },
     {
@@ -510,7 +523,7 @@ function makePharmacyWorkflows() {
       isDefault: true,
       steps: [
         { order: 1, statusCode: 'pending', label: 'Commande envoyee', actionsForPatient: [a('cancel', 'Annuler', 'cancelled', 'danger')], actionsForProvider: [a('review', 'Verifier', 'prescription_review', 'primary')], flags: {}, notifyPatient: null, notifyProvider: { title: 'Nouvelle commande livraison', message: 'Nouvelle commande de {{patientName}}' } },
-        { order: 2, statusCode: 'prescription_review', label: 'Verification', actionsForPatient: [], actionsForProvider: [a('confirm', 'Confirmer', 'order_confirmed', 'primary'), a('deny', 'Refuser', 'cancelled', 'danger')], flags: {}, notifyPatient: null, notifyProvider: null },
+        { order: 2, statusCode: 'prescription_review', label: 'Verification', actionsForPatient: [], actionsForProvider: [a('confirm', 'Confirmer', 'order_confirmed', 'primary'), a('deny', 'Refuser', 'cancelled', 'danger')], flags: { requires_prescription: true }, notifyPatient: { title: 'Verification', message: 'Ordonnance en cours de verification' }, notifyProvider: null },
         { order: 3, statusCode: 'order_confirmed', label: 'Confirmee', actionsForPatient: [], actionsForProvider: [a('prepare', 'Preparer', 'preparing', 'primary')], flags: { triggers_payment: true, triggers_stock_subtract: true }, notifyPatient: { title: 'Confirmee', message: 'Commande confirmee. Montant: {{amount}}' }, notifyProvider: null },
         { order: 4, statusCode: 'preparing', label: 'En preparation', actionsForPatient: [], actionsForProvider: [a('ship', 'Envoyer', 'delivery_in_progress', 'primary')], flags: {}, notifyPatient: null, notifyProvider: null },
         { order: 5, statusCode: 'delivery_in_progress', label: 'Livraison en cours', actionsForPatient: [], actionsForProvider: [a('delivered', 'Livre', 'completed', 'primary')], flags: {}, notifyPatient: { title: 'Livraison', message: 'Commande en cours de livraison' }, notifyProvider: null },
@@ -523,6 +536,7 @@ function makePharmacyWorkflows() {
         t('order_confirmed', 'preparing', 'prepare', ['provider']),
         t('preparing', 'delivery_in_progress', 'ship', ['provider']),
         t('delivery_in_progress', 'completed', 'delivered', ['provider']),
+        t('completed', 'completed', 'leave_review', ['patient']),
       ],
     },
   ]
@@ -580,6 +594,7 @@ function makeDentalWorkflows() {
         t('anesthesia', 'dental_procedure', 'start_procedure', ['provider']),
         t('dental_procedure', 'post_procedure', 'end_procedure', ['provider']),
         t('post_procedure', 'completed', 'send_instructions', ['provider']),
+        t('completed', 'completed', 'leave_review', ['patient']),
       ],
     },
   ]
@@ -608,7 +623,9 @@ function makeOptometristWorkflows() {
         t('confirmed', 'pupil_dilation', 'dilate', ['provider']), t('confirmed', 'cancelled', 'cancel', ['patient', 'provider']),
         t('pupil_dilation', 'fundus_exam', 'exam', ['provider']),
         t('fundus_exam', 'report_ready', 'report', ['provider']),
+        t('report_ready', 'report_ready', 'view_report', ['patient']),
         t('report_ready', 'completed', 'complete', ['provider']),
+        t('completed', 'completed', 'leave_review', ['patient']),
       ],
     },
   ]

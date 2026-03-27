@@ -129,8 +129,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Attach workflow instance (non-blocking)
-    await attachWorkflow({
+    // Attach workflow instance (non-blocking) — workflow handles provider notification
+    const wf = await attachWorkflow({
       bookingId: appointment.id,
       bookingRoute: 'doctor',
       patientUserId: auth.sub,
@@ -140,20 +140,22 @@ export async function POST(request: NextRequest) {
       servicePrice: costCheck.adjustedFee,
     })
 
-    // Get patient name for notification
-    const patientUser = await prisma.user.findUnique({
-      where: { id: auth.sub },
-      select: { firstName: true, lastName: true },
-    })
+    // Fallback notification only if workflow was not attached
+    if (!wf.workflowInstanceId) {
+      const patientUser = await prisma.user.findUnique({
+        where: { id: auth.sub },
+        select: { firstName: true, lastName: true },
+      })
 
-    await createNotification({
-      userId: doctorProfile.userId,
-      type: 'booking_request',
-      title: 'New Booking Request',
-      message: `${patientUser?.firstName} ${patientUser?.lastName} has requested a ${consultationType.replace('_', ' ')} consultation on ${scheduledDate} at ${scheduledTime}`,
-      referenceId: appointment.id,
-      referenceType: 'appointment',
-    })
+      await createNotification({
+        userId: doctorProfile.userId,
+        type: 'booking_request',
+        title: 'New Booking Request',
+        message: `${patientUser?.firstName} ${patientUser?.lastName} has requested a ${consultationType.replace('_', ' ')} consultation on ${scheduledDate} at ${scheduledTime}`,
+        referenceId: appointment.id,
+        referenceType: 'appointment',
+      })
+    }
 
     return NextResponse.json({
       success: true,
