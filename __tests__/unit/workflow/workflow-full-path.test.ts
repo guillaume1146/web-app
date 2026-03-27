@@ -8,6 +8,7 @@
  * 4. Verifying self-transitions (leave_review, view_results) don't re-trigger flags
  * 5. Testing cancellation + refund paths
  */
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import prisma from '@/lib/db'
 import {
   validateTransition,
