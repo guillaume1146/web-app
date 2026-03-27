@@ -5,7 +5,7 @@ import { rateLimitAuth } from '@/lib/rate-limit'
 
 interface UnifiedBooking {
   id: string
-  bookingType: string // appointment, nurse_booking, childcare, lab_test, emergency, service
+  bookingType: string // appointment, nurse_booking, childcare_booking, lab_test_booking, emergency_booking, service_booking
   providerName: string
   providerRole: string
   providerSpecialty?: string
@@ -14,6 +14,10 @@ interface UnifiedBooking {
   status: string
   price: number | null
   availableActions: string[]
+  patientName?: string
+  type?: string
+  reason?: string
+  duration?: number
 }
 
 function getAvailableActions(status: string, isProvider: boolean): string[] {
@@ -154,20 +158,128 @@ export async function GET(request: NextRequest) {
         })
       }
     } else if (isProvider) {
-      // Provider: fetch bookings where they are the provider
-      const serviceBookings = await prisma.serviceBooking.findMany({
-        where: { providerUserId: auth.sub },
-        orderBy: { scheduledAt: 'desc' },
-        take: 50,
+      // Provider: fetch ALL booking types where they are the provider
+      const user = await prisma.user.findUnique({
+        where: { id: auth.sub },
+        select: { userType: true },
       })
 
-      for (const s of serviceBookings) {
+      // Fetch from all booking models based on provider type
+      const doctorProfile = await prisma.doctorProfile.findUnique({ where: { userId: auth.sub }, select: { id: true } })
+      const nurseProfile = await prisma.nurseProfile.findUnique({ where: { userId: auth.sub }, select: { id: true } })
+      const nannyProfile = await prisma.nannyProfile.findUnique({ where: { userId: auth.sub }, select: { id: true } })
+      const labProfile = await prisma.labTechProfile.findUnique({ where: { userId: auth.sub }, select: { id: true } })
+      const emwProfile = await prisma.emergencyWorkerProfile.findUnique({ where: { userId: auth.sub }, select: { id: true } })
+      const pharmacistProfile = await prisma.pharmacistProfile.findUnique({ where: { userId: auth.sub }, select: { id: true } })
+
+      const [appointments, nurseBookings, childcareBookings, labBookings, emergencyBookings, serviceBookings] = await Promise.all([
+        doctorProfile ? prisma.appointment.findMany({
+          where: { doctorId: doctorProfile.id },
+          select: { id: true, scheduledAt: true, status: true, type: true, specialty: true, reason: true, duration: true, serviceName: true, servicePrice: true, patient: { select: { user: { select: { firstName: true, lastName: true } } } } },
+          orderBy: { scheduledAt: 'desc' },
+          take: 50,
+        }) : Promise.resolve([]),
+        nurseProfile ? prisma.nurseBooking.findMany({
+          where: { nurseId: nurseProfile.id },
+          select: { id: true, scheduledAt: true, status: true, type: true, serviceName: true, servicePrice: true, patient: { select: { user: { select: { firstName: true, lastName: true } } } } },
+          orderBy: { scheduledAt: 'desc' },
+          take: 50,
+        }) : Promise.resolve([]),
+        nannyProfile ? prisma.childcareBooking.findMany({
+          where: { nannyId: nannyProfile.id },
+          select: { id: true, scheduledAt: true, status: true, type: true, serviceName: true, servicePrice: true, patient: { select: { user: { select: { firstName: true, lastName: true } } } } },
+          orderBy: { scheduledAt: 'desc' },
+          take: 50,
+        }) : Promise.resolve([]),
+        labProfile ? prisma.labTestBooking.findMany({
+          where: { labTechId: labProfile.id },
+          select: { id: true, scheduledAt: true, status: true, testName: true, price: true, patient: { select: { user: { select: { firstName: true, lastName: true } } } } },
+          orderBy: { scheduledAt: 'desc' },
+          take: 50,
+        }) : Promise.resolve([]),
+        emwProfile ? prisma.emergencyBooking.findMany({
+          where: { responderId: emwProfile.id },
+          select: { id: true, emergencyType: true, status: true, createdAt: true, patient: { select: { user: { select: { firstName: true, lastName: true } } } } },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        }) : Promise.resolve([]),
+        prisma.serviceBooking.findMany({
+          where: { providerUserId: auth.sub },
+          select: { id: true, providerType: true, providerName: true, scheduledAt: true, status: true, type: true, serviceName: true, servicePrice: true, specialty: true, patientId: true },
+          orderBy: { scheduledAt: 'desc' },
+          take: 50,
+        }),
+      ])
+
+      for (const a of appointments) {
         results.push({
-          id: s.id, bookingType: 'service', providerName: s.providerName || 'Me',
-          providerRole: s.providerType, providerSpecialty: s.specialty || undefined,
+          id: a.id, bookingType: 'appointment',
+          providerName: 'Me', providerRole: 'DOCTOR',
+          providerSpecialty: a.specialty || undefined,
+          serviceName: a.serviceName || 'Consultation',
+          scheduledAt: a.scheduledAt.toISOString(), status: a.status, price: a.servicePrice,
+          availableActions: getAvailableActions(a.status, true),
+          patientName: `${a.patient.user.firstName} ${a.patient.user.lastName}`,
+          type: a.type, reason: a.reason || undefined, duration: a.duration,
+        })
+      }
+      for (const n of nurseBookings) {
+        results.push({
+          id: n.id, bookingType: 'nurse_booking',
+          providerName: 'Me', providerRole: 'NURSE',
+          serviceName: n.serviceName || 'Nurse Visit',
+          scheduledAt: n.scheduledAt.toISOString(), status: n.status, price: n.servicePrice,
+          availableActions: getAvailableActions(n.status, true),
+          patientName: `${n.patient.user.firstName} ${n.patient.user.lastName}`,
+          type: n.type,
+        })
+      }
+      for (const c of childcareBookings) {
+        results.push({
+          id: c.id, bookingType: 'childcare_booking',
+          providerName: 'Me', providerRole: 'NANNY',
+          serviceName: c.serviceName || 'Childcare',
+          scheduledAt: c.scheduledAt.toISOString(), status: c.status, price: c.servicePrice,
+          availableActions: getAvailableActions(c.status, true),
+          patientName: `${c.patient.user.firstName} ${c.patient.user.lastName}`,
+          type: c.type,
+        })
+      }
+      for (const l of labBookings) {
+        results.push({
+          id: l.id, bookingType: 'lab_test_booking',
+          providerName: 'Me', providerRole: 'LAB_TECHNICIAN',
+          serviceName: l.testName,
+          scheduledAt: l.scheduledAt.toISOString(), status: l.status, price: l.price,
+          availableActions: getAvailableActions(l.status, true),
+          patientName: `${l.patient.user.firstName} ${l.patient.user.lastName}`,
+        })
+      }
+      for (const e of emergencyBookings) {
+        results.push({
+          id: e.id, bookingType: 'emergency_booking',
+          providerName: 'Me', providerRole: 'EMERGENCY_WORKER',
+          serviceName: e.emergencyType,
+          scheduledAt: e.createdAt.toISOString(), status: e.status, price: null,
+          availableActions: getAvailableActions(e.status, true),
+          patientName: `${e.patient.user.firstName} ${e.patient.user.lastName}`,
+        })
+      }
+      for (const s of serviceBookings) {
+        // Get patient name for service bookings
+        let patientName = 'Patient'
+        if (s.patientId) {
+          const pu = await prisma.user.findUnique({ where: { id: s.patientId }, select: { firstName: true, lastName: true } })
+          if (pu) patientName = `${pu.firstName} ${pu.lastName}`
+        }
+        results.push({
+          id: s.id, bookingType: 'service_booking',
+          providerName: 'Me', providerRole: s.providerType,
+          providerSpecialty: s.specialty || undefined,
           serviceName: s.serviceName || s.providerType,
           scheduledAt: s.scheduledAt.toISOString(), status: s.status, price: s.servicePrice,
           availableActions: getAvailableActions(s.status, true),
+          patientName, type: s.type,
         })
       }
     }
