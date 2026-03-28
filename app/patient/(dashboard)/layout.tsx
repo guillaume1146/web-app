@@ -11,4 +11,5 @@ export default createDashboardLayout({
  profileHref: '/patient/profile',
  networkHref: '/patient/network',
  ContextProvider: PatientDashboardProvider,
+ dynamicSearchBasePath: '/patient',
 })

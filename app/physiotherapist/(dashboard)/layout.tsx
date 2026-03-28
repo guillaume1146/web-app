@@ -9,4 +9,5 @@ export default createDashboardLayout({
  getActiveSectionFromPath,
  profileHref: '/physiotherapist/profile',
  networkHref: '/physiotherapist/network',
+ dynamicSearchBasePath: '/physiotherapist',
 })

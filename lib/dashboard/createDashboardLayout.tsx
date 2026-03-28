@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { DashboardLayout, DashboardLoadingState, DashboardErrorState } from '@/components/dashboard'
 import type { SidebarItem } from '@/components/dashboard/DashboardSidebar'
 import { useUser } from '@/hooks/useUser'
+import { useDynamicSearchItems } from '@/hooks/useDynamicSearchItems'
 
 interface UserData {
   id: string
@@ -34,6 +35,8 @@ interface DashboardLayoutConfig {
   ContextProvider?: React.ComponentType<{ userData: any; children: React.ReactNode }>
   /** Optional callback to fetch additional data after auth (e.g. patient appointments) */
   fetchDashboardData?: (baseData: UserData) => Promise<any>
+  /** Base path for dynamic search links (e.g. '/patient'). When set, replaces static search items with DB-driven roles. */
+  dynamicSearchBasePath?: string
 }
 
 /**
@@ -60,6 +63,7 @@ export function createDashboardLayout(config: DashboardLayoutConfig) {
     namePrefix,
     ContextProvider,
     fetchDashboardData,
+    dynamicSearchBasePath,
   } = config
 
   return function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
@@ -108,12 +112,23 @@ export function createDashboardLayout(config: DashboardLayoutConfig) {
       ? `${namePrefix} ${userData.firstName} ${userData.lastName}`
       : `${userData.firstName} ${userData.lastName}`
 
+    // Replace static search items with dynamic DB-driven ones if configured
+    const dynamicSearch = useDynamicSearchItems(dynamicSearchBasePath || '')
+    let finalSidebarItems = sidebarItems
+    if (dynamicSearchBasePath && dynamicSearch.length > 0) {
+      // Remove static search items (ids starting with 'search-' or divider-search)
+      const coreItems = sidebarItems.filter(
+        item => !item.id.startsWith('search-') && item.id !== 'divider-search'
+      )
+      finalSidebarItems = [...coreItems, ...dynamicSearch]
+    }
+
     const content = (
       <DashboardLayout
         userName={displayName}
         userSubtitle={userSubtitle}
         userImage={userData.profileImage}
-        sidebarItems={sidebarItems}
+        sidebarItems={finalSidebarItems}
         activeSectionId={getActiveSectionFromPath(pathname)}
         notificationCount={0}
         profileHref={profileHref || settingsHref}

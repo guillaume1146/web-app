@@ -9,4 +9,5 @@ export default createDashboardLayout({
  getActiveSectionFromPath,
  profileHref: '/optometrist/profile',
  networkHref: '/optometrist/network',
+ dynamicSearchBasePath: '/optometrist',
 })

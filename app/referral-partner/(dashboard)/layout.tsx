@@ -9,4 +9,5 @@ export default createDashboardLayout({
  getActiveSectionFromPath,
  profileHref: '/referral-partner/profile',
  networkHref: '/referral-partner/network',
+ dynamicSearchBasePath: '/referral-partner',
 })

@@ -9,4 +9,5 @@ export default createDashboardLayout({
  getActiveSectionFromPath,
  profileHref: '/caregiver/profile',
  networkHref: '/caregiver/network',
+ dynamicSearchBasePath: '/caregiver',
 })

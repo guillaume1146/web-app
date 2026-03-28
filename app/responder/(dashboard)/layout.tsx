@@ -9,4 +9,5 @@ export default createDashboardLayout({
  getActiveSectionFromPath,
  profileHref: '/responder/profile',
  networkHref: '/responder/network',
+ dynamicSearchBasePath: '/responder',
 })

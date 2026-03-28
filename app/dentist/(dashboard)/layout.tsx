@@ -9,4 +9,5 @@ export default createDashboardLayout({
  getActiveSectionFromPath,
  profileHref: '/dentist/profile',
  networkHref: '/dentist/network',
+ dynamicSearchBasePath: '/dentist',
 })

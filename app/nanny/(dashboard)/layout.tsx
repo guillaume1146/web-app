@@ -9,4 +9,5 @@ export default createDashboardLayout({
  getActiveSectionFromPath,
  profileHref: '/nanny/profile',
  networkHref: '/nanny/network',
+ dynamicSearchBasePath: '/nanny',
 })
