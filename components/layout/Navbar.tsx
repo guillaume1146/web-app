@@ -27,30 +27,66 @@ import HealthwyzLogo from '@/components/ui/HealthwyzLogo'
 import SearchAutocomplete from '@/components/search/SearchAutocomplete'
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher'
 import { useCapacitor } from '@/hooks/useCapacitor'
+import * as FaIcons from 'react-icons/fa'
 
-const serviceCategories = {
+type ServiceItem = { href: string; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; color: string }
+type ServiceCategories = Record<string, ServiceItem[]>
+
+// Static fallback (used until API loads)
+const staticCategories: ServiceCategories = {
  'Healthcare Services': [
- { href: '/search/doctors', label: 'Find Doctors', desc: 'Book GP & specialist consultations', icon: FaUserMd, color: 'bg-brand-navy' },
- { href: '/search/nurses', label: 'Nursing Care', desc: 'Home visits & health monitoring', icon: FaUserNurse, color: 'bg-brand-teal' },
- { href: '/search/childcare', label: 'Childcare', desc: 'Trusted nannies & child services', icon: FaBaby, color: 'bg-brand-navy' },
- { href: '/search/emergency', label: 'Emergency', desc: 'Ambulance & first response', icon: FaAmbulance, color: 'bg-red-500' },
- { href: '/search/caregivers', label: 'Caregivers', desc: 'Elder & disability home care', icon: FaUser, color: 'bg-brand-teal' },
- ],
- 'Medical Services': [
- { href: '/search/dentists', label: 'Dentists', desc: 'Dental care & oral health', icon: FaUser, color: 'bg-brand-navy' },
- { href: '/search/optometrists', label: 'Eye Care', desc: 'Vision testing & eye health', icon: FaUser, color: 'bg-brand-teal' },
- { href: '/search/physiotherapists', label: 'Physio', desc: 'Rehabilitation & therapy', icon: FaUser, color: 'bg-brand-navy' },
- { href: '/search/nutritionists', label: 'Nutrition', desc: 'Diet plans & counseling', icon: FaUser, color: 'bg-brand-teal' },
- { href: '/search/health-shop', label: 'Health Shop', desc: 'Products from all providers', icon: FaPills, color: 'bg-brand-navy' },
- { href: '/search/lab', label: 'Lab Testing', desc: 'Book tests & view results', icon: FaFlask, color: 'bg-brand-teal' },
- { href: '/search/insurance', label: 'Insurance', desc: 'Health coverage plans', icon: FaShieldAlt, color: 'bg-brand-navy' },
+   { href: '/search/doctors', label: 'Find Doctors', desc: 'Book GP & specialist consultations', icon: FaUserMd, color: 'bg-brand-navy' },
+   { href: '/search/nurses', label: 'Nursing Care', desc: 'Home visits & health monitoring', icon: FaUserNurse, color: 'bg-brand-teal' },
+   { href: '/search/childcare', label: 'Childcare', desc: 'Trusted nannies & child services', icon: FaBaby, color: 'bg-brand-navy' },
+   { href: '/search/emergency', label: 'Emergency', desc: 'Ambulance & first response', icon: FaAmbulance, color: 'bg-red-500' },
  ],
  'Digital Health': [
- { href: '/search/ai', label: 'AI Support', desc: 'AI-powered health assistant', icon: FaRobot, color: 'bg-brand-teal' },
+   { href: '/search/health-shop', label: 'Health Shop', desc: 'Products from all providers', icon: FaPills, color: 'bg-brand-navy' },
+   { href: '/search/ai', label: 'AI Support', desc: 'AI-powered health assistant', icon: FaRobot, color: 'bg-brand-teal' },
  ],
 }
 
-const COOKIE_TO_SLUG: Record<string, string> = {
+function resolveIcon(iconName: string): React.ComponentType<{ className?: string }> {
+  return (FaIcons as Record<string, React.ComponentType<{ className?: string }>>)[iconName] || FaUser
+}
+
+function buildDynamicCategories(roles: { slug: string; label: string; icon: string; description: string | null; displayOrder: number }[]): ServiceCategories {
+  const half = Math.ceil(roles.length / 2)
+  const group1 = roles.slice(0, half)
+  const group2 = roles.slice(half)
+
+  const cats: ServiceCategories = { 'Healthcare Services': [], 'Medical Services': [] }
+
+  for (const r of group1) {
+    cats['Healthcare Services'].push({
+      href: `/search/${r.slug}`,
+      label: r.label,
+      desc: r.description || `Find ${r.label.toLowerCase()}`,
+      icon: resolveIcon(r.icon),
+      color: cats['Healthcare Services'].length % 2 === 0 ? 'bg-brand-navy' : 'bg-brand-teal',
+    })
+  }
+  for (const r of group2) {
+    cats['Medical Services'].push({
+      href: `/search/${r.slug}`,
+      label: r.label,
+      desc: r.description || `Find ${r.label.toLowerCase()}`,
+      icon: resolveIcon(r.icon),
+      color: cats['Medical Services'].length % 2 === 0 ? 'bg-brand-navy' : 'bg-brand-teal',
+    })
+  }
+
+  // Always add Health Shop + AI at end
+  cats['Digital Health'] = [
+    { href: '/search/health-shop', label: 'Health Shop', desc: 'Products from all providers', icon: FaPills, color: 'bg-brand-navy' },
+    { href: '/search/ai', label: 'AI Support', desc: 'AI-powered health assistant', icon: FaRobot, color: 'bg-brand-teal' },
+  ]
+
+  return cats
+}
+
+// Static fallback mapping (used until roles load from DB)
+const STATIC_COOKIE_TO_SLUG: Record<string, string> = {
  patient: 'patient',
  doctor: 'doctor',
  nurse: 'nurse',
@@ -78,6 +114,28 @@ const Navbar: React.FC = () => {
  const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
  const [isMobile, setIsMobile] = useState<boolean>(false)
  const [profileHref, setProfileHref] = useState('/login')
+ const [serviceCategories, setServiceCategories] = useState<ServiceCategories>(staticCategories)
+ const [cookieToSlug, setCookieToSlug] = useState<Record<string, string>>(STATIC_COOKIE_TO_SLUG)
+
+ // Fetch roles dynamically for navbar dropdown + cookie mapping
+ useEffect(() => {
+   fetch('/api/roles?searchEnabled=true')
+     .then(r => r.json())
+     .then(json => {
+       if (json.success && json.data?.length > 0) {
+         setServiceCategories(buildDynamicCategories(json.data))
+         // Build cookie-to-slug from roles
+         const map: Record<string, string> = { ...STATIC_COOKIE_TO_SLUG }
+         for (const role of json.data) {
+           if (role.cookieValue && role.urlPrefix) {
+             map[role.cookieValue] = role.urlPrefix.replace(/^\//, '')
+           }
+         }
+         setCookieToSlug(map)
+       }
+     })
+     .catch(() => {})
+ }, [])
  const [userSlug, setUserSlug] = useState<string | null>(null)
 
  useEffect(() => {
@@ -98,7 +156,7 @@ const Navbar: React.FC = () => {
  .find((c) => c.trim().startsWith('mediwyz_userType='))
  if (match) {
  const cookieVal = decodeURIComponent(match.trim().split('=')[1] ?? '')
- const slug = COOKIE_TO_SLUG[cookieVal] || 'patient'
+ const slug = cookieToSlug[cookieVal] || 'patient'
  setProfileHref(`/${slug}/profile`)
  setUserSlug(slug)
  }
