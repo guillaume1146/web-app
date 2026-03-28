@@ -4,7 +4,12 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   FaPlus, FaEdit, FaTrash, FaTimes, FaCheck, FaSpinner,
   FaUsersCog, FaEye, FaEyeSlash, FaFileAlt,
+  FaUserMd, FaUserNurse, FaBaby, FaPills, FaFlask, FaAmbulance,
+  FaHandHoldingHeart, FaWalking, FaTooth, FaAppleAlt,
+  FaHeadphones, FaHeart, FaBrain, FaStethoscope, FaBone,
+  FaLungs, FaMicroscope, FaSyringe, FaCut,
 } from 'react-icons/fa'
+import type { IconType } from 'react-icons'
 
 interface VerificationDoc {
   id?: string
@@ -50,12 +55,13 @@ const emptyForm = {
   verificationDocs: [] as { documentName: string; description: string; isRequired: boolean }[],
 }
 
-const ICON_OPTIONS = [
-  'FaUserMd', 'FaUserNurse', 'FaBaby', 'FaPills', 'FaFlask', 'FaAmbulance',
-  'FaHandHoldingHeart', 'FaWalking', 'FaTooth', 'FaEye', 'FaAppleAlt',
-  'FaHeadphones', 'FaHeart', 'FaBrain', 'FaStethoscope', 'FaBone',
-  'FaLungs', 'FaMicroscope', 'FaSyringe', 'FaCut',
-]
+const ICON_MAP: Record<string, IconType> = {
+  FaUserMd, FaUserNurse, FaBaby, FaPills, FaFlask, FaAmbulance,
+  FaHandHoldingHeart, FaWalking, FaTooth, FaEye, FaAppleAlt,
+  FaHeadphones, FaHeart, FaBrain, FaStethoscope, FaBone,
+  FaLungs, FaMicroscope, FaSyringe, FaCut,
+}
+const ICON_OPTIONS = Object.keys(ICON_MAP)
 
 export default function RolesManagementPage() {
   const [roles, setRoles] = useState<ProviderRole[]>([])
@@ -274,10 +280,22 @@ export default function RolesManagementPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Icon</label>
-                  <select value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#0C6780] outline-none">
-                    {ICON_OPTIONS.map(i => <option key={i} value={i}>{i}</option>)}
-                  </select>
+                  <div className="grid grid-cols-5 gap-2 p-2 border rounded-lg max-h-40 overflow-y-auto bg-white">
+                    {ICON_OPTIONS.map(name => {
+                      const Icon = ICON_MAP[name]
+                      const selected = form.icon === name
+                      return (
+                        <button key={name} type="button" onClick={() => setForm(f => ({ ...f, icon: name }))}
+                          title={name}
+                          className={`flex flex-col items-center gap-1 p-2 rounded-lg text-xs transition-all ${
+                            selected ? 'bg-[#0C6780] text-white ring-2 ring-[#0C6780]' : 'hover:bg-gray-100 text-gray-600'
+                          }`}>
+                          <Icon className="text-lg" />
+                          <span className="truncate w-full text-center text-[9px]">{name.replace('Fa', '')}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Brand Color</label>

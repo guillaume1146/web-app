@@ -267,7 +267,7 @@ function ProviderSearchContent({ config }: { config: ProviderSearchPageConfig })
  </div>
 
  {/* Results */}
- <div className="flex-1 min-w-0">
+ <div className="flex-1 min-w-0 mt-8">
  {isLoading ? (
  <SearchResultsSkeleton />
  ) : searchResults.length > 0 ? (
