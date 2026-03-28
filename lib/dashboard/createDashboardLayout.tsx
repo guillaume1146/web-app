@@ -105,6 +105,9 @@ export function createDashboardLayout(config: DashboardLayoutConfig) {
       router.push('/login')
     }
 
+    // Must call hooks before any early returns (React rules of hooks)
+    const dynamicSearch = useDynamicSearchItems(dynamicSearchBasePath || '')
+
     if (loading) return <DashboardLoadingState />
     if (error || !userData) return <DashboardErrorState message={error} />
 
@@ -113,7 +116,6 @@ export function createDashboardLayout(config: DashboardLayoutConfig) {
       : `${userData.firstName} ${userData.lastName}`
 
     // Replace static search items with dynamic DB-driven ones if configured
-    const dynamicSearch = useDynamicSearchItems(dynamicSearchBasePath || '')
     let finalSidebarItems = sidebarItems
     if (dynamicSearchBasePath && dynamicSearch.length > 0) {
       // Remove static search items (ids starting with 'search-' or divider-search)
