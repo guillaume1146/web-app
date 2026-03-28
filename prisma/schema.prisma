@@ -28,6 +28,57 @@ enum UserType {
   NUTRITIONIST
 }
 
+// ─── Provider Role Configuration (DB-driven, manageable by regional admin) ──
+
+model ProviderRole {
+  id              String   @id @default(uuid())
+  code            String   @unique // UPPER_CASE: "DOCTOR", "AUDIOLOGIST", etc.
+  label           String   // Plural display: "Doctors", "Audiologists"
+  singularLabel   String   // Singular: "Doctor", "Audiologist"
+  slug            String   @unique // URL slug: "doctors", "audiologists"
+  icon            String   @default("FaUserMd") // React icon name
+  color           String   @default("#0C6780") // Brand color hex
+  cardImage       String?  // Optional card/logo image URL
+  description     String?  // Role description for signup page
+
+  // Feature toggles
+  searchEnabled   Boolean  @default(true) // Show in patient search sidebar
+  bookingEnabled  Boolean  @default(true) // Patients can book this role
+  inventoryEnabled Boolean @default(true) // Can manage inventory / Health Shop
+  isProvider      Boolean  @default(true) // true=provider, false=non-provider (patient, admin)
+  isActive        Boolean  @default(true)
+  displayOrder    Int      @default(100)  // Sort order in sidebar/search
+
+  // Ownership
+  regionCode      String?  // null = global, "MU" = Mauritius-only
+  createdByAdminId String? // null = system default
+
+  // Registration: URL prefix + cookie value for auth
+  urlPrefix       String?  // "/doctor", "/audiologist" (used for routing)
+  cookieValue     String?  // "doctor", "audiologist" (stored in auth cookie)
+
+  // Relations
+  verificationDocs RoleVerificationDoc[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isActive, isProvider])
+  @@index([regionCode])
+}
+
+model RoleVerificationDoc {
+  id              String   @id @default(uuid())
+  roleId          String
+  role            ProviderRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  documentName    String   // "Medical License", "Pharmacy License", "ID Card"
+  description     String?  // Help text: "Upload a valid medical license issued by..."
+  isRequired      Boolean  @default(true)
+  displayOrder    Int      @default(0)
+
+  @@index([roleId])
+}
+
 // ─── Booking & Appointment Status Enums ────────────────────────────────────
 
 // BookingStatus enum removed — all booking models use String for status

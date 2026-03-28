@@ -80,6 +80,22 @@ export async function middleware(request: NextRequest) {
     '/nutritionist': ['nutritionist'],
   }
 
+  // Dynamic /provider/[slug] routes — just require valid JWT (page validates role)
+  if (pathname.startsWith('/provider/')) {
+    const token = request.cookies.get('mediwyz_token')
+    if (!token) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+    const payload = await verifyJWT(token.value)
+    if (!payload) {
+      const response = NextResponse.redirect(new URL('/login', request.url))
+      response.cookies.delete('mediwyz_token')
+      response.cookies.delete('mediwyz_userType')
+      return response
+    }
+    return NextResponse.next()
+  }
+
   const protectedRoute = Object.keys(protectedRoutes).find(route =>
     pathname.startsWith(route)
   )
@@ -155,5 +171,6 @@ export const config = {
     '/dentist/:path*',
     '/optometrist/:path*',
     '/nutritionist/:path*',
+    '/provider/:path*',
   ]
 }

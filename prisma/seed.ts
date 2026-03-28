@@ -33,6 +33,7 @@ import { seedProviderSpecialties } from './seeds/31-provider-specialties.seed'
 import { seedNewProviderRoles } from './seeds/32-new-provider-roles.seed'
 import { seedServiceBookings } from './seeds/33-service-bookings.seed'
 import { seedWorkflowTemplates } from './seeds/34-workflow-templates.seed'
+import { seedProviderRoles } from './seeds/35-provider-roles.seed'
 
 const prisma = new PrismaClient()
 
@@ -217,6 +218,7 @@ async function main() {
   await seedNewProviderRoles(prisma)
   await seedServiceBookings(prisma)
   await seedWorkflowTemplates(prisma)
+  await seedProviderRoles(prisma)
 
   // ── Final step: ensure ALL users have subscriptions ──────────────
   console.log('  Ensuring all users have subscriptions...')

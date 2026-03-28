@@ -16,8 +16,18 @@ export function getPatientHealthItems(base: string): SidebarItem[] {
 }
 
 /**
+ * Icon map for dynamic roles — maps icon name strings to React icon components.
+ */
+const ICON_MAP: Record<string, typeof FaSearch> = {
+  FaUserMd, FaUserNurse, FaBaby, FaFlask, FaAmbulance, FaCapsules,
+  FaHandHoldingHeart, FaWalking, FaTooth, FaEye, FaAppleAlt,
+  FaSearch, FaHeartbeat, FaRobot,
+}
+
+/**
  * Returns search/browse sidebar items for ALL provider types.
  * Reusable across all role sidebar configs.
+ * NOTE: This is the static fallback. For dynamic roles, use getSearchItemsFromRoles().
  */
 export function getSearchItems(base: string): SidebarItem[] {
   return [
@@ -34,4 +44,41 @@ export function getSearchItems(base: string): SidebarItem[] {
     { id: 'search-emergency', label: 'Emergency Services', icon: FaAmbulance, color: 'text-red-600', bgColor: 'bg-red-50', href: `${base}/search/emergency` },
     { id: 'search-medicines', label: 'Buy Medicines', icon: FaCapsules, color: 'text-green-600', bgColor: 'bg-green-50', href: `${base}/search/medicines` },
   ]
+}
+
+/**
+ * Build search sidebar items dynamically from ProviderRole data.
+ * Call this with data from GET /api/roles?searchEnabled=true
+ */
+export function getSearchItemsFromRoles(
+  base: string,
+  roles: { slug: string; label: string; icon: string; color: string }[]
+): SidebarItem[] {
+  const items: SidebarItem[] = [
+    { id: 'divider-search', label: 'Search & Browse', icon: FaSearch, color: 'text-gray-400', bgColor: 'bg-gray-50', href: '', divider: true },
+  ]
+
+  for (const role of roles) {
+    const IconComponent = ICON_MAP[role.icon] || FaSearch
+    items.push({
+      id: `search-${role.slug}`,
+      label: `Find ${role.label}`,
+      icon: IconComponent,
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-50',
+      href: `${base}/search/${role.slug}`,
+    })
+  }
+
+  // Always add Health Shop at the end
+  items.push({
+    id: 'search-health-shop',
+    label: 'Health Shop',
+    icon: FaCapsules,
+    color: 'text-green-600',
+    bgColor: 'bg-green-50',
+    href: `${base}/search/health-shop`,
+  })
+
+  return items
 }
