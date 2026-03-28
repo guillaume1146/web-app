@@ -34,6 +34,9 @@ import { seedNewProviderRoles } from './seeds/32-new-provider-roles.seed'
 import { seedServiceBookings } from './seeds/33-service-bookings.seed'
 import { seedWorkflowTemplates } from './seeds/34-workflow-templates.seed'
 import { seedProviderRoles } from './seeds/35-provider-roles.seed'
+import { seedWallets as seedMissingWallets, seedInventoryItems } from './seeds/36-wallets-inventory.seed'
+import { seedWorkflowInstances } from './seeds/37-workflow-instances.seed'
+import { seedInventoryOrders, seedNotificationTemplates, seedNotifications } from './seeds/38-orders-notifications.seed'
 
 const prisma = new PrismaClient()
 
@@ -219,6 +222,12 @@ async function main() {
   await seedServiceBookings(prisma)
   await seedWorkflowTemplates(prisma)
   await seedProviderRoles(prisma)
+  await seedMissingWallets(prisma)
+  await seedInventoryItems(prisma)
+  await seedWorkflowInstances(prisma)
+  await seedInventoryOrders(prisma)
+  await seedNotificationTemplates(prisma)
+  await seedNotifications(prisma)
 
   // ── Final step: ensure ALL users have subscriptions ──────────────
   console.log('  Ensuring all users have subscriptions...')
