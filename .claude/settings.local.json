@@ -99,7 +99,8 @@
       "Bash(node -e \":*)",
       "Bash(npx tsx:*)",
       "Bash(grep -rn \"createDashboardLayout\" app/*/\\\\\\(dashboard\\\\\\)/layout.tsx)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(xargs -I {} gh run view {} --log-failed)"
     ]
   }
 }

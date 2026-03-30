@@ -400,7 +400,24 @@ export default function ChatView({ currentUser, initialConversationId }: ChatVie
  newConnectionEntries.sort(
  (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
  )
- setConversations([...existingConversations, ...newConnectionEntries])
+
+ // Add AI Health Assistant as first entry
+ const aiEntry: ConversationSummary = {
+   id: 'ai-assistant',
+   type: 'direct',
+   participants: [{
+     userId: 'ai-assistant',
+     firstName: 'AI Health',
+     lastName: 'Assistant',
+     userType: 'AI_ASSISTANT',
+     avatarUrl: null,
+   }],
+   lastMessage: { id: 'ai-welcome', content: 'How can I help you today?', senderId: 'ai-assistant', createdAt: new Date().toISOString() },
+   unreadCount: 0,
+   updatedAt: new Date().toISOString(),
+ }
+
+ setConversations([aiEntry, ...existingConversations, ...newConnectionEntries])
  }
  } catch {
  // Network error — silently ignore
@@ -674,6 +691,13 @@ export default function ChatView({ currentUser, initialConversationId }: ChatVie
  const [creatingConversation, setCreatingConversation] = useState(false)
 
  const handleSelectConversation = useCallback(async (id: string) => {
+ // AI Assistant — redirect to AI chat page
+ if (id === 'ai-assistant') {
+   const slug = window.location.pathname.split('/')[1] || 'patient'
+   window.location.href = `/${slug}/ai-assistant`
+   return
+ }
+
  // Regular conversation — select immediately
  if (!id.startsWith('connection:')) {
  setSelectedId(id)

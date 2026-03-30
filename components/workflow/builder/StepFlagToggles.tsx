@@ -17,8 +17,8 @@ export interface StepFlags {
 }
 
 const FLAG_CONFIG = [
+  { key: 'triggers_payment', label: 'Wallet Payment', desc: 'Check balance + debit patient, credit provider (always required for bookings)', icon: FiDollarSign, color: 'text-green-600 bg-green-50', mandatory: true },
   { key: 'triggers_video_call', label: 'Video Call', desc: 'Auto-create video room when this step is reached', icon: FiVideo, color: 'text-purple-600 bg-purple-50' },
-  { key: 'triggers_payment', label: 'Payment', desc: 'Debit patient wallet, credit provider', icon: FiDollarSign, color: 'text-green-600 bg-green-50' },
   { key: 'triggers_refund', label: 'Refund', desc: 'Refund patient based on cancellation policy', icon: FiRefreshCw, color: 'text-orange-600 bg-orange-50' },
   { key: 'triggers_conversation', label: 'Chat', desc: 'Auto-create chat conversation between patient & provider', icon: FiMessageSquare, color: 'text-blue-600 bg-blue-50' },
   { key: 'triggers_review_request', label: 'Review Request', desc: 'Send review prompt to patient after completion', icon: FiStar, color: 'text-yellow-600 bg-yellow-50' },
@@ -59,15 +59,21 @@ export default function StepFlagToggles({ flags, onChange }: StepFlagTogglesProp
     <div className="space-y-2">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Triggered Actions</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {FLAG_CONFIG.map(({ key, label, desc, icon: Icon, color }) => {
-          const active = !!flags[key as keyof StepFlags]
+        {FLAG_CONFIG.map(({ key, label, desc, icon: Icon, color, ...rest }) => {
+          const isMandatory = 'mandatory' in rest && rest.mandatory
+          const active = isMandatory || !!flags[key as keyof StepFlags]
           return (
             <button
               key={key}
               type="button"
-              onClick={() => toggleFlag(key)}
+              onClick={() => { if (!isMandatory) toggleFlag(key) }}
+              disabled={isMandatory}
               className={`flex items-start gap-3 p-3 rounded-lg border transition text-left ${
-                active ? 'border-brand-teal bg-sky-50' : 'border-gray-200 hover:border-gray-300 bg-white'
+                isMandatory
+                  ? 'border-green-300 bg-green-50 cursor-default opacity-90'
+                  : active
+                    ? 'border-brand-teal bg-sky-50'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
               }`}
             >
               <div className={`p-1.5 rounded-lg ${color} flex-shrink-0`}>
@@ -76,7 +82,11 @@ export default function StepFlagToggles({ flags, onChange }: StepFlagTogglesProp
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-gray-900">{label}</span>
-                  <div className={`w-3 h-3 rounded-full border-2 ${active ? 'bg-brand-teal border-brand-teal' : 'border-gray-300'}`} />
+                  {isMandatory ? (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-200 text-green-800">ALWAYS ON</span>
+                  ) : (
+                    <div className={`w-3 h-3 rounded-full border-2 ${active ? 'bg-brand-teal border-brand-teal' : 'border-gray-300'}`} />
+                  )}
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
               </div>

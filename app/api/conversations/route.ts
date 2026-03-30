@@ -149,10 +149,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // For direct conversations (exactly 2 participants), check if one already exists
+    // For direct conversations (exactly 2 participants), verify accepted connection
     const isDirect = allParticipantIds.length === 2
 
     if (isDirect) {
+      const otherUserId = allParticipantIds.find(id => id !== userId)!
+
+      // Check if users have an accepted connection (skip for admins + system)
+      const currentUser = await prisma.user.findUnique({ where: { id: userId }, select: { userType: true } })
+      const isAdmin = currentUser?.userType === 'REGIONAL_ADMIN' || currentUser?.userType === 'CORPORATE_ADMIN'
+
+      if (!isAdmin) {
+        const connection = await prisma.userConnection.findFirst({
+          where: {
+            status: 'accepted',
+            OR: [
+              { senderId: userId, receiverId: otherUserId },
+              { senderId: otherUserId, receiverId: userId },
+            ],
+          },
+        })
+
+        if (!connection) {
+          return NextResponse.json(
+            { success: false, message: 'You must be connected with this user to start a conversation. Send a connection request first.' },
+            { status: 403 }
+          )
+        }
+      }
       const existingConversation = await prisma.conversation.findFirst({
         where: {
           type: 'direct',
