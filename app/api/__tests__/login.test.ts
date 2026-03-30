@@ -158,7 +158,7 @@ describe('POST /api/auth/login', () => {
     expect(data.success).toBe(true)
     expect(data.user.id).toBe('user-1')
     expect(data.user.userType).toBe('patient')
-    expect(data.redirectPath).toBe('/patient/feed')
+    expect(data.redirectPath).toBe('/feed')
   })
 
   it('returns correct redirectPath for doctor', async () => {
@@ -180,7 +180,7 @@ describe('POST /api/auth/login', () => {
 
     expect(data.success).toBe(true)
     expect(data.user.userType).toBe('doctor')
-    expect(data.redirectPath).toBe('/doctor/feed')
+    expect(data.redirectPath).toBe('/feed')
   })
 
   it('returns correct redirectPath for nurse', async () => {
@@ -201,7 +201,7 @@ describe('POST /api/auth/login', () => {
     const data = await res.json()
 
     expect(data.success).toBe(true)
-    expect(data.redirectPath).toBe('/nurse/feed')
+    expect(data.redirectPath).toBe('/feed')
   })
 
   it('does not require userType field', async () => {
