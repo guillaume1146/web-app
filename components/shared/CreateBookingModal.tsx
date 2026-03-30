@@ -215,15 +215,18 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  }
 
  const body = isOldRole
- ? {
- [roleToBodyKey[selectedRole?.role || '']]: selectedProvider.id,
- consultationType: consultType,
- scheduledDate: selectedDate,
- scheduledTime: selectedTime,
- reason,
- serviceName: selectedService?.serviceName,
- servicePrice: selectedService?.defaultPrice,
+ ? (() => {
+ const b: Record<string, unknown> = {
+   [roleToBodyKey[selectedRole?.role || '']]: selectedProvider.id,
+   consultationType: consultType,
+   scheduledDate: selectedDate,
+   scheduledTime: selectedTime,
  }
+ if (reason) b.reason = reason
+ if (selectedService?.serviceName) b.serviceName = selectedService.serviceName
+ if (selectedService?.defaultPrice != null) b.servicePrice = selectedService.defaultPrice
+ return b
+ })()
  : (() => {
  const body: Record<string, unknown> = {
    providerUserId: selectedProvider.id,

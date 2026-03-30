@@ -302,7 +302,7 @@ export default function BookingForm({
  scheduledDate,
  scheduledTime,
  reason,
- notes: notes || undefined,
+ ...(notes ? { notes } : {}),
  duration: selectedService?.duration ?? duration,
  serviceId: selectedServiceId,
  }

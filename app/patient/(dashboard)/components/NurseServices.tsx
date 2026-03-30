@@ -169,7 +169,7 @@ const NurseServices: React.FC<Props> = ({ patientData, onVideoCall }) => {
  scheduledDate: slot.date,
  scheduledTime: slot.time,
  reason: selectedService,
- notes: notes || undefined,
+ ...(notes ? { notes } : {}),
  serviceName: chosenService?.serviceName,
  servicePrice: chosenService?.price,
  }),

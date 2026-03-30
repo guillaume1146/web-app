@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const costCheck = await checkBookingCost({
       patientUserId: auth.sub,
       baseFee: fee,
-      provider: { role: providerType, specialty: specialty || undefined },
+      provider: { role: providerType, ...(specialty ? { specialty } : {}) },
       serviceType: providerType.toLowerCase(),
     })
 

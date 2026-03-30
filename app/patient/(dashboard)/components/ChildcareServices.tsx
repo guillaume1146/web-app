@@ -185,7 +185,7 @@ const ChildcareServices: React.FC<Props> = ({ patientData, onVideoCall }) => {
  scheduledDate: slot.date,
  scheduledTime: slot.time,
  reason: chosenService?.serviceName || `${careType === 'overnight' ? 'Overnight' : 'Regular'} childcare`,
- notes: specialInstructions || undefined,
+ ...(specialInstructions ? { notes: specialInstructions } : {}),
  duration: careType === 'overnight' ? 720 : duration * 60,
  children: validChildren,
  serviceName: chosenService?.serviceName,

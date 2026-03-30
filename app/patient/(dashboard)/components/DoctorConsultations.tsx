@@ -189,7 +189,7 @@ const DoctorConsultations: React.FC<Props> = ({ patientData, onVideoCall }) => {
  scheduledDate,
  scheduledTime,
  reason: reason.trim(),
- notes: notes.trim() || undefined,
+ ...(notes.trim() ? { notes: notes.trim() } : {}),
  ...(selectedService ? { serviceName: selectedService.serviceName, servicePrice: selectedService.price } : {}),
  }),
  })
