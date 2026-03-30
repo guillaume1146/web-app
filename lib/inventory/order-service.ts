@@ -34,8 +34,29 @@ export async function placeOrder(
     }
   }
 
-  // 2. Check prescription requirements
+  // 2. Check prescription requirements — verify patient has active prescription
   const prescriptionRequired = itemDetails.some((item) => item.inv!.requiresPrescription)
+
+  if (prescriptionRequired) {
+    const rxItemNames = itemDetails
+      .filter((item) => item.inv!.requiresPrescription)
+      .map((item) => item.inv!.name)
+
+    const activePrescription = await prisma.prescription.findFirst({
+      where: {
+        patient: { userId: patientUserId },
+        isActive: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    if (!activePrescription) {
+      return {
+        success: false,
+        error: `Valid prescription required for: ${rxItemNames.join(', ')}. No active prescription found on your profile.`,
+      }
+    }
+  }
 
   // 3. Calculate totals
   const itemsWithPricing = itemDetails.map((item) => ({
