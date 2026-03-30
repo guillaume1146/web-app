@@ -4,10 +4,23 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   FaPlus, FaEdit, FaTrash, FaTimes, FaCheck, FaSpinner,
   FaUsersCog, FaEye, FaEyeSlash, FaFileAlt,
+  // Healthcare & Medical
   FaUserMd, FaUserNurse, FaBaby, FaPills, FaFlask, FaAmbulance,
   FaHandHoldingHeart, FaWalking, FaTooth, FaAppleAlt,
   FaHeadphones, FaHeart, FaBrain, FaStethoscope, FaBone,
   FaLungs, FaMicroscope, FaSyringe, FaCut,
+  // Body & Wellness
+  FaHeartbeat, FaAllergies, FaWeight, FaBed, FaSpa, FaRunning,
+  FaBiking, FaSwimmer, FaPray, FaSmile, FaMeh,
+  // Medical Tools & Equipment
+  FaThermometerHalf, FaBandAid, FaCapsules, FaXRay, FaDna,
+  FaPrescriptionBottleAlt, FaTablets, FaNotesMedical, FaFileMedical,
+  FaHospital, FaClinicMedical, FaProcedures, FaMedkit,
+  // Disability & Support
+  FaWheelchair, FaDeaf, FaSignLanguage, FaBlind, FaAccessibleIcon,
+  // General
+  FaUser, FaUsers, FaUserShield, FaHandsHelping, FaShieldAlt,
+  FaStar, FaGlobe, FaLeaf, FaSeedling, FaFire,
 } from 'react-icons/fa'
 import type { IconType } from 'react-icons'
 
@@ -56,10 +69,23 @@ const emptyForm = {
 }
 
 const ICON_MAP: Record<string, IconType> = {
+  // Healthcare & Medical
   FaUserMd, FaUserNurse, FaBaby, FaPills, FaFlask, FaAmbulance,
   FaHandHoldingHeart, FaWalking, FaTooth, FaEye, FaAppleAlt,
   FaHeadphones, FaHeart, FaBrain, FaStethoscope, FaBone,
   FaLungs, FaMicroscope, FaSyringe, FaCut,
+  // Body & Wellness
+  FaHeartbeat, FaAllergies, FaWeight, FaBed, FaSpa, FaRunning,
+  FaBiking, FaSwimmer, FaPray, FaSmile, FaMeh,
+  // Medical Tools
+  FaThermometerHalf, FaBandAid, FaCapsules, FaXRay, FaDna,
+  FaPrescriptionBottleAlt, FaTablets, FaNotesMedical, FaFileMedical,
+  FaHospital, FaClinicMedical, FaProcedures, FaMedkit,
+  // Disability & Support
+  FaWheelchair, FaDeaf, FaSignLanguage, FaBlind, FaAccessibleIcon,
+  // General
+  FaUser, FaUsers, FaUserShield, FaHandsHelping, FaShieldAlt,
+  FaStar, FaGlobe, FaLeaf, FaSeedling, FaFire,
 }
 const ICON_OPTIONS = Object.keys(ICON_MAP)
 
@@ -280,7 +306,7 @@ export default function RolesManagementPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Icon</label>
-                  <div className="grid grid-cols-5 gap-2 p-2 border rounded-lg max-h-40 overflow-y-auto bg-white">
+                  <div className="grid grid-cols-6 gap-1.5 p-2 border rounded-lg max-h-56 overflow-y-auto bg-white">
                     {ICON_OPTIONS.map(name => {
                       const Icon = ICON_MAP[name]
                       const selected = form.icon === name
