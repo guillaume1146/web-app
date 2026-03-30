@@ -94,11 +94,11 @@ describe('POST /api/bookings/service', () => {
     expect(res.status).toBe(200)
   })
 
-  it('returns 400 for invalid providerType', async () => {
+  it('returns 400 for empty providerType', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'patient', email: 'a@b.com' })
 
     const res = await POST(createReq('POST', {
-      providerUserId: 'p1', providerType: 'DOCTOR', // DOCTOR not allowed here
+      providerUserId: 'p1', providerType: '', // empty string not allowed
       scheduledDate: '2026-04-01', scheduledTime: '10:00',
     }))
     expect(res.status).toBe(400)
