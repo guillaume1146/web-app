@@ -6,7 +6,8 @@ vi.mock('@/lib/db', () => ({
     conversationParticipant: { findMany: vi.fn(), findUnique: vi.fn() },
     conversation: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     message: { findMany: vi.fn(), count: vi.fn(), groupBy: vi.fn(), updateMany: vi.fn(), create: vi.fn() },
-    user: { findMany: vi.fn() },
+    user: { findMany: vi.fn(), findUnique: vi.fn() },
+    userConnection: { findFirst: vi.fn() },
     $transaction: vi.fn(),
   },
 }))
@@ -123,6 +124,8 @@ describe('POST /api/conversations', () => {
       { id: 'user-1' },
       { id: 'user-2' },
     ] as never)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ userType: 'PATIENT' } as never)
+    vi.mocked(prisma.userConnection.findFirst).mockResolvedValue({ id: 'conn-1', status: 'accepted' } as never)
     vi.mocked(prisma.conversation.findFirst).mockResolvedValue(null)
     vi.mocked(prisma.conversation.create).mockResolvedValue({
       id: 'conv-new', type: 'direct', createdAt: new Date(), updatedAt: new Date(),
