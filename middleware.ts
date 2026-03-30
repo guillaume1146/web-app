@@ -80,6 +80,26 @@ export async function middleware(request: NextRequest) {
     '/nutritionist': ['nutritionist'],
   }
 
+  // Unified dashboard routes (no role prefix) — just require valid JWT
+  const unifiedPaths = ['/feed', '/practice', '/inventory', '/services', '/workflows',
+    '/billing', '/video', '/messages', '/ai-assistant', '/my-health', '/profile',
+    '/network', '/settings', '/search/', '/bookings', '/administration',
+    '/regional-services', '/regional-workflows', '/roles', '/management']
+  const isUnifiedRoute = unifiedPaths.some(p => pathname === p || pathname.startsWith(p + '/'))
+
+  if (isUnifiedRoute) {
+    const token = request.cookies.get('mediwyz_token')
+    if (!token) return NextResponse.redirect(new URL('/login', request.url))
+    const payload = await verifyJWT(token.value)
+    if (!payload) {
+      const response = NextResponse.redirect(new URL('/login', request.url))
+      response.cookies.delete('mediwyz_token')
+      response.cookies.delete('mediwyz_userType')
+      return response
+    }
+    return NextResponse.next()
+  }
+
   // Dynamic /provider/[slug] routes — just require valid JWT (page validates role)
   if (pathname.startsWith('/provider/')) {
     const token = request.cookies.get('mediwyz_token')
@@ -128,28 +148,9 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
-function getUserTypeRedirectPath(userType: string): string {
-  const redirectPaths: Record<string, string> = {
-    'patient': '/patient/feed',
-    'doctor': '/doctor/feed',
-    'nurse': '/nurse/feed',
-    'child-care-nurse': '/nanny/feed',
-    'pharmacy': '/pharmacist/feed',
-    'lab': '/lab-technician/feed',
-    'ambulance': '/responder/feed',
-    'admin': '/admin/feed',
-    'regional-admin': '/regional/feed',
-    'corporate': '/corporate/feed',
-    'insurance': '/insurance/feed',
-    'referral-partner': '/referral-partner/feed',
-    'caregiver': '/caregiver/feed',
-    'physiotherapist': '/physiotherapist/feed',
-    'dentist': '/dentist/feed',
-    'optometrist': '/optometrist/feed',
-    'nutritionist': '/nutritionist/feed',
-  }
-
-  return redirectPaths[userType] || '/'
+function getUserTypeRedirectPath(_userType: string): string {
+  // All roles now use the unified dashboard — no role prefix in URL
+  return '/feed'
 }
 
 export const config = {
@@ -172,5 +173,25 @@ export const config = {
     '/optometrist/:path*',
     '/nutritionist/:path*',
     '/provider/:path*',
+    '/feed',
+    '/practice/:path*',
+    '/inventory/:path*',
+    '/services/:path*',
+    '/workflows/:path*',
+    '/billing/:path*',
+    '/video/:path*',
+    '/messages/:path*',
+    '/ai-assistant/:path*',
+    '/my-health/:path*',
+    '/profile/:path*',
+    '/network/:path*',
+    '/settings/:path*',
+    '/search/:path*',
+    '/bookings/:path*',
+    '/administration/:path*',
+    '/regional-services/:path*',
+    '/regional-workflows/:path*',
+    '/roles/:path*',
+    '/management/:path*',
   ]
 }

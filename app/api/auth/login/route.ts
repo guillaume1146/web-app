@@ -70,10 +70,8 @@ export async function POST(request: NextRequest) {
       cookieUserType = 'admin'
     }
 
-    // Determine the redirect path — default to feed page after login
-    const slugMap: Record<string, string> = { 'admin': 'admin', 'regional-admin': 'regional' }
-    const slug = slugMap[cookieUserType] || USER_TYPE_SLUGS[dbUser.userType] || 'patient'
-    const redirectPath = `/${slug}/feed`
+    // Redirect to unified dashboard (no role prefix in URL)
+    const redirectPath = '/feed'
 
     // Generate JWT
     const token = signToken({ sub: dbUser.id, userType: cookieUserType, email: dbUser.email })
