@@ -55,7 +55,7 @@ const createTemplateSchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(1),
   description: z.string().optional(),
-  providerType: z.string().min(1),
+  providerType: z.string().optional().default(''),  // empty = global (usable by all providers)
   serviceMode: z.enum(['office', 'home', 'video']),
   platformServiceId: z.string().optional(),
   regionCode: z.string().optional(),

@@ -224,17 +224,20 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  serviceName: selectedService?.serviceName,
  servicePrice: selectedService?.defaultPrice,
  }
- : {
- providerUserId: selectedProvider.id,
- providerType: selectedRole?.role,
- scheduledDate: selectedDate,
- scheduledTime: selectedTime,
- type: consultType,
- reason: reason || undefined,
- serviceName: selectedService?.serviceName || undefined,
- servicePrice: selectedService?.defaultPrice,
- specialty: selectedProvider.specializations?.[0] || selectedSpecialty || undefined,
+ : (() => {
+ const body: Record<string, unknown> = {
+   providerUserId: selectedProvider.id,
+   providerType: selectedRole?.role || selectedRole?.code || '',
+   scheduledDate: selectedDate,
+   scheduledTime: selectedTime,
+   type: consultType,
  }
+ if (reason) body.reason = reason
+ if (selectedService?.serviceName) body.serviceName = selectedService.serviceName
+ if (selectedService?.defaultPrice != null) body.servicePrice = selectedService.defaultPrice
+ if (selectedProvider.specializations?.[0] || selectedSpecialty) body.specialty = selectedProvider.specializations?.[0] || selectedSpecialty
+ return body
+ })()
 
  const res = await fetch(endpoint, {
  method: 'POST',

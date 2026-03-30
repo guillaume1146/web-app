@@ -83,7 +83,7 @@ export const createEmergencyBookingSchema = z.object({
 
 export const createServiceBookingSchema = z.object({
   providerUserId: z.string().min(1, 'Provider ID is required'),
-  providerType: z.enum(['CAREGIVER', 'PHYSIOTHERAPIST', 'DENTIST', 'OPTOMETRIST', 'NUTRITIONIST']),
+  providerType: z.string().min(1, 'Provider type is required'),
   scheduledDate: z.string().min(1, 'Date is required'),
   scheduledTime: z.string().min(1, 'Time is required'),
   type: z.enum(['in_person', 'home_visit', 'video']).default('in_person'),

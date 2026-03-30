@@ -17,7 +17,7 @@ interface PlatformService {
   isActive: boolean
 }
 
-const PROVIDER_TYPES = [
+const FALLBACK_TYPES = [
   'DOCTOR', 'NURSE', 'NANNY', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER',
   'PHARMACIST', 'CAREGIVER', 'PHYSIOTHERAPIST', 'DENTIST', 'OPTOMETRIST', 'NUTRITIONIST',
 ]
@@ -27,6 +27,20 @@ export default function RegionalServicesPage() {
   const [services, setServices] = useState<PlatformService[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [PROVIDER_TYPES, setProviderTypes] = useState<string[]>(FALLBACK_TYPES)
+
+  // Fetch provider types dynamically
+  useEffect(() => {
+    fetch('/api/roles?isProvider=true')
+      .then(r => r.json())
+      .then(json => {
+        if (json.success && json.data) {
+          const codes = json.data.map((r: { code: string }) => r.code)
+          if (codes.length > 0) setProviderTypes(codes)
+        }
+      })
+      .catch(() => {})
+  }, [])
   const [filterType, setFilterType] = useState('')
 
   useEffect(() => {

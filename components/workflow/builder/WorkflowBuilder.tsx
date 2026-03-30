@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FiPlus, FiSave, FiArrowLeft } from 'react-icons/fi'
 import Link from 'next/link'
 import StepEditor, { type WorkflowStep, type StepAction } from './StepEditor'
 
-const PROVIDER_TYPES = [
+// Fallback (used until API loads)
+const FALLBACK_PROVIDER_TYPES = [
   'DOCTOR', 'NURSE', 'NANNY', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER',
   'PHARMACIST', 'INSURANCE_REP', 'CAREGIVER', 'PHYSIOTHERAPIST',
   'DENTIST', 'OPTOMETRIST', 'NUTRITIONIST',
@@ -65,6 +66,20 @@ export default function WorkflowBuilder({ backHref, initialData, onSave }: Workf
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [providerTypes, setProviderTypes] = useState<string[]>(FALLBACK_PROVIDER_TYPES)
+
+  // Fetch provider types dynamically from ProviderRole table
+  useEffect(() => {
+    fetch('/api/roles?isProvider=true')
+      .then(r => r.json())
+      .then(json => {
+        if (json.success && json.data) {
+          const codes = json.data.map((r: { code: string }) => r.code)
+          if (codes.length > 0) setProviderTypes(codes)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const allStatusCodes = steps.map(s => s.statusCode)
 
@@ -120,8 +135,8 @@ export default function WorkflowBuilder({ backHref, initialData, onSave }: Workf
   }
 
   async function handleSave() {
-    if (!name || !providerType || !serviceMode) {
-      setError('Name, provider type, and service mode are required')
+    if (!name || !serviceMode) {
+      setError('Name and service mode are required')
       return
     }
     if (steps.length < 2) {
@@ -206,10 +221,10 @@ export default function WorkflowBuilder({ backHref, initialData, onSave }: Workf
             <input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="auto-generated" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-brand-teal focus:border-brand-teal" />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Provider Type *</label>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Provider Type</label>
             <select value={providerType} onChange={(e) => setProviderType(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-teal focus:border-brand-teal">
-              <option value="">Select provider type</option>
-              {PROVIDER_TYPES.map(pt => <option key={pt} value={pt}>{pt.replace(/_/g, ' ')}</option>)}
+              <option value="">Global (All Providers)</option>
+              {providerTypes.map(pt => <option key={pt} value={pt}>{pt.replace(/_/g, ' ')}</option>)}
             </select>
           </div>
           <div>
