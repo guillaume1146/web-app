@@ -5,10 +5,20 @@ import { useUser } from '@/hooks/useUser'
 import Navbar from './Navbar'
 
 const DASHBOARD_PREFIXES = [
+ // Legacy role-prefix routes
  '/patient/', '/doctor/', '/nurse/', '/nanny/', '/pharmacist/',
  '/lab-technician/', '/responder/', '/insurance/', '/corporate/',
  '/referral-partner/', '/admin/', '/regional/',
  '/caregiver/', '/physiotherapist/', '/dentist/', '/optometrist/', '/nutritionist/',
+ // Dynamic provider route
+ '/provider/',
+ // Clean URL dashboard routes (no role prefix)
+ '/feed', '/practice', '/inventory', '/services', '/workflows',
+ '/billing', '/video', '/messages', '/ai-assistant', '/my-health',
+ '/profile', '/network', '/booking-requests', '/bookings/',
+ '/my-consultations', '/my-nurse-services', '/my-childcare',
+ '/my-emergency', '/my-health-records', '/my-lab-results',
+ '/my-insurance', '/my-prescriptions', '/roles', '/administration',
 ]
 
 export default function ConditionalNavbar() {
