@@ -99,22 +99,36 @@ export async function middleware(request: NextRequest) {
       return response
     }
 
-    // Rewrite to /provider/{slug}{pathname} — URL stays clean, Next.js serves dynamic route
+    // Rewrite clean URLs to existing routes
     const cookieVal = request.cookies.get('mediwyz_userType')?.value || 'patient'
-    const COOKIE_TO_SLUG: Record<string, string> = {
-      patient: 'patients', doctor: 'doctors', nurse: 'nurses',
-      'child-care-nurse': 'childcare', pharmacy: 'pharmacists',
-      lab: 'lab-technicians', ambulance: 'emergency',
-      insurance: 'insurance-reps', corporate: 'corporate-admins',
-      'referral-partner': 'referral-partners', admin: 'admin',
-      'regional-admin': 'regional-admins',
+
+    // Non-provider roles keep their dedicated folders (they have unique pages)
+    const DEDICATED_ROUTES: Record<string, string> = {
+      patient: '/patient',
+      'regional-admin': '/regional',
+      corporate: '/corporate',
+      insurance: '/insurance',
+      'referral-partner': '/referral-partner',
+      admin: '/admin',
+    }
+
+    // Provider roles use the dynamic /provider/[slug] route
+    const PROVIDER_SLUGS: Record<string, string> = {
+      doctor: 'doctors', nurse: 'nurses', 'child-care-nurse': 'childcare',
+      pharmacy: 'pharmacists', lab: 'lab-technicians', ambulance: 'emergency',
       caregiver: 'caregivers', physiotherapist: 'physiotherapists',
       dentist: 'dentists', optometrist: 'optometrists',
       nutritionist: 'nutritionists',
     }
-    const slug = COOKIE_TO_SLUG[cookieVal] || cookieVal
-    const rewriteUrl = new URL(`/provider/${slug}${pathname}`, request.url)
-    return NextResponse.rewrite(rewriteUrl)
+
+    const dedicatedPrefix = DEDICATED_ROUTES[cookieVal]
+    if (dedicatedPrefix) {
+      // Rewrite to dedicated folder: /feed → /regional/feed, /feed → /patient/feed
+      return NextResponse.rewrite(new URL(`${dedicatedPrefix}${pathname}`, request.url))
+    }
+
+    const providerSlug = PROVIDER_SLUGS[cookieVal] || cookieVal
+    return NextResponse.rewrite(new URL(`/provider/${providerSlug}${pathname}`, request.url))
   }
 
   // Dynamic /provider/[slug] routes — just require valid JWT (page validates role)
