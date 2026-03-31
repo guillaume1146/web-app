@@ -83,7 +83,7 @@ export async function middleware(request: NextRequest) {
   // Unified dashboard routes (no role prefix) — just require valid JWT
   const unifiedPaths = ['/feed', '/practice', '/inventory', '/services', '/workflows',
     '/billing', '/video', '/messages', '/ai-assistant', '/my-health', '/profile',
-    '/network', '/settings', '/search/', '/bookings', '/administration',
+    '/network', '/settings', '/bookings', '/administration',
     '/regional-services', '/regional-workflows', '/roles', '/management']
   const isUnifiedRoute = unifiedPaths.some(p => pathname === p || pathname.startsWith(p + '/'))
 
@@ -148,9 +148,27 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
-function getUserTypeRedirectPath(_userType: string): string {
-  // All roles now use the unified dashboard — no role prefix in URL
-  return '/feed'
+function getUserTypeRedirectPath(userType: string): string {
+  const redirectPaths: Record<string, string> = {
+    'patient': '/patient/feed',
+    'doctor': '/doctor/feed',
+    'nurse': '/nurse/feed',
+    'child-care-nurse': '/nanny/feed',
+    'pharmacy': '/pharmacist/feed',
+    'lab': '/lab-technician/feed',
+    'ambulance': '/responder/feed',
+    'admin': '/admin/feed',
+    'regional-admin': '/regional/feed',
+    'corporate': '/corporate/feed',
+    'insurance': '/insurance/feed',
+    'referral-partner': '/referral-partner/feed',
+    'caregiver': '/caregiver/feed',
+    'physiotherapist': '/physiotherapist/feed',
+    'dentist': '/dentist/feed',
+    'optometrist': '/optometrist/feed',
+    'nutritionist': '/nutritionist/feed',
+  }
+  return redirectPaths[userType] || '/patient/feed'
 }
 
 export const config = {
@@ -186,7 +204,6 @@ export const config = {
     '/profile/:path*',
     '/network/:path*',
     '/settings/:path*',
-    '/search/:path*',
     '/bookings/:path*',
     '/administration/:path*',
     '/regional-services/:path*',
