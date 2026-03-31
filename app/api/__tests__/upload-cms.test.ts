@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // The CMS upload route uses fs/promises and path which are Node.js-only.
@@ -21,10 +22,13 @@ vi.mock('@/lib/rate-limit', () => ({
 
 import { validateRequest } from '@/lib/auth/validate'
 import { NextRequest } from 'next/server'
+import { File as NodeFile } from 'node:buffer'
 
-function createUploadRequest(file: File) {
+function createUploadRequest(fileName: string, type: string, content = 'fake-image-data') {
+  // Use Node.js built-in File (from node:buffer) so it passes undici's webidl.is.File check
+  const file = new NodeFile([content], fileName, { type })
   const fd = new FormData()
-  fd.append('file', file)
+  fd.append('file', file as unknown as Blob)
   return new NextRequest('http://localhost:3000/api/upload/cms', {
     method: 'POST',
     body: fd,
@@ -45,8 +49,7 @@ describe('POST /api/upload/cms', () => {
   it('returns 401 without auth', async () => {
     vi.mocked(validateRequest).mockReturnValue(null)
 
-    const file = new File(['test'], 'test.jpg', { type: 'image/jpeg' })
-    const res = await POST(createUploadRequest(file))
+    const res = await POST(createUploadRequest('test.jpg', 'image/jpeg'))
 
     expect(res.status).toBe(401)
   })
@@ -54,8 +57,7 @@ describe('POST /api/upload/cms', () => {
   it('returns 403 for non-admin user', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'patient', email: 'u@ex.com' })
 
-    const file = new File(['test'], 'test.jpg', { type: 'image/jpeg' })
-    const res = await POST(createUploadRequest(file))
+    const res = await POST(createUploadRequest('test.jpg', 'image/jpeg'))
 
     expect(res.status).toBe(403)
   })
@@ -77,8 +79,7 @@ describe('POST /api/upload/cms', () => {
   it('returns 400 for disallowed file type', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'admin', email: 'a@ex.com' })
 
-    const file = new File(['test'], 'test.pdf', { type: 'application/pdf' })
-    const res = await POST(createUploadRequest(file))
+    const res = await POST(createUploadRequest('test.pdf', 'application/pdf'))
     const json = await res.json()
 
     expect(res.status).toBe(400)
@@ -88,8 +89,7 @@ describe('POST /api/upload/cms', () => {
   it('successfully uploads image for admin', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'admin', email: 'a@ex.com' })
 
-    const file = new File(['fake-image-data'], 'hero.jpg', { type: 'image/jpeg' })
-    const res = await POST(createUploadRequest(file))
+    const res = await POST(createUploadRequest('hero.jpg', 'image/jpeg'))
     const json = await res.json()
 
     expect(res.status).toBe(201)
@@ -103,8 +103,7 @@ describe('POST /api/upload/cms', () => {
   it('successfully uploads for regional-admin', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'regional-admin', email: 'r@ex.com' })
 
-    const file = new File(['fake-image-data'], 'banner.png', { type: 'image/png' })
-    const res = await POST(createUploadRequest(file))
+    const res = await POST(createUploadRequest('banner.png', 'image/png'))
 
     expect(res.status).toBe(201)
   })

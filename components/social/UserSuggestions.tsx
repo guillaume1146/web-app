@@ -78,7 +78,7 @@ export default function UserSuggestions({ currentUserId, maxResults = 5, classNa
 
  if (loading) {
  return (
- <div className={`bg-white rounded-xl shadow-sm border p-4 ${className}`}>
+ <div className={`bg-white rounded-sm shadow p-4 ${className}`}>
  <h3 className="font-semibold text-gray-900 mb-3">People You May Know</h3>
  <div className="space-y-3">
  {[1, 2, 3].map(i => (
@@ -97,9 +97,9 @@ export default function UserSuggestions({ currentUserId, maxResults = 5, classNa
 
  if (error) {
  return (
- <div className={`bg-white rounded-xl shadow-sm border p-4 ${className}`}>
+ <div className={`bg-white rounded-sm shadow p-4 ${className}`}>
  <h3 className="font-semibold text-gray-900 mb-3">People You May Know</h3>
- <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+ <div className="bg-red-50 border border-red-200 rounded-sm p-6 text-center">
  <p className="text-red-600 text-sm mb-3">{error}</p>
  <button onClick={fetchSuggestions} className="text-sm text-red-700 font-medium hover:text-red-800 underline">
  Try again
@@ -112,7 +112,7 @@ export default function UserSuggestions({ currentUserId, maxResults = 5, classNa
  if (suggestions.length === 0) return null
 
  return (
- <div className={`bg-white rounded-xl shadow-sm border p-4 ${className}`}>
+ <div className={`bg-white rounded-sm shadow p-4 ${className}`}>
  <h3 className="font-semibold text-gray-900 mb-3">People You May Know</h3>
  <div className="space-y-3">
  {suggestions.map(user => {

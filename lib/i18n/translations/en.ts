@@ -129,6 +129,58 @@ const en = {
   'nav.coverage': 'Coverage',
   'nav.users': 'Users',
   'nav.content': 'Content',
+  'nav.practice': 'My Practice',
+  'nav.services': 'My Services',
+  'nav.workflows': 'Workflows',
+  'nav.health': 'My Health',
+  'nav.network': 'Network',
+  'nav.searchBrowse': 'Search & Browse',
+
+  // Provider Roles
+  'role.patient': 'Patient',
+  'role.doctor': 'Doctor',
+  'role.nurse': 'Nurse',
+  'role.nanny': 'Childcare Nurse',
+  'role.pharmacist': 'Pharmacist',
+  'role.labTechnician': 'Lab Technician',
+  'role.emergencyWorker': 'Emergency Worker',
+  'role.insuranceRep': 'Insurance Rep',
+  'role.corporateAdmin': 'Corporate Admin',
+  'role.referralPartner': 'Referral Partner',
+  'role.regionalAdmin': 'Regional Admin',
+  'role.caregiver': 'Caregiver',
+  'role.physiotherapist': 'Physiotherapist',
+  'role.dentist': 'Dentist',
+  'role.optometrist': 'Optometrist',
+  'role.nutritionist': 'Nutritionist',
+
+  // Signup
+  'signup.selectAccountType': 'Select Account Type',
+  'signup.accountTypeDesc': 'Choose the type of account that best describes your role in healthcare',
+  'signup.requiredDocs': 'Required Documents',
+  'signup.docsReady': 'You will upload these documents in the next steps. Make sure you have them ready.',
+  'signup.basicInfo': 'Basic Information',
+  'signup.documentUpload': 'Document Upload',
+  'signup.subscription': 'Subscription Plan',
+  'signup.verification': 'Verification',
+
+  // Search pages
+  'search.findProviders': 'Find Providers',
+  'search.book': 'Book',
+  'search.connect': 'Connect',
+  'search.viewProfile': 'View Profile',
+  'search.filters': 'Filters',
+  'search.specialty': 'Specialty',
+  'search.location': 'Location',
+  'search.available': 'Available',
+  'search.inPerson': 'In Person',
+  'search.videoConsultation': 'Video Consultation',
+
+  // People / Network
+  'network.peopleYouMayKnow': 'People You May Know',
+  'network.connected': 'Connected',
+  'network.pending': 'Pending',
+  'network.connectBtn': 'Connect',
 
   // Auth
   'auth.welcomeBack': 'Welcome Back',

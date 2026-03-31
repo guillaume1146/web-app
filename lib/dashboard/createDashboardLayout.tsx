@@ -6,6 +6,7 @@ import { DashboardLayout, DashboardLoadingState, DashboardErrorState } from '@/c
 import type { SidebarItem } from '@/components/dashboard/DashboardSidebar'
 import { useUser } from '@/hooks/useUser'
 import { useDynamicSearchItems } from '@/hooks/useDynamicSearchItems'
+import { useRoleFeatureConfig, filterSidebarByFeatures } from '@/hooks/useRoleFeatureConfig'
 
 interface UserData {
   id: string
@@ -107,6 +108,7 @@ export function createDashboardLayout(config: DashboardLayoutConfig) {
 
     // Must call hooks before any early returns (React rules of hooks)
     const dynamicSearch = useDynamicSearchItems(dynamicSearchBasePath || '')
+    const featureConfig = useRoleFeatureConfig(hookUser?.userType)
 
     if (loading) return <DashboardLoadingState />
     if (error || !userData) return <DashboardErrorState message={error} />
@@ -124,6 +126,9 @@ export function createDashboardLayout(config: DashboardLayoutConfig) {
       )
       finalSidebarItems = [...coreItems, ...dynamicSearch]
     }
+
+    // Filter sidebar items based on role feature config (admin-configurable)
+    finalSidebarItems = filterSidebarByFeatures(finalSidebarItems, featureConfig)
 
     const content = (
       <DashboardLayout

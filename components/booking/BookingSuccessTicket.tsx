@@ -24,7 +24,7 @@ export default function BookingSuccessTicket({
  ticketId,
  submitData,
  walletBalance,
- dashboardPath = '/patient/feed',
+ dashboardPath = '/feed',
  viewPath,
  viewLabel = 'View Appointments',
 }: BookingSuccessTicketProps) {

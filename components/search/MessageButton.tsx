@@ -5,14 +5,15 @@ import { useRouter } from 'next/navigation'
 import { FaEnvelope } from 'react-icons/fa'
 
 // Maps the mediwyz_userType cookie value to the user's chat URL segment
+// All roles use /messages clean URL — middleware rewrites to correct folder
 const USER_TYPE_CHAT_ROUTES: Record<string, string> = {
- patient: '/patient/chat',
- doctor: '/doctor/messages',
- nurse: '/nurse/messages',
- 'child-care-nurse': '/nanny/messages',
- pharmacy: '/pharmacist/messages',
- lab: '/lab-technician/messages',
- ambulance: '/responder/messages',
+ patient: '/messages',
+ doctor: '/messages',
+ nurse: '/messages',
+ 'child-care-nurse': '/messages',
+ pharmacy: '/messages',
+ lab: '/messages',
+ ambulance: '/messages',
  insurance: '/insurance/messages',
  corporate: '/corporate/messages',
  'referral-partner': '/referral-partner/messages',
@@ -69,7 +70,7 @@ export default function MessageButton({ providerId, className = '' }: MessageBut
 
  const conversationId: string = json.data?.id
  const userTypeCookie = getUserTypeCookie() ?? 'patient'
- const baseRoute = USER_TYPE_CHAT_ROUTES[userTypeCookie] ?? '/patient/chat'
+ const baseRoute = USER_TYPE_CHAT_ROUTES[userTypeCookie] ?? '/messages'
  const chatUrl = conversationId ? `${baseRoute}?conversation=${conversationId}` : baseRoute
 
  router.push(chatUrl)

@@ -9,23 +9,24 @@ interface LandingPageContentProps {
  labels: string[]
 }
 
+// All roles use clean URLs — middleware rewrites to the correct folder
 const USER_TYPE_FEEDS: Record<string, string> = {
- PATIENT: '/patient/feed',
- DOCTOR: '/doctor/feed',
- NURSE: '/nurse/feed',
- NANNY: '/nanny/feed',
- PHARMACIST: '/pharmacist/feed',
- LAB_TECHNICIAN: '/lab-technician/feed',
- EMERGENCY_WORKER: '/responder/feed',
+ PATIENT: '/feed',
+ DOCTOR: '/feed',
+ NURSE: '/feed',
+ NANNY: '/feed',
+ PHARMACIST: '/feed',
+ LAB_TECHNICIAN: '/feed',
+ EMERGENCY_WORKER: '/feed',
  INSURANCE_REP: '/insurance/feed',
  CORPORATE_ADMIN: '/corporate/feed',
  REFERRAL_PARTNER: '/referral-partner/feed',
  REGIONAL_ADMIN: '/regional/feed',
- CAREGIVER: '/caregiver/feed',
- PHYSIOTHERAPIST: '/physiotherapist/feed',
- DENTIST: '/dentist/feed',
- OPTOMETRIST: '/optometrist/feed',
- NUTRITIONIST: '/nutritionist/feed',
+ CAREGIVER: '/feed',
+ PHYSIOTHERAPIST: '/feed',
+ DENTIST: '/feed',
+ OPTOMETRIST: '/feed',
+ NUTRITIONIST: '/feed',
 }
 
 export default function LandingPageContent({ sections, labels }: LandingPageContentProps) {
@@ -39,7 +40,7 @@ export default function LandingPageContent({ sections, labels }: LandingPageCont
  if (stored) {
  const user = JSON.parse(stored)
  if (user?.userType) {
- const feed = USER_TYPE_FEEDS[user.userType] || '/patient/feed'
+ const feed = USER_TYPE_FEEDS[user.userType] || '/feed'
  router.replace(feed)
  return
  }

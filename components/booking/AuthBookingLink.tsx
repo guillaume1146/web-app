@@ -40,16 +40,16 @@ export default function AuthBookingLink({ type, providerId, children, className 
  const userType = getCookie('mediwyz_userType')
  if (!userType) {
  const fallbackPath = type === 'emergency'
- ? '/patient/book/emergency'
- : `/patient/book/${type}/${providerId}`
+ ? '/book/emergency'
+ : `/book/${type}/${providerId}`
  router.push(`/login?returnUrl=${encodeURIComponent(fallbackPath)}`)
  return
  }
 
- const slug = USER_TYPE_SLUG[userType] || 'patient'
+ // Use clean URLs — middleware rewrites to correct folder
  const bookingPath = type === 'emergency'
- ? `/${slug}/book/emergency`
- : `/${slug}/book/${type}/${providerId}`
+ ? '/book/emergency'
+ : `/book/${type}/${providerId}`
  router.push(bookingPath)
  }, [type, providerId, router])
 

@@ -1,12 +1,7 @@
 import type { SidebarItem } from '@/components/dashboard/DashboardSidebar'
 
-import { PATIENT_SIDEBAR_ITEMS, getActiveSectionFromPath as patientGetActive } from '@/app/patient/(dashboard)/sidebar-config'
-import { DOCTOR_SIDEBAR_ITEMS, getActiveSectionFromPath as doctorGetActive } from '@/app/doctor/(dashboard)/sidebar-config'
-import { NURSE_SIDEBAR_ITEMS, getActiveSectionFromPath as nurseGetActive } from '@/app/nurse/(dashboard)/sidebar-config'
-import { NANNY_SIDEBAR_ITEMS, getActiveSectionFromPath as nannyGetActive } from '@/app/nanny/(dashboard)/sidebar-config'
-import { PHARMACIST_SIDEBAR_ITEMS, getActiveSectionFromPath as pharmacistGetActive } from '@/app/pharmacist/(dashboard)/sidebar-config'
-import { LAB_TECH_SIDEBAR_ITEMS, getActiveSectionFromPath as labTechGetActive } from '@/app/lab-technician/(dashboard)/sidebar-config'
-import { RESPONDER_SIDEBAR_ITEMS, getActiveSectionFromPath as responderGetActive } from '@/app/responder/(dashboard)/sidebar-config'
+// Non-provider roles keep their dedicated sidebar configs
+// Patient now uses the unified provider/[slug] route (no longer dedicated)
 import { INSURANCE_SIDEBAR_ITEMS, getActiveSectionFromPath as insuranceGetActive } from '@/app/insurance/(dashboard)/sidebar-config'
 import { CORPORATE_SIDEBAR_ITEMS, getActiveSectionFromPath as corporateGetActive } from '@/app/corporate/(dashboard)/sidebar-config'
 import { REFERRAL_SIDEBAR_ITEMS, getActiveSectionFromPath as referralGetActive } from '@/app/referral-partner/(dashboard)/sidebar-config'
@@ -22,71 +17,9 @@ export interface SidebarConfig {
   namePrefix?: string
 }
 
-const userTypeToSlug: Record<string, string> = {
-  PATIENT: 'patient',
-  DOCTOR: 'doctor',
-  NURSE: 'nurse',
-  NANNY: 'nanny',
-  PHARMACIST: 'pharmacist',
-  LAB_TECHNICIAN: 'lab-technician',
-  EMERGENCY_WORKER: 'responder',
-  INSURANCE_REP: 'insurance',
-  CORPORATE_ADMIN: 'corporate',
-  REFERRAL_PARTNER: 'referral-partner',
-  REGIONAL_ADMIN: 'regional',
-}
-
+// Only non-provider roles have dedicated sidebar configs
+// All provider roles use the dynamic provider/[slug] layout
 const registry: Record<string, SidebarConfig> = {
-  PATIENT: {
-    items: PATIENT_SIDEBAR_ITEMS,
-    getActiveSectionFromPath: patientGetActive,
-    userSubtitle: 'Patient',
-    profileHref: '/patient/profile',
-    networkHref: '/patient/network',
-  },
-  DOCTOR: {
-    items: DOCTOR_SIDEBAR_ITEMS,
-    getActiveSectionFromPath: doctorGetActive,
-    userSubtitle: 'Doctor',
-    profileHref: '/doctor/profile',
-    networkHref: '/doctor/network',
-    namePrefix: 'Dr.',
-  },
-  NURSE: {
-    items: NURSE_SIDEBAR_ITEMS,
-    getActiveSectionFromPath: nurseGetActive,
-    userSubtitle: 'Nurse',
-    profileHref: '/nurse/profile',
-    networkHref: '/nurse/network',
-  },
-  NANNY: {
-    items: NANNY_SIDEBAR_ITEMS,
-    getActiveSectionFromPath: nannyGetActive,
-    userSubtitle: 'Childcare',
-    profileHref: '/nanny/profile',
-    networkHref: '/nanny/network',
-  },
-  PHARMACIST: {
-    items: PHARMACIST_SIDEBAR_ITEMS,
-    getActiveSectionFromPath: pharmacistGetActive,
-    userSubtitle: 'Pharmacist',
-    profileHref: '/pharmacist/profile',
-    networkHref: '/pharmacist/network',
-  },
-  LAB_TECHNICIAN: {
-    items: LAB_TECH_SIDEBAR_ITEMS,
-    getActiveSectionFromPath: labTechGetActive,
-    userSubtitle: 'Lab Technician',
-    profileHref: '/lab-technician/profile',
-    networkHref: '/lab-technician/network',
-  },
-  EMERGENCY_WORKER: {
-    items: RESPONDER_SIDEBAR_ITEMS,
-    getActiveSectionFromPath: responderGetActive,
-    userSubtitle: 'Responder',
-    profileHref: '/responder/profile',
-    networkHref: '/responder/network',
-  },
   INSURANCE_REP: {
     items: INSURANCE_SIDEBAR_ITEMS,
     getActiveSectionFromPath: insuranceGetActive,
@@ -122,5 +55,12 @@ export function getSidebarConfig(userType: string): SidebarConfig | null {
 }
 
 export function getUserTypeSlug(userType: string): string | null {
-  return userTypeToSlug[userType] ?? null
+  // Non-provider roles have dedicated routes
+  const slugs: Record<string, string> = {
+    INSURANCE_REP: 'insurance',
+    CORPORATE_ADMIN: 'corporate',
+    REFERRAL_PARTNER: 'referral-partner',
+    REGIONAL_ADMIN: 'regional',
+  }
+  return slugs[userType] ?? null
 }

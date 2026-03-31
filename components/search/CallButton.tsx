@@ -51,14 +51,15 @@ export default function CallButton({ providerId, className = '' }: CallButtonPro
  }
 
  // Determine the user's video/call page route
+ // All roles use /video clean URL — middleware rewrites to correct folder
  const routeMap: Record<string, string> = {
- patient: '/patient/video',
- doctor: '/doctor/video',
- nurse: '/nurse/video',
- 'child-care-nurse': '/nanny/video',
- pharmacy: '/pharmacist/video',
- lab: '/lab-technician/video',
- ambulance: '/responder/video',
+ patient: '/video',
+ doctor: '/video',
+ nurse: '/video',
+ 'child-care-nurse': '/video',
+ pharmacy: '/video',
+ lab: '/video',
+ ambulance: '/video',
  insurance: '/insurance/video',
  corporate: '/corporate/video',
  'referral-partner': '/referral-partner/video',
@@ -66,7 +67,7 @@ export default function CallButton({ providerId, className = '' }: CallButtonPro
  'regional-admin': '/regional/video',
  }
 
- const videoRoute = routeMap[userType] ?? '/patient/video'
+ const videoRoute = routeMap[userType] ?? '/video'
  // Navigate to video page with audio-only mode and target provider
  router.push(`${videoRoute}?mode=audio&target=${providerId}`)
  } catch (err) {

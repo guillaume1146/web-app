@@ -53,6 +53,11 @@ export async function seedRoleConfig(prisma: PrismaClient) {
     ],
   }
 
+  // Features explicitly disabled for certain roles
+  const disabledFeatures: Record<string, string[]> = {
+    PATIENT: ['services', 'practice', 'workflows', 'inventory'],
+  }
+
   let count = 0
 
   for (const [userType, features] of Object.entries(roleFeatures)) {
@@ -70,5 +75,21 @@ export async function seedRoleConfig(prisma: PrismaClient) {
     }
   }
 
-  console.log(`  Seeded ${count} role feature configs across ${Object.keys(roleFeatures).length} user types`)
+  // Create disabled feature entries
+  for (const [userType, features] of Object.entries(disabledFeatures)) {
+    for (const featureKey of features) {
+      await prisma.roleFeatureConfig.upsert({
+        where: { userType_featureKey: { userType, featureKey } },
+        update: { enabled: false },
+        create: {
+          userType,
+          featureKey,
+          enabled: false,
+        },
+      })
+      count++
+    }
+  }
+
+  console.log(`  Seeded ${count} role feature configs across ${Object.keys(roleFeatures).length + Object.keys(disabledFeatures).length} user types`)
 }

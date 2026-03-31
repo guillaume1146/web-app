@@ -61,7 +61,6 @@ export async function middleware(request: NextRequest) {
   }
 
   const protectedRoutes: Record<string, string[]> = {
-    '/patient': ['patient'],
     '/doctor': ['doctor'],
     '/nurse': ['nurse'],
     '/nanny': ['child-care-nurse'],
@@ -85,7 +84,8 @@ export async function middleware(request: NextRequest) {
     '/billing', '/video', '/messages', '/ai-assistant', '/my-health', '/profile',
     '/network', '/booking-requests', '/bookings', '/my-consultations', '/my-nurse-services',
     '/my-childcare', '/my-emergency', '/my-health-records', '/my-lab-results',
-    '/my-insurance', '/my-prescriptions', '/posts', '/reviews']
+    '/my-insurance', '/my-prescriptions', '/posts', '/reviews',
+    '/pharmacy', '/book']
   const isCleanDashboardRoute = dashboardPages.some(p => pathname === p || pathname.startsWith(p + '/'))
 
   if (isCleanDashboardRoute) {
@@ -104,7 +104,6 @@ export async function middleware(request: NextRequest) {
 
     // Non-provider roles keep their dedicated folders (they have unique pages)
     const DEDICATED_ROUTES: Record<string, string> = {
-      patient: '/patient',
       'regional-admin': '/regional',
       corporate: '/corporate',
       insurance: '/insurance',
@@ -112,8 +111,9 @@ export async function middleware(request: NextRequest) {
       admin: '/admin',
     }
 
-    // Provider roles use the dynamic /provider/[slug] route
+    // All provider roles (including patient) use the dynamic /provider/[slug] route
     const PROVIDER_SLUGS: Record<string, string> = {
+      patient: 'patients',
       doctor: 'doctors', nurse: 'nurses', 'child-care-nurse': 'childcare',
       pharmacy: 'pharmacists', lab: 'lab-technicians', ambulance: 'emergency',
       caregiver: 'caregivers', physiotherapist: 'physiotherapists',
@@ -123,12 +123,20 @@ export async function middleware(request: NextRequest) {
 
     const dedicatedPrefix = DEDICATED_ROUTES[cookieVal]
     if (dedicatedPrefix) {
-      // Rewrite to dedicated folder: /feed → /regional/feed, /feed → /patient/feed
       return NextResponse.rewrite(new URL(`${dedicatedPrefix}${pathname}`, request.url))
     }
 
     const providerSlug = PROVIDER_SLUGS[cookieVal] || cookieVal
     return NextResponse.rewrite(new URL(`/provider/${providerSlug}${pathname}`, request.url))
+  }
+
+  // Backward compat: /patient/feed → /feed (patient now uses clean URLs via provider route)
+  if (pathname.startsWith('/patient/')) {
+    const subpath = pathname.replace('/patient', '')
+    // Remap old patient paths to clean URLs
+    const remap: Record<string, string> = { '/chat': '/messages', '/health': '/my-health' }
+    const cleanPath = remap[subpath] || subpath || '/feed'
+    return NextResponse.redirect(new URL(cleanPath, request.url))
   }
 
   // Dynamic /provider/[slug] routes — just require valid JWT (page validates role)
@@ -180,26 +188,16 @@ export async function middleware(request: NextRequest) {
 }
 
 function getUserTypeRedirectPath(userType: string): string {
-  const redirectPaths: Record<string, string> = {
-    'patient': '/patient/feed',
-    'doctor': '/doctor/feed',
-    'nurse': '/nurse/feed',
-    'child-care-nurse': '/nanny/feed',
-    'pharmacy': '/pharmacist/feed',
-    'lab': '/lab-technician/feed',
-    'ambulance': '/responder/feed',
+  // Non-provider roles use their dedicated folder paths
+  const dedicatedPaths: Record<string, string> = {
     'admin': '/admin/feed',
     'regional-admin': '/regional/feed',
     'corporate': '/corporate/feed',
     'insurance': '/insurance/feed',
     'referral-partner': '/referral-partner/feed',
-    'caregiver': '/caregiver/feed',
-    'physiotherapist': '/physiotherapist/feed',
-    'dentist': '/dentist/feed',
-    'optometrist': '/optometrist/feed',
-    'nutritionist': '/nutritionist/feed',
   }
-  return redirectPaths[userType] || '/patient/feed'
+  // Provider roles use clean URLs — middleware rewrites /feed → /provider/[slug]/feed
+  return dedicatedPaths[userType] || '/feed'
 }
 
 export const config = {
@@ -241,5 +239,7 @@ export const config = {
     '/regional-workflows/:path*',
     '/roles/:path*',
     '/management/:path*',
+    '/pharmacy/:path*',
+    '/book/:path*',
   ]
 }

@@ -264,6 +264,12 @@ describe('Workflow: full happy-path transitions for each provider', () => {
     { label: 'NUTRITIONIST home', type: 'NUTRITIONIST', provider: 'NUTR001', booking: 'service_booking', mode: 'home' as const },
   ]) {
     it(`${tc.label}: transitions through full happy path`, async () => {
+      // Reset patient wallet before each provider test to prevent cross-file contamination
+      await prisma.userWallet.update({
+        where: { userId: testCases[0].patientUserId },
+        data: { balance: 999999 },
+      }).catch(() => {})
+
       const bookingId = `wf-allprov-hp-${tc.type.toLowerCase()}-${Date.now()}`
 
       const start = await startWorkflow({
