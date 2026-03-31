@@ -80,14 +80,15 @@ export async function middleware(request: NextRequest) {
     '/nutritionist': ['nutritionist'],
   }
 
-  // Unified dashboard routes (no role prefix) — just require valid JWT
-  const unifiedPaths = ['/feed', '/practice', '/inventory', '/services', '/workflows',
+  // Clean URLs (no role prefix): /feed → /provider/{slug}/feed via rewrite
+  const dashboardPages = ['/feed', '/practice', '/inventory', '/services', '/workflows',
     '/billing', '/video', '/messages', '/ai-assistant', '/my-health', '/profile',
-    '/network', '/settings', '/bookings', '/administration',
-    '/regional-services', '/regional-workflows', '/roles', '/management']
-  const isUnifiedRoute = unifiedPaths.some(p => pathname === p || pathname.startsWith(p + '/'))
+    '/network', '/booking-requests', '/bookings', '/my-consultations', '/my-nurse-services',
+    '/my-childcare', '/my-emergency', '/my-health-records', '/my-lab-results',
+    '/my-insurance', '/my-prescriptions', '/posts', '/reviews']
+  const isCleanDashboardRoute = dashboardPages.some(p => pathname === p || pathname.startsWith(p + '/'))
 
-  if (isUnifiedRoute) {
+  if (isCleanDashboardRoute) {
     const token = request.cookies.get('mediwyz_token')
     if (!token) return NextResponse.redirect(new URL('/login', request.url))
     const payload = await verifyJWT(token.value)
@@ -97,7 +98,23 @@ export async function middleware(request: NextRequest) {
       response.cookies.delete('mediwyz_userType')
       return response
     }
-    return NextResponse.next()
+
+    // Rewrite to /provider/{slug}{pathname} — URL stays clean, Next.js serves dynamic route
+    const cookieVal = request.cookies.get('mediwyz_userType')?.value || 'patient'
+    const COOKIE_TO_SLUG: Record<string, string> = {
+      patient: 'patients', doctor: 'doctors', nurse: 'nurses',
+      'child-care-nurse': 'childcare', pharmacy: 'pharmacists',
+      lab: 'lab-technicians', ambulance: 'emergency',
+      insurance: 'insurance-reps', corporate: 'corporate-admins',
+      'referral-partner': 'referral-partners', admin: 'admin',
+      'regional-admin': 'regional-admins',
+      caregiver: 'caregivers', physiotherapist: 'physiotherapists',
+      dentist: 'dentists', optometrist: 'optometrists',
+      nutritionist: 'nutritionists',
+    }
+    const slug = COOKIE_TO_SLUG[cookieVal] || cookieVal
+    const rewriteUrl = new URL(`/provider/${slug}${pathname}`, request.url)
+    return NextResponse.rewrite(rewriteUrl)
   }
 
   // Dynamic /provider/[slug] routes — just require valid JWT (page validates role)

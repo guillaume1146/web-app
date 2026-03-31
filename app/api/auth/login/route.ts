@@ -70,10 +70,8 @@ export async function POST(request: NextRequest) {
       cookieUserType = 'admin'
     }
 
-    // Redirect to role-specific dashboard
-    const slugMap: Record<string, string> = { 'admin': 'admin', 'regional-admin': 'regional' }
-    const slug = slugMap[cookieUserType] || USER_TYPE_SLUGS[dbUser.userType] || cookieUserType || 'patient'
-    const redirectPath = `/${slug}/feed`
+    // Redirect to clean URL (middleware rewrites to /provider/{slug}/feed)
+    const redirectPath = '/feed'
 
     // Generate JWT
     const token = signToken({ sub: dbUser.id, userType: cookieUserType, email: dbUser.email })
