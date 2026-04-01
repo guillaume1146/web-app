@@ -2,9 +2,9 @@ import { notFound } from 'next/navigation'
 import prisma from '@/lib/db'
 import HeroSection from '@/components/home/HeroSection'
 import StatsSection from '@/components/home/StatsSection'
-import ServicesSection from '@/components/home/ServicesSection'
+import ProviderMarketplace from '@/components/home/ProviderMarketplace'
+import HealthShopMarketplace from '@/components/home/HealthShopMarketplace'
 import DetailedServicesSection from '@/components/home/DetailedServicesSection'
-import SpecialtiesSection from '@/components/home/SpecialtiesSection'
 import WhyChooseSection from '@/components/home/WhyChooseSection'
 import ProfessionalBanner from '@/components/shared/ProfessionalBanner'
 import { HeroContent, HeroSlide } from '@/types'
@@ -94,17 +94,9 @@ export default async function CountryHomePage({
  <>
  <HeroSection content={heroContent} slides={slides.length > 0 ? slides : undefined} countryCode={countryCode} />
  <StatsSection />
- <ServicesSection
- title={servicesContent?.title}
- subtitle={servicesContent?.subtitle}
- items={servicesContent?.items}
- />
+ <ProviderMarketplace />
+ <HealthShopMarketplace />
  <DetailedServicesSection content={detailedContent} />
- <SpecialtiesSection
- title={specialtiesContent?.title}
- subtitle={specialtiesContent?.subtitle}
- items={specialtiesContent?.items}
- />
  <WhyChooseSection
  title={whyChooseContent?.title}
  subtitle={whyChooseContent?.subtitle}
