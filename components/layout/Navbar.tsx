@@ -178,7 +178,8 @@ const Navbar: React.FC = () => {
 
  const isLoggedIn = !!authUser
 
- const getServiceHref = (href: string) => userSlug ? `/${userSlug}${href}` : href
+ // Search pages are public — never prepend user slug
+ const getServiceHref = (href: string) => href
 
  return (
  <nav role="navigation" aria-label="Main navigation" className="sticky top-0 z-50">
