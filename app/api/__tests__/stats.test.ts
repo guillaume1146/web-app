@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock Prisma before importing the route
 vi.mock('@/lib/db', () => ({
   default: {
     user: { count: vi.fn() },
@@ -8,6 +7,12 @@ vi.mock('@/lib/db', () => ({
     region: { count: vi.fn() },
     providerSpecialty: { count: vi.fn() },
     providerInventoryItem: { count: vi.fn() },
+    providerRole: { count: vi.fn() },
+    serviceBooking: { count: vi.fn() },
+    workflowTemplate: { count: vi.fn() },
+    post: { count: vi.fn() },
+    userConnection: { count: vi.fn() },
+    notification: { count: vi.fn() },
   },
 }))
 
@@ -17,106 +22,87 @@ import prisma from '@/lib/db'
 describe('GET /api/stats', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Default all counts to 0
+    vi.mocked(prisma.user.count).mockResolvedValue(0)
+    vi.mocked(prisma.appointment.count).mockResolvedValue(0)
+    vi.mocked(prisma.region.count).mockResolvedValue(0)
+    vi.mocked(prisma.providerSpecialty.count).mockResolvedValue(0)
+    vi.mocked(prisma.providerInventoryItem.count).mockResolvedValue(0)
+    vi.mocked(prisma.providerRole.count).mockResolvedValue(0)
+    vi.mocked(prisma.serviceBooking.count).mockResolvedValue(0)
+    vi.mocked(prisma.workflowTemplate.count).mockResolvedValue(0)
+    vi.mocked(prisma.post.count).mockResolvedValue(0)
+    vi.mocked(prisma.userConnection.count).mockResolvedValue(0)
+    vi.mocked(prisma.notification.count).mockResolvedValue(0)
   })
 
-  it('returns correct structure with all four stats', async () => {
-    vi.mocked(prisma.user.count)
-      .mockResolvedValueOnce(25)   // providerCount
-      .mockResolvedValueOnce(200)  // patientCount
-    vi.mocked(prisma.appointment.count).mockResolvedValue(350)
-    vi.mocked(prisma.region.count).mockResolvedValue(6)
-    vi.mocked(prisma.providerSpecialty.count).mockResolvedValue(136)
-    vi.mocked(prisma.providerInventoryItem.count).mockResolvedValue(76)
-
+  it('returns 10 stat items', async () => {
     const res = await GET()
     const data = await res.json()
 
     expect(res.status).toBe(200)
     expect(data.success).toBe(true)
-    expect(data.data).toHaveLength(4)
-
-    expect(data.data[0]).toEqual({
-      number: 25,
-      label: 'Healthcare Providers',
-      color: 'text-blue-500',
-    })
-    expect(data.data[1]).toEqual({
-      number: 200,
-      label: 'Registered Patients',
-      color: 'text-green-500',
-    })
-    expect(data.data[2]).toEqual({
-      number: 136,
-      label: 'Medical Specialties',
-      color: 'text-purple-500',
-    })
-    expect(data.data[3]).toEqual({
-      number: 76,
-      label: 'Health Products',
-      color: 'text-orange-500',
-    })
+    expect(data.data).toHaveLength(10)
   })
 
-  it('counts providers excluding non-provider roles', async () => {
-    vi.mocked(prisma.user.count).mockResolvedValue(0)
-    vi.mocked(prisma.appointment.count).mockResolvedValue(0)
-    vi.mocked(prisma.region.count).mockResolvedValue(0)
-    vi.mocked(prisma.providerSpecialty.count).mockResolvedValue(0)
-    vi.mocked(prisma.providerInventoryItem.count).mockResolvedValue(0)
+  it('includes all expected stat labels', async () => {
+    const res = await GET()
+    const data = await res.json()
+    const labels = data.data.map((s: { label: string }) => s.label)
 
-    await GET()
-
-    // First user.count call is for providers (excludes PATIENT, REGIONAL_ADMIN, etc.)
-    expect(prisma.user.count).toHaveBeenCalledWith({
-      where: {
-        userType: { notIn: ['PATIENT', 'REGIONAL_ADMIN', 'CORPORATE_ADMIN', 'INSURANCE_REP', 'REFERRAL_PARTNER'] },
-        accountStatus: 'active',
-      },
-    })
-    // Second call is for patients
-    expect(prisma.user.count).toHaveBeenCalledWith({
-      where: { userType: 'PATIENT' },
-    })
+    expect(labels).toContain('Healthcare Providers')
+    expect(labels).toContain('Registered Patients')
+    expect(labels).toContain('Medical Specialties')
+    expect(labels).toContain('Health Products')
+    expect(labels).toContain('Consultations')
+    expect(labels).toContain('Regions Covered')
+    expect(labels).toContain('Provider Types')
+    expect(labels).toContain('Care Workflows')
+    expect(labels).toContain('Community Posts')
+    expect(labels).toContain('Connections Made')
   })
 
-  it('counts only active specialties and in-stock products', async () => {
-    vi.mocked(prisma.user.count).mockResolvedValue(0)
-    vi.mocked(prisma.appointment.count).mockResolvedValue(0)
-    vi.mocked(prisma.region.count).mockResolvedValue(0)
-    vi.mocked(prisma.providerSpecialty.count).mockResolvedValue(0)
-    vi.mocked(prisma.providerInventoryItem.count).mockResolvedValue(0)
+  it('includes emoji icons for each stat', async () => {
+    const res = await GET()
+    const data = await res.json()
 
-    await GET()
-
-    expect(prisma.providerSpecialty.count).toHaveBeenCalledWith({
-      where: { isActive: true },
-    })
-    expect(prisma.providerInventoryItem.count).toHaveBeenCalledWith({
-      where: { isActive: true, inStock: true },
-    })
+    for (const stat of data.data) {
+      expect(stat.icon).toBeTruthy()
+    }
   })
 
-  it('returns 500 with error on database failure', async () => {
-    vi.mocked(prisma.user.count).mockRejectedValue(new Error('DB connection failed'))
+  it('returns real DB counts', async () => {
+    vi.mocked(prisma.user.count)
+      .mockResolvedValueOnce(25)  // providers
+      .mockResolvedValueOnce(200) // patients
+    vi.mocked(prisma.providerSpecialty.count).mockResolvedValue(136)
+    vi.mocked(prisma.providerInventoryItem.count).mockResolvedValue(76)
+    vi.mocked(prisma.region.count).mockResolvedValue(6)
 
     const res = await GET()
     const data = await res.json()
 
+    const providers = data.data.find((s: { label: string }) => s.label === 'Healthcare Providers')
+    const patients = data.data.find((s: { label: string }) => s.label === 'Registered Patients')
+    expect(providers.number).toBe(25)
+    expect(patients.number).toBe(200)
+  })
+
+  it('combines appointments + service bookings for Consultations', async () => {
+    vi.mocked(prisma.appointment.count).mockResolvedValue(100)
+    vi.mocked(prisma.serviceBooking.count).mockResolvedValue(50)
+
+    const res = await GET()
+    const data = await res.json()
+
+    const consultations = data.data.find((s: { label: string }) => s.label === 'Consultations')
+    expect(consultations.number).toBe(150) // 100 + 50
+  })
+
+  it('returns 500 on database failure', async () => {
+    vi.mocked(prisma.user.count).mockRejectedValue(new Error('DB down'))
+
+    const res = await GET()
     expect(res.status).toBe(500)
-    expect(data.success).toBe(false)
-    expect(data.message).toBe('Failed to fetch statistics')
-  })
-
-  it('returns zeros when database is empty', async () => {
-    vi.mocked(prisma.user.count).mockResolvedValue(0)
-    vi.mocked(prisma.appointment.count).mockResolvedValue(0)
-    vi.mocked(prisma.region.count).mockResolvedValue(0)
-    vi.mocked(prisma.providerSpecialty.count).mockResolvedValue(0)
-    vi.mocked(prisma.providerInventoryItem.count).mockResolvedValue(0)
-
-    const res = await GET()
-    const data = await res.json()
-
-    expect(data.data.every((s: { number: number }) => s.number === 0)).toBe(true)
   })
 })

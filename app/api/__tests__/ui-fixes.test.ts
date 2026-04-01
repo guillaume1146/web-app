@@ -10,6 +10,12 @@ vi.mock('@/lib/db', () => ({
     region: { count: vi.fn() },
     providerSpecialty: { count: vi.fn() },
     providerInventoryItem: { count: vi.fn() },
+    providerRole: { count: vi.fn() },
+    serviceBooking: { count: vi.fn() },
+    workflowTemplate: { count: vi.fn() },
+    post: { count: vi.fn() },
+    userConnection: { count: vi.fn() },
+    notification: { count: vi.fn() },
     userWallet: { findUnique: vi.fn(), update: vi.fn() },
     walletTransaction: { deleteMany: vi.fn() },
     $transaction: vi.fn(),
@@ -40,17 +46,23 @@ describe('Fix 1: Stats API', () => {
       .mockResolvedValueOnce(15)   // providers
       .mockResolvedValueOnce(50)   // patients
     vi.mocked(prisma.appointment.count).mockResolvedValue(100)
-    vi.mocked(prisma.region?.count ?? vi.fn()).mockResolvedValue(6)
-    vi.mocked(prisma.providerSpecialty?.count ?? vi.fn()).mockResolvedValue(136)
-    vi.mocked(prisma.providerInventoryItem?.count ?? vi.fn()).mockResolvedValue(76)
+    vi.mocked(prisma.region.count).mockResolvedValue(6)
+    vi.mocked(prisma.providerSpecialty.count).mockResolvedValue(136)
+    vi.mocked(prisma.providerInventoryItem.count).mockResolvedValue(76)
+    vi.mocked(prisma.providerRole.count).mockResolvedValue(11)
+    vi.mocked(prisma.serviceBooking.count).mockResolvedValue(30)
+    vi.mocked(prisma.workflowTemplate.count).mockResolvedValue(59)
+    vi.mocked(prisma.post.count).mockResolvedValue(10)
+    vi.mocked(prisma.userConnection.count).mockResolvedValue(25)
+    vi.mocked(prisma.notification.count).mockResolvedValue(200)
 
     const res = await GET()
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.success).toBe(true)
-    expect(data.data).toHaveLength(4)
+    expect(data.data).toHaveLength(10)
 
-    const providerStat = data.data.find((s: { label: string }) => s.label.includes('Provider'))
+    const providerStat = data.data.find((s: { label: string }) => s.label.includes('Provider') && !s.label.includes('Type'))
     const patientStat = data.data.find((s: { label: string }) => s.label.includes('Patient'))
     expect(providerStat.number).toBe(15)
     expect(patientStat.number).toBe(50)

@@ -158,13 +158,13 @@ export default function ProviderMarketplace() {
                 <Link
                   key={spec.name}
                   href={`/search/${role.slug}?specialty=${encodeURIComponent(spec.name)}`}
-                  className={`flex-shrink-0 snap-start w-[140px] sm:w-48 md:w-52 p-3 sm:p-5 rounded-2xl border ${style.border} ${style.bg} hover:shadow-lg hover:scale-[1.02] transition-all group`}
+                  className={`flex-shrink-0 snap-start w-[160px] sm:w-52 md:w-56 p-4 sm:p-5 rounded-2xl border ${style.border} ${style.bg} hover:shadow-lg hover:scale-[1.02] transition-all group`}
                 >
                   {/* Emoji icon — DB icon takes priority, fallback to hardcoded map */}
-                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${style.accent} flex items-center justify-center text-xl sm:text-2xl mb-2 sm:mb-3`}>
+                  <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl ${style.accent} flex items-center justify-center text-3xl sm:text-4xl mb-3`}>
                     {spec.icon || getSpecialtyEmoji(spec.name)}
                   </div>
-                  <div className={`text-xs sm:text-sm font-bold ${style.text} group-hover:underline mb-1 line-clamp-2`}>
+                  <div className={`text-sm font-bold ${style.text} group-hover:underline mb-1 line-clamp-2`}>
                     {spec.name}
                   </div>
                   {spec.description && (
