@@ -9,6 +9,7 @@ export async function seedNewProviderRoles(prisma: PrismaClient) {
     // ── Caregivers ──────────────────────────────────────────────────
     {
       id: 'CARE001',
+      profileImage: '/images/caregivers/1.jpg',
       firstName: 'Marie-Claire',
       lastName: 'Ramgoolam',
       email: 'marie.ramgoolam@mediwyz.com',
@@ -26,6 +27,7 @@ export async function seedNewProviderRoles(prisma: PrismaClient) {
     },
     {
       id: 'CARE002',
+      profileImage: '/images/caregivers/2.jpg',
       firstName: 'Jean-Pierre',
       lastName: 'Leduc',
       email: 'jp.leduc@mediwyz.com',
@@ -45,6 +47,7 @@ export async function seedNewProviderRoles(prisma: PrismaClient) {
     // ── Physiotherapists ────────────────────────────────────────────
     {
       id: 'PHYSIO001',
+      profileImage: '/images/physiotherapists/1.jpg',
       firstName: 'Sanjay',
       lastName: 'Doorgakant',
       email: 'sanjay.physio@mediwyz.com',
@@ -64,6 +67,7 @@ export async function seedNewProviderRoles(prisma: PrismaClient) {
     // ── Dentists ────────────────────────────────────────────────────
     {
       id: 'DENT001',
+      profileImage: '/images/dentists/1.jpg',
       firstName: 'Anisha',
       lastName: 'Doobur',
       email: 'anisha.dentist@mediwyz.com',
@@ -83,6 +87,7 @@ export async function seedNewProviderRoles(prisma: PrismaClient) {
     // ── Optometrists ────────────────────────────────────────────────
     {
       id: 'OPT001',
+      profileImage: '/images/optometrists/1.jpg',
       firstName: 'Kavish',
       lastName: 'Doorgakant',
       email: 'kavish.eye@mediwyz.com',
@@ -102,6 +107,7 @@ export async function seedNewProviderRoles(prisma: PrismaClient) {
     // ── Nutritionists ───────────────────────────────────────────────
     {
       id: 'NUTR001',
+      profileImage: '/images/nutritionists/1.jpg',
       firstName: 'Priya',
       lastName: 'Doobur',
       email: 'priya.nutrition@mediwyz.com',

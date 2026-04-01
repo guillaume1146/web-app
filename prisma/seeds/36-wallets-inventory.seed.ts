@@ -587,6 +587,23 @@ export async function seedInventoryItems(prisma: PrismaClient) {
     return
   }
 
+  // Assign product images based on category
+  const categoryImageCounter: Record<string, number> = {}
+  const categoryImageMax: Record<string, number> = {
+    medication: 6, vitamins: 6, first_aid: 4, personal_care: 4,
+    dental_care: 4, baby_care: 4, medical_devices: 4, monitoring: 4,
+    eyewear: 4, nutrition: 4, eye_care: 4, rehab_equipment: 4, other: 4,
+  }
+
+  function getProductImage(category: string): string | null {
+    const folder = category === 'eye_care' ? 'eyewear' : category === 'rehab_equipment' ? 'medical_devices' : category
+    const max = categoryImageMax[folder] || 4
+    const count = (categoryImageCounter[folder] || 0) + 1
+    categoryImageCounter[folder] = count
+    const idx = ((count - 1) % max) + 1
+    return `/images/products/${folder}/${idx}.jpg`
+  }
+
   // Delete existing items for these providers to avoid duplicates
   await prisma.providerInventoryItem.deleteMany({
     where: { providerUserId: { in: [...existingIds] } },
@@ -599,6 +616,7 @@ export async function seedInventoryItems(prisma: PrismaClient) {
       name: item.name,
       category: item.category,
       description: item.description,
+      imageUrl: getProductImage(item.category),
       price: item.price,
       currency: item.currency,
       quantity: item.quantity,
