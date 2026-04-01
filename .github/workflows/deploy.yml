@@ -165,6 +165,15 @@ jobs:
               docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>&1 || true
             fi
 
+            # Run manual migrations before prisma db push (handles column additions on existing tables)
+            echo "=== Running manual SQL migrations ==="
+            for sql_file in prisma/migrations/manual/*.sql; do
+              if [ -f "$sql_file" ]; then
+                echo "Running: $sql_file"
+                docker compose exec -T app npx prisma db execute --file "$sql_file" --schema prisma/schema.prisma 2>&1 || echo "WARNING: $sql_file may have already been applied"
+              fi
+            done
+
             # Always sync schema with code
             echo "=== Pushing schema changes ==="
             docker compose exec -T app npx prisma db push --accept-data-loss
