@@ -1470,6 +1470,7 @@ model Post {
   comments    PostComment[]
   likes       PostLike[]
 
+  @@map("DoctorPost")
   @@index([authorId])
   @@index([companyId])
   @@index([createdAt])
