@@ -55,36 +55,17 @@ export default function HorizontalScrollRow({
   }
 
   return (
-    <div className={`mb-8 ${className}`}>
+    <div className={`mb-10 ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4 px-1">
         <div className="flex items-center gap-3 min-w-0">
-          {icon && <span className="text-xl flex-shrink-0">{icon}</span>}
+          {icon && <span className="text-2xl flex-shrink-0">{icon}</span>}
           <div className="min-w-0">
             <h3 className="text-lg font-bold text-gray-900 truncate">{title}</h3>
             {subtitle && <p className="text-xs text-gray-500 truncate">{subtitle}</p>}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-          {/* Desktop scroll arrows */}
-          <div className="hidden md:flex items-center gap-1">
-            <button
-              onClick={() => scroll('left')}
-              disabled={!canScrollLeft}
-              className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-default transition-all"
-              aria-label="Scroll left"
-            >
-              <FaChevronLeft className="text-xs" />
-            </button>
-            <button
-              onClick={() => scroll('right')}
-              disabled={!canScrollRight}
-              className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-default transition-all"
-              aria-label="Scroll right"
-            >
-              <FaChevronRight className="text-xs" />
-            </button>
-          </div>
           {seeAllHref && (
             <Link
               href={seeAllHref}
@@ -96,13 +77,37 @@ export default function HorizontalScrollRow({
         </div>
       </div>
 
-      {/* Scrollable Row */}
-      <div
-        ref={scrollRef}
-        className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
-        style={{ scrollbarWidth: 'thin' }}
-      >
-        {children}
+      {/* Carousel container */}
+      <div className="relative group">
+        {/* Left arrow */}
+        {canScrollLeft && (
+          <button
+            onClick={() => scroll('left')}
+            className="hidden md:flex absolute -left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-gray-200 items-center justify-center text-gray-600 hover:bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Scroll left"
+          >
+            <FaChevronLeft className="text-sm" />
+          </button>
+        )}
+
+        {/* Scrollable Row — hidden scrollbar */}
+        <div
+          ref={scrollRef}
+          className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-1 scrollbar-hide"
+        >
+          {children}
+        </div>
+
+        {/* Right arrow */}
+        {canScrollRight && (
+          <button
+            onClick={() => scroll('right')}
+            className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-gray-200 items-center justify-center text-gray-600 hover:bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Scroll right"
+          >
+            <FaChevronRight className="text-sm" />
+          </button>
+        )}
       </div>
     </div>
   )

@@ -18,11 +18,13 @@ html, body {
 }
 
 /* Hide scrollbar but keep scroll functionality */
-.scrollbar-hidden {
+.scrollbar-hidden,
+.scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-.scrollbar-hidden::-webkit-scrollbar {
+.scrollbar-hidden::-webkit-scrollbar,
+.scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
 

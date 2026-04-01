@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import * as FaIcons from 'react-icons/fa'
-import { FaUserMd, FaSearch } from 'react-icons/fa'
+import { FaUserMd } from 'react-icons/fa'
 import HorizontalScrollRow from '@/components/shared/HorizontalScrollRow'
 
 interface ProviderSpecialty {
@@ -27,21 +27,71 @@ function resolveIcon(iconName: string) {
   return (FaIcons as Record<string, React.ComponentType<{ className?: string }>>)[iconName] || FaUserMd
 }
 
-// Map hex colors to Tailwind bg classes for specialty cards
-function colorToCardStyle(hex: string): { bg: string; text: string; border: string } {
-  const map: Record<string, { bg: string; text: string; border: string }> = {
-    '#0C6780': { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
-    '#001E40': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-    '#22c55e': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
-    '#8b5cf6': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
-    '#ec4899': { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
-    '#ef4444': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-    '#f97316': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
-    '#6366f1': { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
-    '#14b8a6': { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
-    '#0ea5e9': { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
+// Comprehensive emoji map for medical specialties
+const SPECIALTY_EMOJI: Record<string, string> = {
+  // Doctor specialties
+  'General Practice': '🩺', 'Family Medicine': '👨‍👩‍👧‍👦', 'Internal Medicine': '🫀',
+  'Cardiology': '❤️', 'Dermatology': '🧴', 'Endocrinology': '🦠',
+  'Gastroenterology': '🫃', 'Geriatrics': '👴', 'Gynecology': '🤰',
+  'Neurology': '🧠', 'Oncology': '🎗️', 'Ophthalmology': '👁️',
+  'Orthopedics': '🦴', 'Pediatrics': '👶', 'Psychiatry': '🧘',
+  'Psychology': '💭', 'Pulmonology': '🫁', 'Radiology': '📡',
+  'Rheumatology': '🦵', 'Urology': '🏥', 'Anesthesiology': '💉',
+  'Pathology': '🔬', 'Sports Medicine': '⚽', 'Preventive Medicine': '🛡️',
+  'Sexual Health': '💕',
+  // Nurse specialties
+  'General Nursing': '💊', 'ICU / Critical Care': '🚨', 'Wound Care': '🩹',
+  'Midwifery': '🤱', 'Pediatric Nursing': '👧', 'Geriatric Nursing': '🧓',
+  'Mental Health Nursing': '🧠', 'Oncology Nursing': '🎗️',
+  'Community Health': '🏘️', 'Home Care': '🏠',
+  // Childcare specialties
+  'Newborn Care': '👶', 'Toddler Care': '🧒', 'After-School': '📚',
+  'Special Needs': '♿', 'Overnight Care': '🌙',
+  // Pharmacist specialties
+  'Clinical Pharmacy': '💊', 'Hospital Pharmacy': '🏥', 'Geriatric Pharmacy': '💊',
+  'Oncology Pharmacy': '🎗️', 'Pediatric Pharmacy': '🧒',
+  // Lab specialties
+  'Hematology': '🩸', 'Microbiology': '🦠', 'Clinical Chemistry': '🧪',
+  'Histology': '🔬', 'Immunology': '🛡️', 'Molecular Biology': '🧬',
+  // Emergency specialties
+  'Paramedic': '🚑', 'EMT-Basic': '🚑', 'EMT-Intermediate': '🚑',
+  'Critical Care Transport': '🚁', 'Wilderness Rescue': '⛰️',
+  // Caregiver specialties
+  'Elder Care': '👴', 'Disability Care': '♿', 'Dementia Care': '🧠',
+  'Post-Surgery Care': '🩹', 'Palliative Care': '🕊️',
+  // Physiotherapy specialties
+  'Orthopedic': '🦴', 'Neurological': '🧠', 'Sports': '🏃',
+  'Pediatric': '👧', 'Geriatric': '🧓', 'Cardiopulmonary': '🫁',
+  // Dentist specialties
+  'General Dentistry': '🦷', 'Orthodontics': '😁', 'Periodontics': '🪥',
+  'Endodontics': '🦷', 'Oral Surgery': '🏥', 'Cosmetic Dentistry': '✨',
+  'Pediatric Dentistry': '👧',
+  // Optometrist specialties
+  'General Eye Care': '👓', 'Contact Lenses': '🔵', 'Pediatric Eye Care': '👧',
+  'Low Vision': '🔍', 'Sports Vision': '🥽',
+  // Nutritionist specialties
+  'Clinical Nutrition': '🥗', 'Sports Nutrition': '💪', 'Weight Management': '⚖️',
+  'Pediatric Nutrition': '🍎', 'Diabetes Nutrition': '🩸', 'Prenatal Nutrition': '🤰',
+}
+
+function getSpecialtyEmoji(name: string): string {
+  return SPECIALTY_EMOJI[name] || '🏥'
+}
+
+function colorToCardStyle(hex: string): { bg: string; text: string; border: string; accent: string } {
+  const map: Record<string, { bg: string; text: string; border: string; accent: string }> = {
+    '#0C6780': { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', accent: 'bg-teal-100' },
+    '#001E40': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', accent: 'bg-blue-100' },
+    '#22c55e': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', accent: 'bg-green-100' },
+    '#8b5cf6': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', accent: 'bg-purple-100' },
+    '#ec4899': { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200', accent: 'bg-pink-100' },
+    '#ef4444': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', accent: 'bg-red-100' },
+    '#f97316': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', accent: 'bg-orange-100' },
+    '#6366f1': { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', accent: 'bg-indigo-100' },
+    '#14b8a6': { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', accent: 'bg-teal-100' },
+    '#0ea5e9': { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', accent: 'bg-sky-100' },
   }
-  return map[hex] || { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' }
+  return map[hex] || { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', accent: 'bg-gray-100' }
 }
 
 export default function ProviderMarketplace() {
@@ -53,7 +103,6 @@ export default function ProviderMarketplace() {
       .then(r => r.json())
       .then(json => {
         if (json.success && json.data) {
-          // Only show roles that have specialties
           setRoles(json.data.filter((r: ProviderRole) => r.specialties?.length > 0))
         }
       })
@@ -69,11 +118,11 @@ export default function ProviderMarketplace() {
             <div className="h-8 bg-gray-200 rounded w-64 mb-2" />
             <div className="h-4 bg-gray-100 rounded w-96 mb-8" />
             {[1, 2, 3].map(i => (
-              <div key={i} className="mb-8">
+              <div key={i} className="mb-10">
                 <div className="h-5 bg-gray-200 rounded w-32 mb-4" />
-                <div className="flex gap-3">
-                  {[1, 2, 3, 4, 5].map(j => (
-                    <div key={j} className="w-36 h-24 bg-gray-100 rounded-xl flex-shrink-0" />
+                <div className="flex gap-4">
+                  {[1, 2, 3, 4].map(j => (
+                    <div key={j} className="w-48 h-36 bg-gray-100 rounded-2xl flex-shrink-0" />
                   ))}
                 </div>
               </div>
@@ -108,9 +157,13 @@ export default function ProviderMarketplace() {
                 <Link
                   key={spec.name}
                   href={`/search/${role.slug}?specialty=${encodeURIComponent(spec.name)}`}
-                  className={`flex-shrink-0 snap-start w-40 sm:w-44 p-4 rounded-xl border ${style.border} ${style.bg} hover:shadow-md transition-all group`}
+                  className={`flex-shrink-0 snap-start w-48 sm:w-52 p-5 rounded-2xl border ${style.border} ${style.bg} hover:shadow-lg hover:scale-[1.02] transition-all group`}
                 >
-                  <div className={`text-sm font-semibold ${style.text} group-hover:underline mb-1 line-clamp-2`}>
+                  {/* Emoji icon */}
+                  <div className={`w-12 h-12 rounded-xl ${style.accent} flex items-center justify-center text-2xl mb-3`}>
+                    {getSpecialtyEmoji(spec.name)}
+                  </div>
+                  <div className={`text-sm font-bold ${style.text} group-hover:underline mb-1 line-clamp-2`}>
                     {spec.name}
                   </div>
                   {spec.description && (
