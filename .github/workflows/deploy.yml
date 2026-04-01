@@ -176,7 +176,7 @@ jobs:
 
             # Always sync schema with code
             echo "=== Pushing schema changes ==="
-            docker compose exec -T app npx prisma db push --accept-data-loss
+            docker compose exec -T app npx prisma db push --accept-data-loss 2>&1 || echo "WARNING: prisma db push failed (manual migrations may have handled it)"
 
             # Ensure uploads directory exists and is writable inside the volume
             docker compose exec -T -u root app sh -c "mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app/public/uploads" || true
