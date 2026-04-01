@@ -50,7 +50,7 @@ export function useDynamicSearchItems(basePath: string): SidebarItem[] {
             icon: IconComponent,
             color: 'text-gray-600',
             bgColor: 'bg-gray-50',
-            href: `${basePath}/search/${role.slug}`,
+            href: `/search/${role.slug}`,
           })
         }
 
@@ -61,7 +61,7 @@ export function useDynamicSearchItems(basePath: string): SidebarItem[] {
           icon: FaCapsules,
           color: 'text-green-600',
           bgColor: 'bg-green-50',
-          href: `${basePath}/search/health-shop`,
+          href: `/search/health-shop`,
         })
 
         setItems(result)
