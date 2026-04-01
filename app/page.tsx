@@ -3,6 +3,7 @@ import HeroSection from '@/components/home/HeroSection'
 import StatsSection from '@/components/home/StatsSection'
 import ProviderMarketplace from '@/components/home/ProviderMarketplace'
 import HealthShopMarketplace from '@/components/home/HealthShopMarketplace'
+import CommunityPosts from '@/components/home/CommunityPosts'
 import WhyChooseSection from '@/components/home/WhyChooseSection'
 import FaqSection from '@/components/home/FaqSection'
 import LandingPageContent from '@/components/home/LandingPageContent'
@@ -54,11 +55,12 @@ export default async function HomePage() {
  <StatsSection key="stats" />,
  <ProviderMarketplace key="providers" />,
  <HealthShopMarketplace key="shop" />,
+ <CommunityPosts key="community" />,
  <WhyChooseSection key="why" title={whyChooseContent?.title} subtitle={whyChooseContent?.subtitle} items={whyChooseContent?.items} />,
  <FaqSection key="faq" />,
  ]
 
- const labels = ['Welcome', 'Our Impact', 'Providers', 'Health Shop', 'Why MediWyz', 'FAQ']
+ const labels = ['Welcome', 'Our Impact', 'Providers', 'Health Shop', 'Community', 'Why MediWyz', 'FAQ']
 
  return (
  <LandingPageContent sections={sections} labels={labels} />

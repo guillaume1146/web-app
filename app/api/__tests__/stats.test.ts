@@ -3,15 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // Mock Prisma before importing the route
 vi.mock('@/lib/db', () => ({
   default: {
-    user: {
-      count: vi.fn(),
-    },
-    appointment: {
-      count: vi.fn(),
-    },
-    doctorProfile: {
-      findMany: vi.fn(),
-    },
+    user: { count: vi.fn() },
+    appointment: { count: vi.fn() },
+    region: { count: vi.fn() },
+    providerSpecialty: { count: vi.fn() },
+    providerInventoryItem: { count: vi.fn() },
   },
 }))
 
@@ -25,14 +21,12 @@ describe('GET /api/stats', () => {
 
   it('returns correct structure with all four stats', async () => {
     vi.mocked(prisma.user.count)
-      .mockResolvedValueOnce(15) // doctorCount
-      .mockResolvedValueOnce(200) // patientCount
+      .mockResolvedValueOnce(25)   // providerCount
+      .mockResolvedValueOnce(200)  // patientCount
     vi.mocked(prisma.appointment.count).mockResolvedValue(350)
-    vi.mocked(prisma.doctorProfile.findMany).mockResolvedValue([
-      { clinicAffiliation: 'Port Louis' },
-      { clinicAffiliation: 'Curepipe' },
-      { clinicAffiliation: 'Quatre Bornes' },
-    ] as never)
+    vi.mocked(prisma.region.count).mockResolvedValue(6)
+    vi.mocked(prisma.providerSpecialty.count).mockResolvedValue(136)
+    vi.mocked(prisma.providerInventoryItem.count).mockResolvedValue(76)
 
     const res = await GET()
     const data = await res.json()
@@ -41,55 +35,65 @@ describe('GET /api/stats', () => {
     expect(data.success).toBe(true)
     expect(data.data).toHaveLength(4)
 
-    // Values are real DB counts — no floor values
     expect(data.data[0]).toEqual({
-      number: 15,
-      label: 'Qualified Doctors',
+      number: 25,
+      label: 'Healthcare Providers',
       color: 'text-blue-500',
     })
     expect(data.data[1]).toEqual({
       number: 200,
-      label: 'Happy Patients',
+      label: 'Registered Patients',
       color: 'text-green-500',
     })
     expect(data.data[2]).toEqual({
-      number: 350,
-      label: 'Consultations',
+      number: 136,
+      label: 'Medical Specialties',
       color: 'text-purple-500',
     })
     expect(data.data[3]).toEqual({
-      number: 3,
-      label: 'Cities Covered',
+      number: 76,
+      label: 'Health Products',
       color: 'text-orange-500',
     })
   })
 
-  it('queries doctors with active status filter', async () => {
+  it('counts providers excluding non-provider roles', async () => {
     vi.mocked(prisma.user.count).mockResolvedValue(0)
     vi.mocked(prisma.appointment.count).mockResolvedValue(0)
-    vi.mocked(prisma.doctorProfile.findMany).mockResolvedValue([])
+    vi.mocked(prisma.region.count).mockResolvedValue(0)
+    vi.mocked(prisma.providerSpecialty.count).mockResolvedValue(0)
+    vi.mocked(prisma.providerInventoryItem.count).mockResolvedValue(0)
 
     await GET()
 
-    // First call is for doctors (active only)
+    // First user.count call is for providers (excludes PATIENT, REGIONAL_ADMIN, etc.)
     expect(prisma.user.count).toHaveBeenCalledWith({
-      where: { userType: 'DOCTOR', accountStatus: 'active' },
+      where: {
+        userType: { notIn: ['PATIENT', 'REGIONAL_ADMIN', 'CORPORATE_ADMIN', 'INSURANCE_REP', 'REFERRAL_PARTNER'] },
+        accountStatus: 'active',
+      },
     })
-    // Second call is for patients (all statuses)
+    // Second call is for patients
     expect(prisma.user.count).toHaveBeenCalledWith({
       where: { userType: 'PATIENT' },
     })
   })
 
-  it('returns 0 for city count when no cities found', async () => {
+  it('counts only active specialties and in-stock products', async () => {
     vi.mocked(prisma.user.count).mockResolvedValue(0)
     vi.mocked(prisma.appointment.count).mockResolvedValue(0)
-    vi.mocked(prisma.doctorProfile.findMany).mockResolvedValue([])
+    vi.mocked(prisma.region.count).mockResolvedValue(0)
+    vi.mocked(prisma.providerSpecialty.count).mockResolvedValue(0)
+    vi.mocked(prisma.providerInventoryItem.count).mockResolvedValue(0)
 
-    const res = await GET()
-    const data = await res.json()
+    await GET()
 
-    expect(data.data[3].number).toBe(0)
+    expect(prisma.providerSpecialty.count).toHaveBeenCalledWith({
+      where: { isActive: true },
+    })
+    expect(prisma.providerInventoryItem.count).toHaveBeenCalledWith({
+      where: { isActive: true, inStock: true },
+    })
   })
 
   it('returns 500 with error on database failure', async () => {
@@ -103,17 +107,16 @@ describe('GET /api/stats', () => {
     expect(data.message).toBe('Failed to fetch statistics')
   })
 
-  it('queries distinct clinic affiliations for city count', async () => {
+  it('returns zeros when database is empty', async () => {
     vi.mocked(prisma.user.count).mockResolvedValue(0)
     vi.mocked(prisma.appointment.count).mockResolvedValue(0)
-    vi.mocked(prisma.doctorProfile.findMany).mockResolvedValue([])
+    vi.mocked(prisma.region.count).mockResolvedValue(0)
+    vi.mocked(prisma.providerSpecialty.count).mockResolvedValue(0)
+    vi.mocked(prisma.providerInventoryItem.count).mockResolvedValue(0)
 
-    await GET()
+    const res = await GET()
+    const data = await res.json()
 
-    expect(prisma.doctorProfile.findMany).toHaveBeenCalledWith({
-      where: { clinicAffiliation: { not: '' } },
-      select: { clinicAffiliation: true },
-      distinct: ['clinicAffiliation'],
-    })
+    expect(data.data.every((s: { number: number }) => s.number === 0)).toBe(true)
   })
 })

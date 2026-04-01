@@ -5,6 +5,7 @@ import StatsSection from '@/components/home/StatsSection'
 import ProviderMarketplace from '@/components/home/ProviderMarketplace'
 import HealthShopMarketplace from '@/components/home/HealthShopMarketplace'
 import DetailedServicesSection from '@/components/home/DetailedServicesSection'
+import CommunityPosts from '@/components/home/CommunityPosts'
 import WhyChooseSection from '@/components/home/WhyChooseSection'
 import ProfessionalBanner from '@/components/shared/ProfessionalBanner'
 import { HeroContent, HeroSlide } from '@/types'
@@ -96,6 +97,7 @@ export default async function CountryHomePage({
  <StatsSection />
  <ProviderMarketplace />
  <HealthShopMarketplace />
+ <CommunityPosts />
  <DetailedServicesSection content={detailedContent} />
  <WhyChooseSection
  title={whyChooseContent?.title}

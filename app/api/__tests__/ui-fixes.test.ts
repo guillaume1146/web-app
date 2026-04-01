@@ -7,6 +7,9 @@ vi.mock('@/lib/db', () => ({
     user: { count: vi.fn(), findUnique: vi.fn() },
     appointment: { count: vi.fn() },
     doctorProfile: { findMany: vi.fn() },
+    region: { count: vi.fn() },
+    providerSpecialty: { count: vi.fn() },
+    providerInventoryItem: { count: vi.fn() },
     userWallet: { findUnique: vi.fn(), update: vi.fn() },
     walletTransaction: { deleteMany: vi.fn() },
     $transaction: vi.fn(),
@@ -30,31 +33,27 @@ import prisma from '@/lib/db'
 describe('Fix 1: Stats API', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns meaningful numbers even with small DB counts', async () => {
-    // Import dynamically after mocks
+  it('returns meaningful numbers from DB counts', async () => {
     const { GET } = await import('../stats/route')
 
     vi.mocked(prisma.user.count)
-      .mockResolvedValueOnce(3)   // doctors
-      .mockResolvedValueOnce(5)   // patients
-    vi.mocked(prisma.appointment.count).mockResolvedValue(13)
-    vi.mocked(prisma.doctorProfile.findMany).mockResolvedValue([
-      { clinicAffiliation: 'Port Louis' },
-      { clinicAffiliation: 'Curepipe' },
-    ] as never)
+      .mockResolvedValueOnce(15)   // providers
+      .mockResolvedValueOnce(50)   // patients
+    vi.mocked(prisma.appointment.count).mockResolvedValue(100)
+    vi.mocked(prisma.region?.count ?? vi.fn()).mockResolvedValue(6)
+    vi.mocked(prisma.providerSpecialty?.count ?? vi.fn()).mockResolvedValue(136)
+    vi.mocked(prisma.providerInventoryItem?.count ?? vi.fn()).mockResolvedValue(76)
 
     const res = await GET()
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.success).toBe(true)
+    expect(data.data).toHaveLength(4)
 
-    const stats = data.data
-    const doctorStat = stats.find((s: { label: string }) => s.label.includes('Doctor'))
-    const patientStat = stats.find((s: { label: string }) => s.label.includes('Patient'))
-
-    // Should return real DB counts (mocked: 3 doctors, 5 patients)
-    expect(doctorStat.number).toBe(3)
-    expect(patientStat.number).toBe(5)
+    const providerStat = data.data.find((s: { label: string }) => s.label.includes('Provider'))
+    const patientStat = data.data.find((s: { label: string }) => s.label.includes('Patient'))
+    expect(providerStat.number).toBe(15)
+    expect(patientStat.number).toBe(50)
   })
 
   it('returns 500 error when DB query fails', async () => {
