@@ -28,9 +28,7 @@ export default function ConditionalNavbar() {
  const isDashboard = DASHBOARD_PREFIXES.some((p) => pathname.startsWith(p))
  || DASHBOARD_PREFIXES.some((p) => pathname === p.slice(0, -1))
 
- // Hide public navbar on search pages when user is logged in (dashboard sidebar takes over)
- const isSearchWithDashboard = pathname.startsWith('/search') && !!user
-
- if (isDashboard || isSearchWithDashboard) return null
+ // Search pages always show navbar (they're public, no sidebar)
+ if (isDashboard) return null
  return <Navbar />
 }

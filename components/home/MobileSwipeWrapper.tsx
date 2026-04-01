@@ -89,8 +89,7 @@ export default function MobileSwipeWrapper({ children, sectionLabels }: MobileSw
  {children.map((child, i) => (
  <div
  key={i}
- className="w-full flex-shrink-0 h-full overflow-hidden px-2 pb-14"
- style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', maxHeight: '100%' }}
+ className="w-full flex-shrink-0 h-full overflow-y-auto overflow-x-hidden px-2 pb-16 pt-2 scrollbar-hide"
  >
  {child}
  </div>
