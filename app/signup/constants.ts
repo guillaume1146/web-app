@@ -74,14 +74,7 @@ export const userTypes: UserType[] = [
     description: 'Health Insurance Representative',
     color: 'bg-indigo-100 text-indigo-700 border-indigo-300'
   },
-  // NEW USER TYPES
-  {
-    id: 'corporate',
-    label: 'Corporate Administrator',
-    icon: FaBuilding,
-    description: 'Corporate wellness program management',
-    color: 'bg-slate-100 text-slate-700 border-slate-300'
-  },
+  // Corporate Admin removed from signup — any user can create a company page from their dashboard
   {
     id: 'referral-partner',
     label: 'Referral Partner',

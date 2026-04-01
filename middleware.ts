@@ -85,7 +85,7 @@ export async function middleware(request: NextRequest) {
     '/network', '/booking-requests', '/bookings', '/my-consultations', '/my-nurse-services',
     '/my-childcare', '/my-emergency', '/my-health-records', '/my-lab-results',
     '/my-insurance', '/my-prescriptions', '/posts', '/reviews',
-    '/pharmacy', '/book']
+    '/pharmacy', '/book', '/my-company']
   const isCleanDashboardRoute = dashboardPages.some(p => pathname === p || pathname.startsWith(p + '/'))
 
   if (isCleanDashboardRoute) {
@@ -241,5 +241,6 @@ export const config = {
     '/management/:path*',
     '/pharmacy/:path*',
     '/book/:path*',
+    '/my-company/:path*',
   ]
 }

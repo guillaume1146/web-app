@@ -1,0 +1,393 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { getUserId } from '@/hooks/useUser'
+import {
+  FaBuilding, FaUsers, FaIdCard, FaIndustry, FaPlus,
+  FaCheckCircle, FaClock, FaEnvelope, FaSearch, FaUserPlus,
+} from 'react-icons/fa'
+
+interface Company {
+  id: string
+  companyName: string
+  registrationNumber: string | null
+  industry: string | null
+  employeeCount: number
+}
+
+interface Employee {
+  id: string
+  status: string
+  department: string | null
+  joinedAt: string
+  user: { id: string; firstName: string; lastName: string; email: string; userType: string }
+}
+
+interface Plan {
+  id: string
+  name: string
+  description: string | null
+  type: string
+  price: number
+  currency: string
+  billingCycle: string
+}
+
+export default function MyCompanyPage() {
+  const [company, setCompany] = useState<Company | null>(null)
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviting, setInviting] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Form state for company creation
+  const [form, setForm] = useState({
+    companyName: '',
+    registrationNumber: '',
+    industry: '',
+    employeeCount: 0,
+  })
+
+  const userId = getUserId()
+
+  const fetchCompany = useCallback(async () => {
+    if (!userId) return
+    try {
+      // Check if user has a company
+      const res = await fetch(`/api/corporate/${userId}/dashboard`, { credentials: 'include' })
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success && json.data?.company) {
+          setCompany(json.data.company)
+          // Fetch employees
+          const empRes = await fetch(`/api/corporate/${userId}/members`, { credentials: 'include' })
+          if (empRes.ok) {
+            const empJson = await empRes.json()
+            if (empJson.success) setEmployees(empJson.data || [])
+          }
+        }
+      }
+    } catch {
+      // No company yet
+    } finally {
+      setLoading(false)
+    }
+  }, [userId])
+
+  const fetchPlans = useCallback(async () => {
+    try {
+      const res = await fetch('/api/subscriptions?type=corporate')
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success) setPlans(json.data || [])
+      }
+    } catch {
+      // silent
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchCompany()
+    fetchPlans()
+  }, [fetchCompany, fetchPlans])
+
+  const handleCreate = async () => {
+    if (!form.companyName.trim()) {
+      setMessage({ type: 'error', text: 'Company name is required' })
+      return
+    }
+    setCreating(true)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/corporate/companies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(form),
+      })
+      const json = await res.json()
+      if (json.success) {
+        setCompany(json.data)
+        setMessage({ type: 'success', text: 'Company page created successfully!' })
+      } else {
+        setMessage({ type: 'error', text: json.message || 'Failed to create company' })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Network error. Please try again.' })
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return
+    setInviting(true)
+    setMessage(null)
+    try {
+      const res = await fetch(`/api/corporate/${userId}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: inviteEmail.trim() }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        setMessage({ type: 'success', text: `Invitation sent to ${inviteEmail}` })
+        setInviteEmail('')
+        fetchCompany()
+      } else {
+        setMessage({ type: 'error', text: json.message || 'Failed to invite' })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Network error' })
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-48 mb-4" />
+          <div className="h-4 bg-gray-100 rounded w-96 mb-8" />
+          <div className="h-64 bg-gray-100 rounded-2xl" />
+        </div>
+      </div>
+    )
+  }
+
+  // ─── No company yet: show creation form ─────────────────────────
+  if (!company) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <div className="flex items-center gap-3 mb-2">
+          <FaBuilding className="text-2xl text-[#0C6780]" />
+          <h1 className="text-2xl font-bold text-gray-900">Create a Company Page</h1>
+        </div>
+        <p className="text-gray-600 mb-8">
+          Create a company page to manage employee wellness programs, enroll team members in corporate health plans, and post updates as your organization.
+        </p>
+
+        {message && (
+          <div className={`p-4 rounded-xl mb-6 ${message.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+            {message.text}
+          </div>
+        )}
+
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              <FaBuilding className="inline mr-1.5 text-gray-400" /> Company Name *
+            </label>
+            <input
+              type="text"
+              value={form.companyName}
+              onChange={e => setForm(f => ({ ...f, companyName: e.target.value }))}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0C6780] focus:border-transparent outline-none"
+              placeholder="e.g. MediCorp Mauritius Ltd"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              <FaIdCard className="inline mr-1.5 text-gray-400" /> Company Registration Number
+            </label>
+            <input
+              type="text"
+              value={form.registrationNumber}
+              onChange={e => setForm(f => ({ ...f, registrationNumber: e.target.value }))}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0C6780] focus:border-transparent outline-none"
+              placeholder="e.g. BRN-2024-00123"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                <FaIndustry className="inline mr-1.5 text-gray-400" /> Industry
+              </label>
+              <select
+                value={form.industry}
+                onChange={e => setForm(f => ({ ...f, industry: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0C6780] focus:border-transparent outline-none bg-white"
+              >
+                <option value="">Select industry</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Technology">Technology</option>
+                <option value="Finance">Finance</option>
+                <option value="Education">Education</option>
+                <option value="Manufacturing">Manufacturing</option>
+                <option value="Retail">Retail</option>
+                <option value="Hospitality">Hospitality</option>
+                <option value="Government">Government</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                <FaUsers className="inline mr-1.5 text-gray-400" /> Number of Employees
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={form.employeeCount}
+                onChange={e => setForm(f => ({ ...f, employeeCount: parseInt(e.target.value) || 0 }))}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0C6780] focus:border-transparent outline-none"
+              />
+            </div>
+          </div>
+
+          {plans.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Available Corporate Plans</h3>
+              <div className="grid gap-3">
+                {plans.map(plan => (
+                  <div key={plan.id} className="p-4 border border-gray-200 rounded-xl bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{plan.name}</h4>
+                        {plan.description && <p className="text-xs text-gray-500">{plan.description}</p>}
+                      </div>
+                      <div className="text-right">
+                        <span className="text-lg font-bold text-[#0C6780]">{plan.currency} {plan.price}</span>
+                        <span className="text-xs text-gray-400">/{plan.billingCycle}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">You can enroll employees in a plan after creating your company page.</p>
+            </div>
+          )}
+
+          <button
+            onClick={handleCreate}
+            disabled={creating || !form.companyName.trim()}
+            className="w-full py-3 bg-[#0C6780] text-white font-semibold rounded-xl hover:bg-[#0a5568] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          >
+            {creating ? (
+              <><span className="animate-spin">&#9696;</span> Creating...</>
+            ) : (
+              <><FaPlus /> Create Company Page</>
+            )}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── Company exists: show management dashboard ──────────────────
+  const activeEmployees = employees.filter(e => e.status === 'active')
+  const pendingEmployees = employees.filter(e => e.status === 'pending')
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-12 h-12 rounded-xl bg-[#0C6780]/10 flex items-center justify-center">
+          <FaBuilding className="text-xl text-[#0C6780]" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{company.companyName}</h1>
+          <p className="text-sm text-gray-500">
+            {company.industry && `${company.industry} · `}
+            {company.registrationNumber && `Reg: ${company.registrationNumber}`}
+          </p>
+        </div>
+      </div>
+
+      {message && (
+        <div className={`p-4 rounded-xl mb-6 ${message.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+          {message.text}
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+            <FaUsers className="text-[#0C6780]" /> Total Employees
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{activeEmployees.length}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+            <FaClock className="text-amber-500" /> Pending
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{pendingEmployees.length}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+            <FaCheckCircle className="text-green-500" /> Active
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{activeEmployees.length}</p>
+        </div>
+      </div>
+
+      {/* Invite employee */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-8">
+        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <FaUserPlus className="text-[#0C6780]" /> Invite Employee
+        </h2>
+        <p className="text-sm text-gray-500 mb-4">Search by email to invite someone to your company. They will receive a notification to accept.</p>
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleInvite()}
+              className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0C6780] focus:border-transparent outline-none"
+              placeholder="Enter employee email address"
+            />
+          </div>
+          <button
+            onClick={handleInvite}
+            disabled={inviting || !inviteEmail.trim()}
+            className="px-5 py-2.5 bg-[#0C6780] text-white font-medium rounded-xl hover:bg-[#0a5568] disabled:opacity-50 transition-colors flex items-center gap-2"
+          >
+            <FaEnvelope className="text-sm" />
+            {inviting ? 'Sending...' : 'Invite'}
+          </button>
+        </div>
+      </div>
+
+      {/* Employee list */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <FaUsers className="text-[#0C6780]" /> Employees ({employees.length})
+        </h2>
+        {employees.length === 0 ? (
+          <p className="text-gray-400 text-center py-8">No employees yet. Invite team members using their email address above.</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {employees.map(emp => (
+              <div key={emp.id} className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-bold text-gray-600">
+                    {emp.user.firstName[0]}{emp.user.lastName[0]}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">{emp.user.firstName} {emp.user.lastName}</p>
+                    <p className="text-xs text-gray-400">{emp.user.email}</p>
+                  </div>
+                </div>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                  emp.status === 'active' ? 'bg-green-100 text-green-700' :
+                  emp.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                  'bg-gray-100 text-gray-500'
+                }`}>
+                  {emp.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

@@ -83,9 +83,9 @@ describe('AccountTypeStep: dynamic role fetching', () => {
     expect(userTypes[0].id).toBe('patient')
   })
 
-  it('static fallback has all 16 user types', async () => {
+  it('static fallback has 15 user types (corporate admin removed)', async () => {
     const { userTypes } = await import('../constants')
-    expect(userTypes).toHaveLength(16)
+    expect(userTypes).toHaveLength(15)
 
     const ids = userTypes.map(t => t.id)
     expect(ids).toContain('patient')

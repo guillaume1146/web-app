@@ -19,7 +19,7 @@ const DASHBOARD_PREFIXES = [
  '/my-consultations', '/my-nurse-services', '/my-childcare',
  '/my-emergency', '/my-health-records', '/my-lab-results',
  '/my-insurance', '/my-prescriptions', '/roles', '/administration',
- '/pharmacy', '/book',
+ '/pharmacy', '/book', '/my-company',
 ]
 
 export default function ConditionalNavbar() {

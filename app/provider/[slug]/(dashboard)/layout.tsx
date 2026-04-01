@@ -7,6 +7,7 @@ import {
   FaHome, FaRss, FaBriefcaseMedical, FaMoneyBillWave, FaCubes,
   FaCogs, FaProjectDiagram, FaVideo, FaComments, FaRobot,
   FaHeartbeat, FaShieldAlt, FaUsersCog, FaSitemap, FaTag,
+  FaBuilding,
 } from 'react-icons/fa'
 import { getPatientHealthItems, getSearchItems } from '@/lib/dashboard/patientHealthItems'
 
@@ -23,6 +24,7 @@ function getAllSidebarItems(base: string): SidebarItem[] {
     { id: 'workflows', label: 'Workflows', labelKey: 'nav.workflows', icon: FaProjectDiagram, color: 'text-indigo-600', bgColor: 'bg-indigo-50', href: `${base}/workflows` },
     { id: 'video', label: 'Video Call', labelKey: 'nav.video', icon: FaVideo, color: 'text-teal-600', bgColor: 'bg-teal-50', href: `${base}/video` },
     { id: 'messages', label: 'Messages', labelKey: 'nav.messages', icon: FaComments, color: 'text-pink-600', bgColor: 'bg-pink-50', href: `${base}/messages` },
+    { id: 'my-company', label: 'My Company', labelKey: 'nav.myCompany', icon: FaBuilding, color: 'text-slate-600', bgColor: 'bg-slate-50', href: `${base}/my-company` },
     ...getPatientHealthItems(base),
     ...getSearchItems(base),
   ]
@@ -35,7 +37,7 @@ function getActiveSectionFromPath(pathname: string): string {
     feed: 'feed', practice: 'practice', billing: 'billing',
     services: 'services', inventory: 'inventory', workflows: 'workflows',
     video: 'video', messages: 'messages', 'ai-assistant': 'ai-assistant',
-    'my-health': 'my-health', administration: 'administration',
+    'my-health': 'my-health', 'my-company': 'my-company', administration: 'administration',
     roles: 'roles', network: 'network', profile: 'profile',
   }
   return map[page] || 'overview'

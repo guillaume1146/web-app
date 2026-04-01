@@ -79,7 +79,9 @@ export default function AccountTypeStep({ selectedUserType, onUserTypeChange }: 
       .then(r => r.json())
       .then(json => {
         if (json.success && json.data?.length > 0) {
-          const { types, docs } = mapAPIToUserTypes(json.data)
+          // Filter out CORPORATE_ADMIN — any user can create a company from their dashboard
+          const filtered = json.data.filter((r: RoleFromAPI) => r.code !== 'CORPORATE_ADMIN')
+          const { types, docs } = mapAPIToUserTypes(filtered)
           if (types.length > 0) {
             setUserTypes(types)
             setDocumentRequirements(prev => ({ ...prev, ...docs }))
