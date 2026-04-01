@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
           tags: true,
           imageUrl: true,
           likeCount: true,
+          companyId: true,
           createdAt: true,
           updatedAt: true,
           author: {
@@ -46,6 +47,12 @@ export async function GET(request: NextRequest) {
                   clinicAffiliation: true,
                 },
               },
+            },
+          },
+          company: {
+            select: {
+              id: true,
+              companyName: true,
             },
           },
           _count: {
@@ -74,20 +81,19 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/posts — Create post (doctors only)
+// POST /api/posts — Create post (any verified user, optionally as company)
 export async function POST(request: NextRequest) {
   const auth = validateRequest(request)
   if (!auth) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
 
   try {
-    // Verify the user is a verified doctor
     const user = await prisma.user.findUnique({
       where: { id: auth.sub },
       select: { userType: true, verified: true },
     })
 
-    if (!user || user.userType !== 'DOCTOR') {
-      return NextResponse.json({ success: false, message: 'Only doctors can create posts' }, { status: 403 })
+    if (!user) {
+      return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 })
     }
 
     if (!user.verified) {
@@ -103,9 +109,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Optional: post as company (LinkedIn-style)
+    let companyId: string | null = null
+    if (body.companyId) {
+      // Verify the user owns this company
+      const company = await prisma.corporateAdminProfile.findFirst({
+        where: { id: body.companyId, userId: auth.sub },
+      })
+      if (!company) {
+        return NextResponse.json({ success: false, message: 'You do not own this company page' }, { status: 403 })
+      }
+      companyId = company.id
+    }
+
     const post = await prisma.doctorPost.create({
       data: {
         authorId: auth.sub,
+        companyId,
         content: parsed.data.content.trim(),
         category: parsed.data.category || null,
         tags: Array.isArray(parsed.data.tags) ? parsed.data.tags : [],
@@ -118,6 +138,7 @@ export async function POST(request: NextRequest) {
         tags: true,
         imageUrl: true,
         likeCount: true,
+        companyId: true,
         isPublished: true,
         createdAt: true,
         updatedAt: true,
@@ -135,6 +156,12 @@ export async function POST(request: NextRequest) {
                 clinicAffiliation: true,
               },
             },
+          },
+        },
+        company: {
+          select: {
+            id: true,
+            companyName: true,
           },
         },
       },

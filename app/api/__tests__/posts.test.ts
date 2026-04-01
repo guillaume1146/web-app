@@ -91,15 +91,16 @@ describe('POST /api/posts', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns 403 for non-doctor user', async () => {
+  it('allows any verified user to create post (not just doctors)', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'patient', email: 'p@example.com' })
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ userType: 'PATIENT', verified: true } as never)
+    vi.mocked(prisma.doctorPost.create).mockResolvedValue({ id: 'p1', content: 'Post', authorId: 'user-1' } as never)
 
     const res = await createPost(
       createPostRequest('/api/posts', { content: 'New post', category: 'health' })
     )
 
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(201)
   })
 
   it('returns 201 for verified doctor', async () => {

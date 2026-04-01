@@ -444,6 +444,7 @@ model CorporateAdminProfile {
   registrationNumber String?
   employeeCount      Int?
   industry           String?
+  posts              DoctorPost[]
 
   @@index([userId])
 }
@@ -1455,6 +1456,8 @@ model DoctorPost {
   id          String        @id @default(uuid())
   authorId    String
   author      User          @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  companyId   String?
+  company     CorporateAdminProfile? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   content     String
   category    String?
   tags        String[]
@@ -1467,6 +1470,7 @@ model DoctorPost {
   likes       PostLike[]
 
   @@index([authorId])
+  @@index([companyId])
   @@index([createdAt])
   @@index([category])
   @@index([isPublished, createdAt])

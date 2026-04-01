@@ -11,6 +11,7 @@ interface PostCardProps {
  tags: string[]
  imageUrl?: string | null
  likeCount: number
+ companyId?: string | null
  createdAt: string
  author: {
  id: string
@@ -21,6 +22,7 @@ interface PostCardProps {
  verified: boolean
  doctorProfile?: { specialty: string[]; clinicAffiliation: string } | null
  }
+ company?: { id: string; companyName: string } | null
  _count: { comments: number }
  }
  currentUserId?: string
@@ -99,7 +101,7 @@ export default function PostCard({
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2 flex-wrap">
  <span className="font-semibold text-gray-900 text-sm sm:text-base">
- Dr. {post.author.firstName} {post.author.lastName}
+ {post.company ? post.company.companyName : `Dr. ${post.author.firstName} ${post.author.lastName}`}
  </span>
  {post.author.verified && (
  <FaCheckCircle className="text-blue-500 text-xs flex-shrink-0" title="Verified" />
@@ -108,9 +110,13 @@ export default function PostCard({
  {getRelativeTime(post.createdAt)}
  </span>
  </div>
- {specialty && (
+ {post.company ? (
+ <p className="text-gray-500 text-xs sm:text-sm truncate">
+ Posted by {post.author.firstName} {post.author.lastName}
+ </p>
+ ) : specialty ? (
  <p className="text-gray-500 text-xs sm:text-sm truncate">{specialty}</p>
- )}
+ ) : null}
  </div>
  </div>
 

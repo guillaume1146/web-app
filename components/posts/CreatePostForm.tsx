@@ -1,7 +1,13 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
-import { FaPaperPlane, FaTags, FaImage, FaTimes } from 'react-icons/fa'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { FaPaperPlane, FaTags, FaImage, FaTimes, FaBuilding } from 'react-icons/fa'
+import { getUserId } from '@/hooks/useUser'
+
+interface Company {
+ id: string
+ companyName: string
+}
 
 interface CreatePostFormProps {
  onPostCreated?: (post: Record<string, unknown>) => void
@@ -25,8 +31,24 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
  const [success, setSuccess] = useState(false)
  const [error, setError] = useState('')
  const [showOptions, setShowOptions] = useState(false)
+ const [postAsCompany, setPostAsCompany] = useState(false)
+ const [company, setCompany] = useState<Company | null>(null)
  const textareaRef = useRef<HTMLTextAreaElement>(null)
  const fileInputRef = useRef<HTMLInputElement>(null)
+ const userId = getUserId()
+
+ // Check if user has a company page
+ useEffect(() => {
+  if (!userId) return
+  fetch(`/api/corporate/${userId}/dashboard`, { credentials: 'include' })
+   .then(r => r.ok ? r.json() : null)
+   .then(json => {
+    if (json?.success && json.data?.company) {
+     setCompany(json.data.company)
+    }
+   })
+   .catch(() => {})
+ }, [userId])
 
  const autoResize = useCallback(() => {
  const el = textareaRef.current
@@ -94,11 +116,13 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
  const res = await fetch('/api/posts', {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
+ credentials: 'include',
  body: JSON.stringify({
  content: content.trim(),
  category: category || null,
  tags,
  imageUrl: imagePreview || undefined,
+ ...(postAsCompany && company ? { companyId: company.id } : {}),
  }),
  })
 
@@ -217,6 +241,23 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
  />
  </div>
  </>
+ )}
+
+ {/* Post as Company toggle */}
+ {company && showOptions && (
+ <button
+ type="button"
+ onClick={() => setPostAsCompany(!postAsCompany)}
+ className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+ postAsCompany
+ ? 'bg-[#0C6780]/10 text-[#0C6780] border border-[#0C6780]/20'
+ : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+ }`}
+ title={postAsCompany ? `Posting as ${company.companyName}` : 'Post as yourself'}
+ >
+ <FaBuilding className="text-[10px]" />
+ <span className="hidden sm:inline">{postAsCompany ? company.companyName : 'Company'}</span>
+ </button>
  )}
  </div>
 
