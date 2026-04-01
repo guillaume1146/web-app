@@ -43,11 +43,14 @@ export async function PATCH(
     if (typeof body.isActive === 'boolean') {
       data.isActive = body.isActive
     }
+    if (typeof body.icon === 'string') {
+      data.icon = body.icon.trim() || null
+    }
 
     const updated = await prisma.providerSpecialty.update({
       where: { id },
       data,
-      select: { id: true, providerType: true, name: true, description: true, isActive: true },
+      select: { id: true, providerType: true, name: true, description: true, icon: true, isActive: true },
     })
 
     return NextResponse.json({ success: true, data: updated })

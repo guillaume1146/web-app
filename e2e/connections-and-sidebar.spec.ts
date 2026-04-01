@@ -24,8 +24,8 @@ test.describe('T. Connections & Sidebar Search Links', () => {
     const searchSection = page.locator('text=/Search & Browse/i').first()
     await expect(searchSection).toBeVisible({ timeout: 30_000 })
 
-    // Check that Find Doctors link exists (sidebar uses /patient/search/doctors)
-    const findDoctors = page.locator('a[href="/patient/search/doctors"]').first()
+    // Check that Find Doctors link exists (sidebar uses /search/doctors)
+    const findDoctors = page.locator('a[href="/search/doctors"]').first()
     await expect(findDoctors).toBeVisible({ timeout: 10_000 })
   })
 
@@ -36,7 +36,7 @@ test.describe('T. Connections & Sidebar Search Links', () => {
     const searchSection = page.locator('text=/Search & Browse/i').first()
     await expect(searchSection).toBeVisible({ timeout: 30_000 })
 
-    const findNurses = page.locator('a[href="/doctor/search/nurses"]').first()
+    const findNurses = page.locator('a[href="/search/nurses"]').first()
     await expect(findNurses).toBeVisible({ timeout: 10_000 })
   })
 

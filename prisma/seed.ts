@@ -88,7 +88,7 @@ async function main() {
   // 0a. Doctor Posts (children before parents)
   await prisma.postLike.deleteMany()
   await prisma.postComment.deleteMany()
-  await prisma.doctorPost.deleteMany()
+  await prisma.post.deleteMany()
 
   // 0b. Wallets (children before parents)
   await prisma.walletTransaction.deleteMany()

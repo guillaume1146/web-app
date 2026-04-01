@@ -245,49 +245,49 @@ test.describe('Cross-Role Video Call — Video room and session flow', () => {
 test.describe('Cross-Role Search — All roles can find providers', () => {
   test('T16: Patient can search for doctors', async ({ page }) => {
     await loginAs(page, USERS.patient1)
-    await page.goto('/patient/search/doctors', { waitUntil: 'domcontentloaded' })
+    await page.goto('/search/doctors', { waitUntil: 'domcontentloaded' })
     const searchUI = page.locator('text=/doctor|find|search|specialist|result/i').first()
     await expect(searchUI).toBeVisible({ timeout: 15_000 })
   })
 
   test('T17: Patient can search for nurses', async ({ page }) => {
     await loginAs(page, USERS.patient1)
-    await page.goto('/patient/search/nurses', { waitUntil: 'domcontentloaded' })
+    await page.goto('/search/nurses', { waitUntil: 'domcontentloaded' })
     const searchUI = page.locator('text=/nurse|find|search|result/i').first()
     await expect(searchUI).toBeVisible({ timeout: 15_000 })
   })
 
   test('T18: Patient can search for childcare', async ({ page }) => {
     await loginAs(page, USERS.patient1)
-    await page.goto('/patient/search/childcare', { waitUntil: 'domcontentloaded' })
+    await page.goto('/search/childcare', { waitUntil: 'domcontentloaded' })
     const searchUI = page.locator('text=/child|nanny|care|find|search|result/i').first()
     await expect(searchUI).toBeVisible({ timeout: 15_000 })
   })
 
   test('T19: Patient can search for lab tests', async ({ page }) => {
     await loginAs(page, USERS.patient1)
-    await page.goto('/patient/search/lab', { waitUntil: 'domcontentloaded' })
+    await page.goto('/search/lab', { waitUntil: 'domcontentloaded' })
     const searchUI = page.locator('text=/lab|test|find|search|result/i').first()
     await expect(searchUI).toBeVisible({ timeout: 15_000 })
   })
 
   test('T20: Patient can search for medicines', async ({ page }) => {
     await loginAs(page, USERS.patient1)
-    await page.goto('/patient/search/medicines', { waitUntil: 'domcontentloaded' })
+    await page.goto('/search/medicines', { waitUntil: 'domcontentloaded' })
     const searchUI = page.locator('text=/medicine|pharmacy|find|search|result/i').first()
     await expect(searchUI).toBeVisible({ timeout: 15_000 })
   })
 
   test('T21: Doctor can also search for other doctors', async ({ page }) => {
     await loginAs(page, USERS.doctor1)
-    await page.goto('/doctor/search/doctors', { waitUntil: 'domcontentloaded' })
+    await page.goto('/search/doctors', { waitUntil: 'domcontentloaded' })
     const searchUI = page.locator('text=/doctor|find|search|specialist|result/i').first()
     await expect(searchUI).toBeVisible({ timeout: 15_000 })
   })
 
   test('T22: Nurse can search for doctors', async ({ page }) => {
     await loginAs(page, USERS.nurse1)
-    await page.goto('/nurse/search/doctors', { waitUntil: 'domcontentloaded' })
+    await page.goto('/search/doctors', { waitUntil: 'domcontentloaded' })
     const searchUI = page.locator('text=/doctor|find|search|specialist|result/i').first()
     await expect(searchUI).toBeVisible({ timeout: 15_000 })
   })

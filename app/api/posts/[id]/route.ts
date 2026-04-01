@@ -15,7 +15,7 @@ export async function GET(
   const { id } = await params
 
   try {
-    const post = await prisma.doctorPost.findUnique({
+    const post = await prisma.post.findUnique({
       where: { id },
       select: {
         id: true,
@@ -106,7 +106,7 @@ export async function PUT(
 
   try {
     // Verify ownership
-    const post = await prisma.doctorPost.findUnique({
+    const post = await prisma.post.findUnique({
       where: { id },
       select: { authorId: true },
     })
@@ -138,7 +138,7 @@ export async function PUT(
     if (tags !== undefined) updateData.tags = tags
     if (isPublished !== undefined) updateData.isPublished = isPublished
 
-    const updatedPost = await prisma.doctorPost.update({
+    const updatedPost = await prisma.post.update({
       where: { id },
       data: updateData,
       select: {
@@ -194,7 +194,7 @@ export async function DELETE(
 
   try {
     // Verify ownership
-    const post = await prisma.doctorPost.findUnique({
+    const post = await prisma.post.findUnique({
       where: { id },
       select: { authorId: true },
     })
@@ -207,7 +207,7 @@ export async function DELETE(
       return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
     }
 
-    await prisma.doctorPost.delete({ where: { id } })
+    await prisma.post.delete({ where: { id } })
 
     return NextResponse.json({ success: true })
   } catch (error) {

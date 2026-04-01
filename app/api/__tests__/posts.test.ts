@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // Mock dependencies before importing routes
 vi.mock('@/lib/db', () => ({
   default: {
-    doctorPost: { findMany: vi.fn(), count: vi.fn(), create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    post: { findMany: vi.fn(), count: vi.fn(), create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
     postLike: { findUnique: vi.fn(), create: vi.fn(), delete: vi.fn() },
     postComment: { findMany: vi.fn(), count: vi.fn(), create: vi.fn() },
     user: { findUnique: vi.fn() },
@@ -56,7 +56,7 @@ describe('GET /api/posts', () => {
   })
 
   it('returns 200 with posts (public endpoint)', async () => {
-    vi.mocked(prisma.doctorPost.findMany).mockResolvedValue([
+    vi.mocked(prisma.post.findMany).mockResolvedValue([
       {
         id: 'post-1', content: 'Health tip', category: 'health', tags: [],
         imageUrl: null, likeCount: 5, createdAt: new Date(), updatedAt: new Date(),
@@ -64,7 +64,7 @@ describe('GET /api/posts', () => {
         _count: { comments: 3 },
       },
     ] as never)
-    vi.mocked(prisma.doctorPost.count).mockResolvedValue(1 as never)
+    vi.mocked(prisma.post.count).mockResolvedValue(1 as never)
 
     const res = await getPosts(createGetRequest('/api/posts'))
     const data = await res.json()
@@ -94,7 +94,7 @@ describe('POST /api/posts', () => {
   it('allows any verified user to create post (not just doctors)', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'patient', email: 'p@example.com' })
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ userType: 'PATIENT', verified: true } as never)
-    vi.mocked(prisma.doctorPost.create).mockResolvedValue({ id: 'p1', content: 'Post', authorId: 'user-1' } as never)
+    vi.mocked(prisma.post.create).mockResolvedValue({ id: 'p1', content: 'Post', authorId: 'user-1' } as never)
 
     const res = await createPost(
       createPostRequest('/api/posts', { content: 'New post', category: 'health' })
@@ -106,7 +106,7 @@ describe('POST /api/posts', () => {
   it('returns 201 for verified doctor', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'doc-1', userType: 'doctor', email: 'd@example.com' })
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ userType: 'DOCTOR', verified: true } as never)
-    vi.mocked(prisma.doctorPost.create).mockResolvedValue({
+    vi.mocked(prisma.post.create).mockResolvedValue({
       id: 'post-new', content: 'New post', category: 'health', tags: [], imageUrl: null,
       likeCount: 0, isPublished: true, createdAt: new Date(), updatedAt: new Date(),
       author: { id: 'doc-1', firstName: 'Dr', lastName: 'Smith', profileImage: null, userType: 'DOCTOR', verified: true, doctorProfile: { specialty: ['General'], clinicAffiliation: 'Clinic' } },
@@ -141,7 +141,7 @@ describe('POST /api/posts/[id]/like', () => {
 
   it('returns 404 when post not found', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'patient', email: 'p@example.com' })
-    vi.mocked(prisma.doctorPost.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.post.findUnique).mockResolvedValue(null)
 
     const res = await likePost(
       createPostRequest('/api/posts/post-1/like', {}),
@@ -153,7 +153,7 @@ describe('POST /api/posts/[id]/like', () => {
 
   it('returns 200 with like toggle result', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'patient', email: 'p@example.com' })
-    vi.mocked(prisma.doctorPost.findUnique).mockResolvedValue({ id: 'post-1', likeCount: 5 } as never)
+    vi.mocked(prisma.post.findUnique).mockResolvedValue({ id: 'post-1', likeCount: 5 } as never)
     vi.mocked(prisma.$transaction).mockResolvedValue({ liked: true, likeCount: 6 } as never)
 
     const res = await likePost(
@@ -175,7 +175,7 @@ describe('GET /api/posts/[id]/comments', () => {
   })
 
   it('returns 404 when post not found', async () => {
-    vi.mocked(prisma.doctorPost.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.post.findUnique).mockResolvedValue(null)
 
     const res = await getComments(
       createGetRequest('/api/posts/post-1/comments'),
@@ -186,7 +186,7 @@ describe('GET /api/posts/[id]/comments', () => {
   })
 
   it('returns 200 with comments', async () => {
-    vi.mocked(prisma.doctorPost.findUnique).mockResolvedValue({ id: 'post-1' } as never)
+    vi.mocked(prisma.post.findUnique).mockResolvedValue({ id: 'post-1' } as never)
     vi.mocked(prisma.postComment.findMany).mockResolvedValue([
       {
         id: 'cmt-1', content: 'Great post!', createdAt: new Date(),
@@ -225,7 +225,7 @@ describe('POST /api/posts/[id]/comments', () => {
 
   it('returns 201 for new comment', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'user-1', userType: 'patient', email: 'p@example.com' })
-    vi.mocked(prisma.doctorPost.findUnique).mockResolvedValue({ id: 'post-1' } as never)
+    vi.mocked(prisma.post.findUnique).mockResolvedValue({ id: 'post-1' } as never)
     vi.mocked(prisma.postComment.create).mockResolvedValue({
       id: 'cmt-new', content: 'Nice!', createdAt: new Date(),
       author: { id: 'user-1', firstName: 'John', lastName: 'Doe', profileImage: null, userType: 'PATIENT' },
@@ -249,7 +249,7 @@ describe('GET /api/posts?category=health_tips', () => {
   })
 
   it('filters posts by category query parameter', async () => {
-    vi.mocked(prisma.doctorPost.findMany).mockResolvedValue([
+    vi.mocked(prisma.post.findMany).mockResolvedValue([
       {
         id: 'post-ht', content: 'A health tip', category: 'health_tips', tags: [],
         imageUrl: null, likeCount: 2, createdAt: new Date(), updatedAt: new Date(),
@@ -257,7 +257,7 @@ describe('GET /api/posts?category=health_tips', () => {
         _count: { comments: 0 },
       },
     ] as never)
-    vi.mocked(prisma.doctorPost.count).mockResolvedValue(1 as never)
+    vi.mocked(prisma.post.count).mockResolvedValue(1 as never)
 
     const res = await getPosts(createGetRequest('/api/posts?category=health_tips'))
     const data = await res.json()
@@ -270,8 +270,8 @@ describe('GET /api/posts?category=health_tips', () => {
   })
 
   it('returns paginated results with page and totalPages', async () => {
-    vi.mocked(prisma.doctorPost.findMany).mockResolvedValue([] as never)
-    vi.mocked(prisma.doctorPost.count).mockResolvedValue(25 as never)
+    vi.mocked(prisma.post.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.post.count).mockResolvedValue(25 as never)
 
     const res = await getPosts(createGetRequest('/api/posts?page=2&limit=10'))
     const data = await res.json()
@@ -298,7 +298,7 @@ describe('DELETE /api/posts/[id]', () => {
 
   it('returns 404 when post not found', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'doc-1', userType: 'doctor', email: 'd@example.com' })
-    vi.mocked(prisma.doctorPost.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.post.findUnique).mockResolvedValue(null)
 
     const req = new NextRequest('http://localhost:3000/api/posts/post-999', { method: 'DELETE' })
     const res = await deletePost(req, mockParams('post-999'))
@@ -308,8 +308,8 @@ describe('DELETE /api/posts/[id]', () => {
 
   it('returns 200 when author deletes own post', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'doc-1', userType: 'doctor', email: 'd@example.com' })
-    vi.mocked(prisma.doctorPost.findUnique).mockResolvedValue({ authorId: 'doc-1' } as never)
-    vi.mocked(prisma.doctorPost.delete).mockResolvedValue({} as never)
+    vi.mocked(prisma.post.findUnique).mockResolvedValue({ authorId: 'doc-1' } as never)
+    vi.mocked(prisma.post.delete).mockResolvedValue({} as never)
 
     const req = new NextRequest('http://localhost:3000/api/posts/post-1', { method: 'DELETE' })
     const res = await deletePost(req, mockParams('post-1'))
@@ -321,7 +321,7 @@ describe('DELETE /api/posts/[id]', () => {
 
   it('returns 403 when non-author tries to delete', async () => {
     vi.mocked(validateRequest).mockReturnValue({ sub: 'other-user', userType: 'doctor', email: 'other@example.com' })
-    vi.mocked(prisma.doctorPost.findUnique).mockResolvedValue({ authorId: 'doc-1' } as never)
+    vi.mocked(prisma.post.findUnique).mockResolvedValue({ authorId: 'doc-1' } as never)
 
     const req = new NextRequest('http://localhost:3000/api/posts/post-1', { method: 'DELETE' })
     const res = await deletePost(req, mockParams('post-1'))

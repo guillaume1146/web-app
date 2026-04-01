@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
         providerType: true,
         name: true,
         description: true,
+        icon: true,
         isActive: true,
       },
       orderBy: [{ providerType: 'asc' }, { name: 'asc' }],
@@ -80,8 +81,9 @@ export async function POST(request: NextRequest) {
         providerType: providerType.toUpperCase() as UserType,
         name: name.trim(),
         description: description?.trim() || null,
+        icon: body.icon?.trim() || null,
       },
-      select: { id: true, providerType: true, name: true, description: true, isActive: true },
+      select: { id: true, providerType: true, name: true, description: true, icon: true, isActive: true },
     })
 
     return NextResponse.json({ success: true, data: specialty }, { status: 201 })

@@ -76,7 +76,7 @@ export async function seedDoctorPosts(prisma: PrismaClient) {
   const createdPosts = []
   for (const post of posts) {
     if (!post.authorId) continue
-    const created = await prisma.doctorPost.create({
+    const created = await prisma.post.create({
       data: {
         authorId: post.authorId,
         content: post.content,
@@ -139,7 +139,7 @@ export async function seedDoctorPosts(prisma: PrismaClient) {
 
     // Update like count
     const likeCount = await prisma.postLike.count({ where: { postId: post.id } })
-    await prisma.doctorPost.update({
+    await prisma.post.update({
       where: { id: post.id },
       data: { likeCount },
     })

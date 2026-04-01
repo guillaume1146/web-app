@@ -16,7 +16,7 @@ export async function GET(
 
   try {
     // Verify post exists
-    const post = await prisma.doctorPost.findUnique({
+    const post = await prisma.post.findUnique({
       where: { id },
       select: { id: true },
     })
@@ -81,7 +81,7 @@ export async function POST(
 
   try {
     // Verify post exists
-    const post = await prisma.doctorPost.findUnique({
+    const post = await prisma.post.findUnique({
       where: { id },
       select: { id: true },
     })

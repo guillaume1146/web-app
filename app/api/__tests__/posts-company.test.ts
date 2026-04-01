@@ -14,7 +14,7 @@ import { NextRequest } from 'next/server'
 vi.mock('@/lib/db', () => ({
   default: {
     user: { findUnique: vi.fn() },
-    doctorPost: { findMany: vi.fn(), count: vi.fn(), create: vi.fn() },
+    post: { findMany: vi.fn(), count: vi.fn(), create: vi.fn() },
     corporateAdminProfile: { findFirst: vi.fn() },
   },
 }))
@@ -82,7 +82,7 @@ describe('POST /api/posts — any verified user', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       userType: 'DOCTOR', verified: true,
     } as never)
-    vi.mocked(prisma.doctorPost.create).mockResolvedValue({
+    vi.mocked(prisma.post.create).mockResolvedValue({
       id: 'post-1', content: 'Health tip', authorId: 'doc1', companyId: null,
     } as never)
 
@@ -99,7 +99,7 @@ describe('POST /api/posts — any verified user', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       userType: 'NURSE', verified: true,
     } as never)
-    vi.mocked(prisma.doctorPost.create).mockResolvedValue({
+    vi.mocked(prisma.post.create).mockResolvedValue({
       id: 'post-2', content: 'Nursing tip', authorId: 'nur1', companyId: null,
     } as never)
 
@@ -116,7 +116,7 @@ describe('POST /api/posts — any verified user', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       userType: 'PATIENT', verified: true,
     } as never)
-    vi.mocked(prisma.doctorPost.create).mockResolvedValue({
+    vi.mocked(prisma.post.create).mockResolvedValue({
       id: 'post-3', content: 'Patient story', authorId: 'pat1', companyId: null,
     } as never)
 
@@ -144,7 +144,7 @@ describe('POST /api/posts — post as company', () => {
     vi.mocked(prisma.corporateAdminProfile.findFirst).mockResolvedValue({
       id: 'comp-1', userId: 'doc1', companyName: 'DocClinic',
     } as never)
-    vi.mocked(prisma.doctorPost.create).mockResolvedValue({
+    vi.mocked(prisma.post.create).mockResolvedValue({
       id: 'post-4', content: 'Company update', authorId: 'doc1', companyId: 'comp-1',
       company: { id: 'comp-1', companyName: 'DocClinic' },
     } as never)
@@ -184,7 +184,7 @@ describe('POST /api/posts — post as company', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       userType: 'DOCTOR', verified: true,
     } as never)
-    vi.mocked(prisma.doctorPost.create).mockResolvedValue({
+    vi.mocked(prisma.post.create).mockResolvedValue({
       id: 'post-5', content: 'Personal post', authorId: 'doc1', companyId: null,
     } as never)
 
@@ -208,7 +208,7 @@ describe('GET /api/posts — feed includes company info', () => {
   })
 
   it('returns posts with company data when present', async () => {
-    vi.mocked(prisma.doctorPost.findMany).mockResolvedValue([
+    vi.mocked(prisma.post.findMany).mockResolvedValue([
       {
         id: 'p1', content: 'Company post', companyId: 'c1',
         author: { id: 'u1', firstName: 'John', lastName: 'Doe', userType: 'DOCTOR', verified: true, profileImage: null, doctorProfile: null },
@@ -222,7 +222,7 @@ describe('GET /api/posts — feed includes company info', () => {
         _count: { comments: 2 },
       },
     ] as never)
-    vi.mocked(prisma.doctorPost.count).mockResolvedValue(2)
+    vi.mocked(prisma.post.count).mockResolvedValue(2)
 
     const req = new NextRequest('http://localhost:3000/api/posts')
     const res = await GET(req)

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     const [posts, total] = await Promise.all([
-      prisma.doctorPost.findMany({
+      prisma.post.findMany({
         where,
         select: {
           id: true,
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.doctorPost.count({ where }),
+      prisma.post.count({ where }),
     ])
 
     return NextResponse.json({
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       companyId = company.id
     }
 
-    const post = await prisma.doctorPost.create({
+    const post = await prisma.post.create({
       data: {
         authorId: auth.sub,
         companyId,

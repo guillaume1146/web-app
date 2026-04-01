@@ -189,25 +189,18 @@ describe('Fix 8: Wallet Reset', () => {
   })
 })
 
-describe('Fix 3: Search path prefixing', () => {
-  it('prefixes search paths with user type slug when logged in', () => {
-    function getServiceHref(href: string, userSlug: string | null): string {
-      if (userSlug) return `/${userSlug}${href}`
+describe('Fix 3: Search paths are always public (no user slug prefix)', () => {
+  it('search paths never get prefixed — always /search/...', () => {
+    // Search pages are public — getServiceHref returns href as-is
+    function getServiceHref(href: string): string {
       return href
     }
 
-    // Logged in as patient
-    expect(getServiceHref('/search/doctors', 'patient')).toBe('/patient/search/doctors')
-    expect(getServiceHref('/search/nurses', 'patient')).toBe('/patient/search/nurses')
-    expect(getServiceHref('/search/childcare', 'patient')).toBe('/patient/search/childcare')
-    expect(getServiceHref('/search/lab', 'patient')).toBe('/patient/search/lab')
-    expect(getServiceHref('/search/emergency', 'patient')).toBe('/patient/search/emergency')
-    expect(getServiceHref('/search/medicines', 'patient')).toBe('/patient/search/medicines')
-
-    // Logged in as doctor
-    expect(getServiceHref('/search/doctors', 'doctor')).toBe('/doctor/search/doctors')
-
-    // Not logged in — keep absolute path
-    expect(getServiceHref('/search/doctors', null)).toBe('/search/doctors')
+    expect(getServiceHref('/search/doctors')).toBe('/search/doctors')
+    expect(getServiceHref('/search/nurses')).toBe('/search/nurses')
+    expect(getServiceHref('/search/childcare')).toBe('/search/childcare')
+    expect(getServiceHref('/search/lab')).toBe('/search/lab')
+    expect(getServiceHref('/search/emergency')).toBe('/search/emergency')
+    expect(getServiceHref('/search/health-shop')).toBe('/search/health-shop')
   })
 })

@@ -18,7 +18,7 @@ export async function POST(
 
   try {
     // Verify post exists
-    const post = await prisma.doctorPost.findUnique({
+    const post = await prisma.post.findUnique({
       where: { id },
       select: { id: true, likeCount: true },
     })
@@ -37,7 +37,7 @@ export async function POST(
         await tx.postLike.delete({
           where: { postId_userId: { postId: id, userId: auth.sub } },
         })
-        const updatedPost = await tx.doctorPost.update({
+        const updatedPost = await tx.post.update({
           where: { id },
           data: { likeCount: { decrement: 1 } },
           select: { likeCount: true },
@@ -48,7 +48,7 @@ export async function POST(
         await tx.postLike.create({
           data: { postId: id, userId: auth.sub },
         })
-        const updatedPost = await tx.doctorPost.update({
+        const updatedPost = await tx.post.update({
           where: { id },
           data: { likeCount: { increment: 1 } },
           select: { likeCount: true },

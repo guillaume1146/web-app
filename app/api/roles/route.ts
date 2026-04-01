@@ -46,12 +46,12 @@ export async function GET(request: NextRequest) {
     const specialties = await prisma.providerSpecialty.findMany({
       where: { isActive: true },
       orderBy: [{ providerType: 'asc' }, { name: 'asc' }],
-      select: { providerType: true, name: true, description: true },
+      select: { providerType: true, name: true, description: true, icon: true },
     })
-    const specMap = new Map<string, { name: string; description: string | null }[]>()
+    const specMap = new Map<string, { name: string; description: string | null; icon: string | null }[]>()
     for (const s of specialties) {
       if (!specMap.has(s.providerType)) specMap.set(s.providerType, [])
-      specMap.get(s.providerType)!.push({ name: s.name, description: s.description })
+      specMap.get(s.providerType)!.push({ name: s.name, description: s.description, icon: s.icon })
     }
 
     const data = roles.map(role => ({

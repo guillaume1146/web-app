@@ -3,6 +3,42 @@ import { PrismaClient, UserType } from '@prisma/client'
 export async function seedProviderSpecialties(prisma: PrismaClient) {
   console.log('  Seeding provider specialties...')
 
+  // Emoji icons for specialties — applied during seeding
+  const ICONS: Record<string, string> = {
+    'General Practice': '🩺', 'Family Medicine': '👨‍👩‍👧‍👦', 'Internal Medicine': '🫀',
+    'Cardiology': '❤️', 'Dermatology': '🧴', 'Endocrinology': '🦠',
+    'Gastroenterology': '🫃', 'Geriatrics': '👴', 'Gynecology': '🤰',
+    'Neurology': '🧠', 'Oncology': '🎗️', 'Ophthalmology': '👁️',
+    'Orthopedics': '🦴', 'Pediatrics': '👶', 'Psychiatry': '🧘',
+    'Psychology': '💭', 'Pulmonology': '🫁', 'Radiology': '📡',
+    'Rheumatology': '🦵', 'Urology': '🏥', 'Anesthesiology': '💉',
+    'Pathology': '🔬', 'Sports Medicine': '⚽', 'Preventive Medicine': '🛡️',
+    'Sexual Health': '💕',
+    'General Nursing': '💊', 'ICU / Critical Care': '🚨', 'Wound Care': '🩹',
+    'Midwifery': '🤱', 'Pediatric Nursing': '👧', 'Geriatric Nursing': '🧓',
+    'Mental Health Nursing': '🧠', 'Oncology Nursing': '🎗️',
+    'Community Health': '🏘️', 'Home Care': '🏠',
+    'Newborn Care': '👶', 'Toddler Care': '🧒', 'After-School': '📚',
+    'Special Needs': '♿', 'Overnight Care': '🌙',
+    'Elder Care': '👴', 'Disability Care': '♿', 'Post-Surgery Care': '🩹',
+    'Dementia Care': '🧠', 'Palliative Care': '🕊️',
+    'Orthopedic': '🦴', 'Neurological': '🧠', 'Sports': '🏃',
+    'Pediatric': '👧', 'Geriatric': '🧓', 'Cardiopulmonary': '🫁',
+    'General Dentistry': '🦷', 'Orthodontics': '😁', 'Periodontics': '🪥',
+    'Endodontics': '🦷', 'Oral Surgery': '🏥', 'Pediatric Dentistry': '👧',
+    'Cosmetic Dentistry': '✨',
+    'General Eye Care': '👓', 'Contact Lenses': '🔵', 'Pediatric Eye Care': '👧',
+    'Low Vision': '🔍', 'Sports Vision': '🥽',
+    'Clinical Nutrition': '🥗', 'Sports Nutrition': '💪', 'Weight Management': '⚖️',
+    'Pediatric Nutrition': '🍎', 'Diabetes Nutrition': '🩸', 'Prenatal Nutrition': '🤰',
+    'Hematology': '🩸', 'Microbiology': '🦠', 'Clinical Chemistry': '🧪',
+    'Immunology': '🛡️', 'Histology': '🔬', 'Molecular Biology': '🧬',
+    'Clinical Pharmacy': '💊', 'Oncology Pharmacy': '🎗️', 'Geriatric Pharmacy': '💊',
+    'Pediatric Pharmacy': '🧒', 'Hospital Pharmacy': '🏥',
+    'Paramedic': '🚑', 'EMT-Basic': '🚑', 'EMT-Intermediate': '🚑',
+    'Critical Care Transport': '🚁', 'Wilderness Rescue': '⛰️',
+  }
+
   const specialties: { providerType: UserType; name: string; description?: string }[] = [
     // ── Doctor Specialties ──────────────────────────────────────────
     { providerType: UserType.DOCTOR, name: 'General Practice', description: 'Primary care and family medicine' },
@@ -113,12 +149,12 @@ export async function seedProviderSpecialties(prisma: PrismaClient) {
   ]
 
   for (const spec of specialties) {
-    const existing = await prisma.providerSpecialty.findFirst({
-      where: { providerType: spec.providerType, name: spec.name },
+    const icon = ICONS[spec.name] || '🏥'
+    await prisma.providerSpecialty.upsert({
+      where: { providerType_name: { providerType: spec.providerType, name: spec.name } },
+      update: { icon, description: spec.description || undefined },
+      create: { ...spec, icon },
     })
-    if (!existing) {
-      await prisma.providerSpecialty.create({ data: spec })
-    }
   }
 
   console.log(`  ✓ ${specialties.length} provider specialties seeded`)

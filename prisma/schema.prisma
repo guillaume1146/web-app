@@ -212,7 +212,7 @@ model User {
   providerAvailability ProviderAvailability[]
 
   // Social / posts relations
-  posts        DoctorPost[]  @relation("PostAuthor")
+  posts        Post[]  @relation("PostAuthor")
   postComments PostComment[] @relation("CommentAuthor")
   postLikes    PostLike[]    @relation("PostLiker")
 
@@ -444,7 +444,7 @@ model CorporateAdminProfile {
   registrationNumber String?
   employeeCount      Int?
   industry           String?
-  posts              DoctorPost[]
+  posts              Post[]
 
   @@index([userId])
 }
@@ -547,6 +547,7 @@ model ProviderSpecialty {
   providerType UserType
   name         String
   description  String?
+  icon         String?  // Emoji or icon name (e.g. "❤️", "🧠", "🦴")
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
@@ -1450,9 +1451,9 @@ model WalletTransaction {
   @@index([serviceType])
 }
 
-// ─── Doctor Posts (Social Feed) ──────────────────────────────────────────────
+// ─── Posts (Social Feed — any verified user can post) ────────────────────────
 
-model DoctorPost {
+model Post {
   id          String        @id @default(uuid())
   authorId    String
   author      User          @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
@@ -1479,7 +1480,7 @@ model DoctorPost {
 model PostComment {
   id        String     @id @default(uuid())
   postId    String
-  post      DoctorPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   authorId  String
   author    User       @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   content   String
@@ -1493,7 +1494,7 @@ model PostComment {
 model PostLike {
   id        String     @id @default(uuid())
   postId    String
-  post      DoctorPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId    String
   user      User       @relation("PostLiker", fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime   @default(now())

@@ -135,21 +135,21 @@ export default function HealthShopMarketplace() {
   if (categories.length === 0) return null
 
   return (
-    <section className="py-12 bg-gray-50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center gap-3 mb-2">
-          <FaShoppingCart className="text-2xl text-[#0C6780]" />
-          <h2 className="text-3xl font-bold text-gray-900">Health Shop</h2>
+    <section className="py-8 sm:py-12 bg-gray-50 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+          <FaShoppingCart className="text-xl sm:text-2xl text-[#0C6780]" />
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Health Shop</h2>
         </div>
-        <p className="text-gray-600 mb-8">Order medicines, supplements & health products from verified providers</p>
+        <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">Order medicines, supplements & health products from verified providers</p>
 
-        {/* Category Quick Links */}
-        <div className="flex flex-wrap gap-2 mb-8">
+        {/* Category Quick Links — horizontally scrollable on mobile */}
+        <div className="flex gap-2 mb-6 sm:mb-8 overflow-x-auto scrollbar-hide pb-1 sm:flex-wrap">
           {CATEGORIES.map(cat => (
             <Link
               key={cat.key}
               href={`/search/health-shop?category=${cat.key}`}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-white border border-gray-200 text-sm text-gray-700 hover:border-[#0C6780] hover:text-[#0C6780] transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-full bg-white border border-gray-200 text-xs sm:text-sm text-gray-700 hover:border-[#0C6780] hover:text-[#0C6780] transition-all whitespace-nowrap flex-shrink-0"
             >
               <span className="text-base">{CATEGORY_EMOJI[cat.key] || '📦'}</span>
               {cat.label}
@@ -173,13 +173,13 @@ export default function HealthShopMarketplace() {
               {cat.items.map(item => (
                 <div
                   key={item.id}
-                  className={`flex-shrink-0 snap-start w-52 sm:w-56 bg-white rounded-2xl border ${
+                  className={`flex-shrink-0 snap-start w-[160px] sm:w-52 md:w-56 bg-white rounded-2xl border ${
                     item.isFeatured ? 'border-[#0C6780] ring-1 ring-[#0C6780]/10' : 'border-gray-200'
                   } overflow-hidden hover:shadow-lg transition-all group`}
                 >
                   {/* Product image */}
                   {item.imageUrl ? (
-                    <div className="h-28 bg-gray-100 overflow-hidden">
+                    <div className="h-20 sm:h-28 bg-gray-100 overflow-hidden">
                       <img
                         src={item.imageUrl}
                         alt={item.name}
@@ -187,12 +187,12 @@ export default function HealthShopMarketplace() {
                       />
                     </div>
                   ) : (
-                    <div className="h-28 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-                      <span className="text-4xl">{CATEGORY_EMOJI[item.category] || '💊'}</span>
+                    <div className="h-20 sm:h-28 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                      <span className="text-3xl sm:text-4xl">{CATEGORY_EMOJI[item.category] || '💊'}</span>
                     </div>
                   )}
 
-                  <div className="p-4">
+                  <div className="p-3 sm:p-4">
                     <div className="flex items-start justify-between mb-1">
                       <h4 className="text-sm font-bold text-gray-900 line-clamp-2 flex-1 min-w-0">
                         {item.name}
@@ -214,7 +214,7 @@ export default function HealthShopMarketplace() {
 
                     <div className="flex items-end justify-between mt-2">
                       <div>
-                        <span className="text-lg font-bold text-gray-900">Rs {item.price}</span>
+                        <span className="text-sm sm:text-lg font-bold text-gray-900">Rs {item.price}</span>
                         <span className="text-[10px] text-gray-400 ml-0.5">/{item.unitOfMeasure}</span>
                       </div>
                       <span className={`text-[10px] font-medium ${item.inStock ? 'text-green-600' : 'text-red-500'}`}>
