@@ -38,6 +38,7 @@ import { seedWallets as seedMissingWallets, seedInventoryItems } from './seeds/3
 import { seedWorkflowInstances } from './seeds/37-workflow-instances.seed'
 import { seedInventoryOrders, seedNotificationTemplates, seedNotifications } from './seeds/38-orders-notifications.seed'
 import { seedRichBookingsAndWorkflows } from './seeds/39-rich-bookings-workflows.seed'
+import { seedExpandedSpecialties, seedExpandedProviders, seedExpandedInventory } from './seeds/40-expanded-data.seed'
 
 const prisma = new PrismaClient()
 
@@ -230,6 +231,11 @@ async function main() {
   await seedNotificationTemplates(prisma)
   await seedNotifications(prisma)
   await seedRichBookingsAndWorkflows(prisma)
+
+  // ── Expanded data (seed 40) ─────────────────────────────────────────
+  await seedExpandedSpecialties(prisma)
+  await seedExpandedProviders(prisma)
+  await seedExpandedInventory(prisma)
 
   // ── Final step: ensure ALL users have subscriptions ──────────────
   console.log('  Ensuring all users have subscriptions...')
