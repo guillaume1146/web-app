@@ -31,8 +31,23 @@ export default function MobileSwipeWrapper({ children, sectionLabels }: MobileSw
  }
  }, [isMobile])
 
+ // Check if touch started inside a horizontally scrollable child (carousel)
+ const isInsideScrollable = useRef(false)
+
  const handleTouchStart = (e: TouchEvent) => {
  touchStartX.current = e.touches[0].clientX
+ touchEndX.current = e.touches[0].clientX
+
+ // Walk up from touch target to see if we're inside a horizontal scroll container
+ let el = e.target as HTMLElement | null
+ isInsideScrollable.current = false
+ while (el && el !== e.currentTarget) {
+ if (el.scrollWidth > el.clientWidth + 4 && getComputedStyle(el).overflowX !== 'hidden') {
+ isInsideScrollable.current = true
+ break
+ }
+ el = el.parentElement
+ }
  }
 
  const handleTouchMove = (e: TouchEvent) => {
@@ -40,6 +55,9 @@ export default function MobileSwipeWrapper({ children, sectionLabels }: MobileSw
  }
 
  const handleTouchEnd = () => {
+ // If swipe started inside a horizontally scrollable child, don't change pane
+ if (isInsideScrollable.current) return
+
  const diff = touchStartX.current - touchEndX.current
  const threshold = 60
 
@@ -48,7 +66,6 @@ export default function MobileSwipeWrapper({ children, sectionLabels }: MobileSw
  if (currentIndex < children.length - 1) {
  setCurrentIndex(prev => prev + 1)
  } else {
- // On last section, swipe left → go to signup
  router.push('/signup')
  }
  } else if (diff < -threshold && currentIndex > 0) {
