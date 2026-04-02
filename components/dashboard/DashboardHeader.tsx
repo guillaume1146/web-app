@@ -52,18 +52,28 @@ function timeAgo(dateStr: string): string {
 }
 
 // Per-user-type route mapping for notification clicks
+// All provider roles use these clean URL paths (mapped within their dashboard)
+const DEFAULT_ROUTES: Record<string, string> = {
+ appointment: '/practice', booking: '/practice', prescription: '/practice',
+ message: '/messages', connection: '/network', lab_result: '/practice',
+ emergency: '/practice', corporate_enrollment: '/my-company',
+ review_request: '/reviews', workflow: '/practice',
+}
+
+// Role-specific overrides for patient (uses my-* paths)
+const PATIENT_ROUTES: Record<string, string> = {
+ appointment: '/my-consultations', booking: '/bookings',
+ prescription: '/my-prescriptions', message: '/messages',
+ lab_result: '/my-lab-results', emergency: '/my-emergency',
+ connection: '/network', corporate_enrollment: '/my-company',
+}
+
 const NOTIFICATION_ROUTES: Record<string, Record<string, string>> = {
- patient: { appointment: '/consultations', booking: '/bookings', prescription: '/prescriptions', message: '/chat', lab_result: '/health-records', emergency: '/emergency', connection: '/network' },
- doctor: { appointment: '/practice', booking: '/practice?tab=requests', prescription: '/practice?tab=prescriptions', message: '/messages', connection: '/network' },
- nurse: { appointment: '/practice', booking: '/practice?tab=requests', message: '/messages', connection: '/network' },
- nanny: { appointment: '/bookings', booking: '/booking-requests', message: '/messages', connection: '/network' },
- pharmacist: { prescription: '/orders', booking: '/orders', message: '/messages', connection: '/network' },
- 'lab-technician': { lab_result: '/results', booking: '/booking-requests', message: '/messages', connection: '/network' },
- responder: { booking: '/booking-requests', emergency: '/calls', message: '/messages', connection: '/network' },
- insurance: { booking: '/claims', message: '/messages', connection: '/network' },
- corporate: { message: '/messages', connection: '/network' },
- 'referral-partner': { message: '/messages', connection: '/network' },
- regional: { message: '/messages', connection: '/network' },
+ patient: PATIENT_ROUTES,
+ insurance: { ...DEFAULT_ROUTES, booking: '/claims' },
+ corporate: DEFAULT_ROUTES,
+ 'referral-partner': DEFAULT_ROUTES,
+ regional: DEFAULT_ROUTES,
 }
 
 // Normalize notification type/referenceType to a canonical key
@@ -99,7 +109,7 @@ function normalizeNotifKey(raw: string): string {
 function getNotificationHref(n: NotificationItem, profileHref: string): string | null {
  const base = profileHref.replace(/\/profile$/, '')
  const userSlug = base.split('/')[1] || 'patient'
- const routes = NOTIFICATION_ROUTES[userSlug] || NOTIFICATION_ROUTES.patient
+ const routes = NOTIFICATION_ROUTES[userSlug] || DEFAULT_ROUTES
 
  // Workflow notifications deep-link to the booking detail page with timeline
  if (n.type === 'workflow' && n.referenceId && n.referenceType) {
