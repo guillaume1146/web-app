@@ -416,17 +416,20 @@ export async function chatWithAssistant(
     throw new Error('GROQ_API_KEY environment variable is not set')
   }
 
-  // Get patient context for personalized responses
+  // Get patient context for personalized responses (null for non-patient users)
   const patientContext = await getPatientContext(userId)
-  if (!patientContext) {
-    throw new Error('Patient profile not found')
-  }
+
+  // Get user basic info as fallback for non-patients
+  const userInfo = patientContext ? null : await prisma.user.findUnique({
+    where: { id: userId },
+    select: { firstName: true, lastName: true, userType: true },
+  })
 
   // Tool call #1: Retrieve recent dietary/health insights from DB
-  const insightsSummary = await getRecentInsights(userId, 14)
+  const insightsSummary = patientContext ? await getRecentInsights(userId, 14) : ''
 
   // Get today's health tracker data for personalized context
-  const trackerContext = await getTrackerContext(userId)
+  const trackerContext = patientContext ? await getTrackerContext(userId) : ''
 
   // Create or retrieve session
   let session: { id: string; title: string }
@@ -455,7 +458,9 @@ export async function chatWithAssistant(
   })
 
   // Build the message array with patient context + dietary history
-  const systemPrompt = buildSystemPrompt(patientContext, insightsSummary, trackerContext)
+  const systemPrompt = patientContext
+    ? buildSystemPrompt(patientContext, insightsSummary, trackerContext)
+    : `You are MediWyz AI Health Assistant. You are speaking with ${userInfo?.firstName || 'a healthcare professional'} (${userInfo?.userType || 'user'}). Provide helpful, professional health information. Always recommend consulting a qualified healthcare provider for medical decisions. Keep responses concise and use markdown formatting.`
   const groqMessages: GroqMessage[] = [
     { role: 'system', content: systemPrompt },
     ...previousMessages.map(m => ({
