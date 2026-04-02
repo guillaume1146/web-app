@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { FaUsers, FaFileAlt, FaShieldAlt, FaToggleOn, FaClipboardList, FaBell, FaCrown } from 'react-icons/fa'
+import { FaUsers, FaFileAlt, FaShieldAlt, FaToggleOn, FaClipboardList, FaCrown } from 'react-icons/fa'
 
 const UsersContent = dynamic(() => import('../users/page'), { ssr: false, loading: () => <TabLoading /> })
 const ContentContent = dynamic(() => import('../content/page'), { ssr: false, loading: () => <TabLoading /> })
@@ -26,7 +26,6 @@ const TABS = [
  { id: 'security', label: 'Security', icon: FaShieldAlt },
  { id: 'roles', label: 'Roles', icon: FaToggleOn },
  { id: 'documents', label: 'Docs', icon: FaClipboardList },
- { id: 'notifications', label: 'Alerts', icon: FaBell },
  { id: 'subscriptions', label: 'Plans', icon: FaCrown },
 ] as const
 
@@ -66,7 +65,6 @@ export default function RegionalAdministrationPage() {
  {activeTab === 'security' && <SecurityContent />}
  {activeTab === 'roles' && <RoleConfigContent />}
  {activeTab === 'documents' && <DocumentsContent />}
- {activeTab === 'notifications' && <NotificationsContent />}
  {activeTab === 'subscriptions' && <SubscriptionsContent />}
  </div>
 

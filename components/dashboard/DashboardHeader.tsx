@@ -411,6 +411,31 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  ) : (
  notifications.map(n => {
  const notifHref = getNotificationHref(n, profileHref)
+ const isCorporateInvite = n.type === 'corporate_enrollment' && n.title?.includes('Invitation') && !n.readAt
+
+ const handleEnrollmentAction = async (action: 'accept' | 'decline') => {
+ try {
+ // Accept: self-enroll by confirming the pending enrollment
+ // The referenceId is the company profile ID
+ const res = await fetch(`/api/corporate/enrollment/${action}`, {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ credentials: 'include',
+ body: JSON.stringify({ notificationId: n.id, companyId: n.referenceId }),
+ })
+ if (res.ok) {
+ // Mark notification as read
+ await fetch(`/api/users/${userId}/notifications`, {
+ method: 'PATCH',
+ headers: { 'Content-Type': 'application/json' },
+ credentials: 'include',
+ body: JSON.stringify({ ids: [n.id] }),
+ })
+ window.location.reload()
+ }
+ } catch { /* silent */ }
+ }
+
  const content = (
  <>
  <div className="flex items-start justify-between gap-2">
@@ -422,11 +447,27 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  <span className="w-2 h-2 bg-brand-navy rounded-full flex-shrink-0 mt-1.5" aria-label="Unread" />
  )}
  </div>
+ {isCorporateInvite && (
+ <div className="flex gap-2 mt-2">
+ <button
+ onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnrollmentAction('accept') }}
+ className="flex-1 text-xs font-medium py-1.5 px-3 rounded-lg bg-[#0C6780] text-white hover:bg-[#0a5568] transition-colors"
+ >
+ Accept
+ </button>
+ <button
+ onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnrollmentAction('decline') }}
+ className="flex-1 text-xs font-medium py-1.5 px-3 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+ >
+ Decline
+ </button>
+ </div>
+ )}
  <p className="text-[10px] text-gray-400 mt-1">{timeAgo(n.createdAt)}</p>
  </>
  )
  const className = `block px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer ${!n.readAt ? 'bg-sky-50/50' : ''}`
- return notifHref ? (
+ return notifHref && !isCorporateInvite ? (
  <Link key={n.id} href={notifHref} role="listitem" className={className} onClick={() => setShowDropdown(false)}>
  {content}
  </Link>
