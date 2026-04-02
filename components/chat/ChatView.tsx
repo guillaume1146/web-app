@@ -693,8 +693,8 @@ export default function ChatView({ currentUser, initialConversationId }: ChatVie
  const handleSelectConversation = useCallback(async (id: string) => {
  // AI Assistant — redirect to AI chat page
  if (id === 'ai-assistant') {
-   const slug = window.location.pathname.split('/')[1] || 'patient'
-   window.location.href = `/${slug}/ai-assistant`
+   // Use clean URL — middleware handles routing to correct provider folder
+   window.location.href = '/ai-assistant'
    return
  }
 
