@@ -95,9 +95,8 @@ export function createDashboardLayout(config: DashboardLayoutConfig) {
         setLoading(false)
         loadExtraData(parsed)
       } else {
-        setError('Not authenticated')
+        // Redirect silently — don't show error state during logout
         router.push('/login')
-        setLoading(false)
       }
     }, [hookUser, userLoading, router, loadExtraData])
 
