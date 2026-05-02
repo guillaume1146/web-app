@@ -54,3 +54,13 @@ public/uploads/*
 # Capacitor native platforms (generated)
 /android/
 /ios/
+.claude/worktrees/
+
+# Backend
+backend/node_modules/
+backend/.next/
+backend/dist/
+backend/.env
+
+# Claude Code worktrees
+.claude/worktrees/

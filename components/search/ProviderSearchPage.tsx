@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import ConnectButton from '@/components/search/ConnectButton'
+import FavoriteButton from '@/components/shared/FavoriteButton'
 import { SearchResultsSkeleton, NoResults } from '@/components/search/SearchResults'
 import { useSearchHistory } from '@/hooks/useSearchHistory'
 import {
@@ -87,6 +88,7 @@ const ProviderCard = ({ provider, slug, accentColor, onBook }: { provider: Provi
 
  <div className="flex flex-col items-stretch sm:items-end gap-2 flex-shrink-0 sm:border-l sm:border-gray-100 sm:pl-4 border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0">
  <div className="flex items-center gap-2">
+ <FavoriteButton providerId={provider.id} size="sm" />
  <Link href={`/search/${slug}/${provider.id}`} className="flex-1 sm:flex-none">
  <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors">
  Details
@@ -234,17 +236,28 @@ function ProviderSearchContent({ config }: { config: ProviderSearchPageConfig })
  </button>
  </div>
  {history.map((entry, i) => (
- <button key={i} type="button" onMouseDown={e => e.preventDefault()} onClick={() => handleHistoryClick(entry)}
- className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-gray-50 transition text-sm text-gray-700 group">
+ // Outer div (not button) — HTML forbids button-in-button. Click is
+ // still keyboard-accessible via role + tabIndex, and the inner
+ // "remove" button no longer causes a hydration error.
+ <div
+ key={i}
+ role="button"
+ tabIndex={0}
+ onMouseDown={e => e.preventDefault()}
+ onClick={() => handleHistoryClick(entry)}
+ onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHistoryClick(entry) } }}
+ className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-gray-50 transition text-sm text-gray-700 group cursor-pointer focus:outline-none focus:bg-gray-100"
+ >
  <span className="flex items-center gap-2">
  <FaHistory className="text-xs text-gray-300" /> {entry.query}
  </span>
  <button type="button" onMouseDown={e => e.preventDefault()}
  onClick={e => { e.stopPropagation(); removeFromHistory(entry.query) }}
+ aria-label={`Remove ${entry.query} from history`}
  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition">
  <FaTimes className="text-xs" />
  </button>
- </button>
+ </div>
  ))}
  </div>
  )}

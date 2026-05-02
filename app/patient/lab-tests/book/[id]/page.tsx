@@ -90,8 +90,8 @@ interface PaymentMethod {
  available: boolean;
 }
 
-// Static test catalog (no per-lab test API exists; these are standard tests offered at every lab)
-const availableTests: LabTest[] = [
+// Fallback test catalog used when the API is unavailable
+const fallbackTests: LabTest[] = [
  {
  id: "cbc",
  name: "Complete Blood Count (CBC)",
@@ -175,6 +175,15 @@ const availableTests: LabTest[] = [
  }
 ]
 
+// Icon map for mapping API category strings to icons
+const categoryIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+ "Hematology": FaVial,
+ "Clinical Chemistry": FaFlask,
+ "Endocrinology": FaMicroscope,
+ "Blood": FaSyringe,
+ "Cardiology": FaHeart,
+}
+
 const paymentMethods: PaymentMethod[] = [
  {
  id: "mcb-juice",
@@ -223,6 +232,7 @@ export default function LabTestingBooking() {
  const [facilityError, setFacilityError] = useState<string | null>(null)
  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
  const [slotsLoading, setSlotsLoading] = useState(false)
+ const [availableTests, setAvailableTests] = useState<LabTest[]>(fallbackTests)
  const [appointmentDetails, setAppointmentDetails] = useState<AppointmentDetails>({
  labFacility: {
  id: "",
@@ -237,11 +247,11 @@ export default function LabTestingBooking() {
  homeCollection: false,
  avatar: "🔬",
  },
- selectedTests: [availableTests[0]],
+ selectedTests: [fallbackTests[0]],
  date: "",
  time: "",
  collectionMethod: "lab",
- totalCost: availableTests[0].price,
+ totalCost: fallbackTests[0].price,
  patientNotes: "",
  emergencyContact: "",
  communicationPreference: "app",
@@ -258,7 +268,7 @@ export default function LabTestingBooking() {
  if (!labTechId) return
  try {
  setFacilityLoading(true)
- const res = await fetch("/api/search/lab-tests")
+ const res = await fetch("/api/search/providers?type=LAB_TECHNICIAN")
  const data = await res.json()
  if (data.success && Array.isArray(data.data)) {
  // Find a test offered by this lab tech to get facility info
@@ -324,6 +334,52 @@ export default function LabTestingBooking() {
  }, [labTechId])
 
  useEffect(() => { fetchLabFacility() }, [fetchLabFacility])
+
+ // Fetch lab test catalog from API, fall back to hardcoded tests
+ useEffect(() => {
+ async function fetchLabTestCatalog() {
+ try {
+ const res = await fetch('/api/services/catalog?providerType=LAB_TECHNICIAN')
+ const data = await res.json()
+ if (data.success && Array.isArray(data.data)) {
+ const apiTests: LabTest[] = []
+ for (const group of data.data) {
+ // group.category is "LAB_TECHNICIAN — <category>"
+ const categoryParts = (group.category as string).split(' — ')
+ const category = categoryParts[1] || categoryParts[0]
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ for (const svc of group.services as any[]) {
+ apiTests.push({
+ id: svc.id,
+ name: svc.serviceName,
+ description: svc.description || '',
+ category,
+ price: svc.defaultPrice || 0,
+ duration: svc.duration ? `${svc.duration} min` : '2-4 hours',
+ sampleType: 'Blood',
+ fastingRequired: false,
+ preparationInstructions: ['Follow your doctor\'s instructions'],
+ reportDelivery: 'Next day',
+ icon: categoryIconMap[category] || FaFlask,
+ })
+ }
+ }
+ if (apiTests.length > 0) {
+ setAvailableTests(apiTests)
+ // Update initial selected test to the first API test
+ setAppointmentDetails(prev => ({
+ ...prev,
+ selectedTests: [apiTests[0]],
+ totalCost: apiTests[0].price,
+ }))
+ }
+ }
+ } catch {
+ // Keep fallback tests
+ }
+ }
+ fetchLabTestCatalog()
+ }, [])
 
  const steps = [
  { number: 1, title: "Lab & Tests", icon: FaFlask },

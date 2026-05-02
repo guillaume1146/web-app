@@ -44,7 +44,7 @@ export default function GenericBookNannyPage({ params }: { params: Promise<{ id:
  try {
  setLoading(true)
 
- const nanniesRes = await fetch('/api/search/nannies')
+ const nanniesRes = await fetch('/api/search/providers?type=NANNY')
  const nanniesData = await nanniesRes.json()
 
  if (nanniesData.success && nanniesData.data) {
@@ -60,7 +60,7 @@ export default function GenericBookNannyPage({ params }: { params: Promise<{ id:
 
  const userId = getUserId()
  if (userId) {
- const walletRes = await fetch(`/api/users/${userId}/wallet`)
+ const walletRes = await fetch(`/api/users/${userId}/wallet`, { credentials: 'include' })
  const walletData = await walletRes.json()
  if (walletData.success && walletData.data) {
  setWalletBalance(walletData.data.balance)
@@ -81,10 +81,12 @@ export default function GenericBookNannyPage({ params }: { params: Promise<{ id:
  setSubmitData(data)
 
  try {
- const res = await fetch('/api/bookings/nanny', {
+ const res = await fetch('/api/bookings', {
+ credentials: 'include',
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
+ providerType: 'NANNY',
  nannyId: id,
  consultationType: data.consultationType,
  scheduledDate: data.scheduledDate,

@@ -94,7 +94,7 @@ export default function MealPlannerTab() {
  setLoading(true)
  setError('')
  const weekStart = getWeekStart()
- const res = await fetch(`/api/ai/health-tracker/meal-plan?weekStart=${weekStart}`)
+ const res = await fetch(`/api/ai/health-tracker/meal-plan?weekStart=${weekStart}`, { credentials: 'include' })
  if (!res.ok) throw new Error('Failed to load meal plan')
  const json = await res.json()
  if (!json.success) throw new Error(json.message || 'Failed to load meal plan')
@@ -139,9 +139,38 @@ export default function MealPlannerTab() {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ weekStart: getWeekStart() }),
+ credentials: 'include',
  })
- if (!res.ok) throw new Error('Failed to generate meal plan')
- await fetchData()
+ const json = await res.json().catch(() => null)
+ if (!res.ok || !json?.success) {
+ throw new Error(json?.message || 'Failed to generate meal plan')
+ }
+ // Generate endpoint returns a different shape than GET — map it directly
+ // so we don't need to re-fetch (the plan isn't persisted server-side).
+ const d = json.data
+ const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+ const days: MealPlanDay[] = dayNames.map((name, index) => {
+ const dayPlan = d?.days?.[index]
+ const m = dayPlan?.meals ?? {}
+ const toMeal = (mealType: string, meal: any): MealPlanMeal | null =>
+ meal ? { id: `${index}-${mealType}`, mealType, name: meal.name, calories: meal.calories ?? 0, protein: meal.protein ?? 0, carbs: meal.carbs ?? 0, fat: meal.fat ?? 0 } : null
+ const meals: MealPlanMeal[] = [
+ toMeal('breakfast', m.breakfast),
+ toMeal('lunch', m.lunch),
+ toMeal('dinner', m.dinner),
+ toMeal('snack', m.snack),
+ ].filter(Boolean) as MealPlanMeal[]
+ const totalCalories = dayPlan?.totalCalories ?? meals.reduce((s, x) => s + x.calories, 0)
+ return {
+ day: name,
+ meals,
+ totalCalories,
+ totalProtein: meals.reduce((s, x) => s + x.protein, 0),
+ totalCarbs: meals.reduce((s, x) => s + x.carbs, 0),
+ totalFat: meals.reduce((s, x) => s + x.fat, 0),
+ }
+ })
+ setData({ days, targetCalories: d?.targetCalories ?? 2000 })
  } catch (err) {
  setError(err instanceof Error ? err.message : 'Failed to generate')
  } finally {
@@ -160,6 +189,7 @@ export default function MealPlannerTab() {
  mealPlanEntryId: meal.id,
  date: today,
  }),
+ credentials: 'include',
  })
  if (!res.ok) throw new Error('Failed to add to diary')
  } catch {

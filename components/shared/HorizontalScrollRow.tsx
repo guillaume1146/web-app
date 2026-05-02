@@ -77,37 +77,69 @@ export default function HorizontalScrollRow({
         </div>
       </div>
 
-      {/* Carousel container */}
-      <div className="relative group">
-        {/* Left arrow */}
-        {canScrollLeft && (
-          <button
-            onClick={() => scroll('left')}
-            className="hidden md:flex absolute -left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-gray-200 items-center justify-center text-gray-600 hover:bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity"
-            aria-label="Scroll left"
-          >
-            <FaChevronLeft className="text-sm" />
-          </button>
-        )}
+      {/*
+        ┌────┬──────────────────────────────────────┬────┐
+        │ ◀  │  [ card ] [ card ] [ card ] [ card ] │ ▶  │
+        └────┴──────────────────────────────────────┴────┘
 
-        {/* Scrollable Row — hidden scrollbar */}
-        <div
-          ref={scrollRef}
-          className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-1 scrollbar-hide"
+        Flex row: button (fixed 40px) | scroll zone (flex-1) | button (fixed 40px)
+        The scroll zone has overflow-hidden → cards are CLIPPED at its edges,
+        never bleeding into the button columns. No absolute positioning needed.
+      */}
+      <div className="flex items-center gap-2">
+        {/* LEFT button — always rendered, dimmed at start */}
+        <button
+          onClick={() => scroll('left')}
+          disabled={!canScrollLeft}
+          className={`hidden md:flex flex-shrink-0 w-10 h-10 rounded-full
+            bg-white shadow-md border-2 items-center justify-center
+            transition-all duration-150
+            ${canScrollLeft
+              ? 'border-brand-teal text-brand-teal hover:bg-brand-teal hover:text-white cursor-pointer'
+              : 'border-gray-200 text-gray-300 cursor-default'
+            }`}
+          aria-label="Scroll left"
         >
-          {children}
+          <FaChevronLeft className="text-xs" />
+        </button>
+
+        {/* Scroll zone — flex-1 takes remaining width; overflow-hidden
+            clips any card that partially exits the viewport so edges look
+            clean instead of showing half-cards */}
+        <div className="flex-1 min-w-0 overflow-hidden relative">
+          {/* Subtle fade gradient at right edge — shows there's more content */}
+          {canScrollRight && (
+            <div className="absolute right-0 top-0 bottom-0 w-8 z-10 pointer-events-none"
+              style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.9))' }} />
+          )}
+          {canScrollLeft && (
+            <div className="absolute left-0 top-0 bottom-0 w-8 z-10 pointer-events-none"
+              style={{ background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.9))' }} />
+          )}
+          <div
+            ref={scrollRef}
+            className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 scrollbar-hide"
+          >
+            {children}
+          </div>
         </div>
 
-        {/* Right arrow */}
-        {canScrollRight && (
-          <button
-            onClick={() => scroll('right')}
-            className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-gray-200 items-center justify-center text-gray-600 hover:bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity"
-            aria-label="Scroll right"
-          >
-            <FaChevronRight className="text-sm" />
-          </button>
-        )}
+        {/* RIGHT button — always rendered, dimmed at end */}
+        <button
+          onClick={() => scroll('right')}
+          disabled={!canScrollRight}
+          className={`hidden md:flex flex-shrink-0 w-10 h-10 rounded-full
+            bg-white shadow-md border-2 items-center justify-center
+            transition-all duration-150
+            ${canScrollRight
+              ? 'border-brand-teal text-brand-teal hover:bg-brand-teal hover:text-white cursor-pointer'
+              : 'border-gray-200 text-gray-300 cursor-default'
+            }`}
+          aria-label="Scroll right"
+        >
+          <FaChevronRight className="text-xs" />
+        </button>
+
       </div>
     </div>
   )

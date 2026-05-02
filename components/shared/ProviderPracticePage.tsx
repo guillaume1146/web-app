@@ -62,12 +62,14 @@ export default function ProviderPracticePage({
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ bookingId, status: 'completed' }),
+ credentials: 'include',
  })
  } else {
  await fetch('/api/bookings/action', {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ bookingId, bookingType, action }),
+ credentials: 'include',
  })
  }
  fetchBookings()

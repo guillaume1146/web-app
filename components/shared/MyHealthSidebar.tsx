@@ -22,7 +22,7 @@ function LabResultsModal({ bookingId, testName, onClose }: { bookingId: string; 
 
  useEffect(() => {
  if (!user) return
- fetch(`/api/patients/${user.id}/lab-tests?bookingId=${bookingId}`)
+ fetch(`/api/patients/${user.id}/lab-tests?bookingId=${bookingId}`, { credentials: 'include' })
  .then(r => r.json())
  .then(json => {
  if (json.success && json.data) {
@@ -80,7 +80,7 @@ function PrescriptionsModal({ appointmentId, doctorName, onClose }: { appointmen
 
  useEffect(() => {
  if (!user) return
- fetch(`/api/patients/${user.id}/prescriptions`)
+ fetch(`/api/patients/${user.id}/prescriptions`, { credentials: 'include' })
  .then(r => r.json())
  .then(json => {
  if (json.success && json.data) {
@@ -170,11 +170,11 @@ function ProviderBookingsList({ providerType, title }: { providerType: string; t
  const [prescriptionsModal, setPrescriptionsModal] = useState<{ appointmentId: string; doctorName: string } | null>(null)
 
  useEffect(() => {
- fetch('/api/bookings/unified?role=patient')
+ fetch('/api/bookings/unified?role=patient', { credentials: 'include' })
  .then(r => r.json())
  .then(json => {
  if (json.success && json.data) {
- setBookings(json.data.filter((b: BookingItem) => b.providerRole === providerType))
+ setBookings(json.data.filter((b: Record<string, unknown>) => b.providerRole === providerType || b.providerType === providerType))
  }
  })
  .catch(() => {})
@@ -183,8 +183,9 @@ function ProviderBookingsList({ providerType, title }: { providerType: string; t
 
  if (loading) return <Loading />
 
- const isLabRole = providerType === 'LAB_TECHNICIAN'
- const isDoctorRole = providerType === 'DOCTOR'
+ // Dynamic-roles principle: any provider may produce lab results or prescriptions.
+ // Action buttons are surfaced for every completed booking; modals show empty
+ // state when no content exists for that booking.
 
  return (
  <>
@@ -210,25 +211,21 @@ function ProviderBookingsList({ providerType, title }: { providerType: string; t
  </div>
  </div>
 
- {/* Action buttons for completed bookings */}
- {b.status === 'completed' && (isLabRole || isDoctorRole) && (
- <div className="mt-2 flex gap-2">
- {isLabRole && (
+ {/* Action buttons for completed bookings — available to every provider role */}
+ {b.status === 'completed' && (
+ <div className="mt-2 flex flex-wrap gap-2">
  <button
- onClick={() => setLabResultsModal({ bookingId: b.id, testName: b.serviceName || 'Lab Test' })}
+ onClick={() => setLabResultsModal({ bookingId: b.id, testName: b.serviceName || title })}
  className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 transition"
  >
  <FaFlask className="text-[10px]" /> View Results
  </button>
- )}
- {isDoctorRole && (
  <button
  onClick={() => setPrescriptionsModal({ appointmentId: b.id, doctorName: b.providerName })}
  className="flex items-center gap-1 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-100 transition"
  >
  <FaPills className="text-[10px]" /> View Prescriptions
  </button>
- )}
  </div>
  )}
  </div>

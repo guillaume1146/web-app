@@ -39,7 +39,7 @@ export default function VideoCallRoomsList({ currentUser, initialRoomId }: Video
  useEffect(() => {
  const fetchRooms = async () => {
  try {
- const res = await fetch('/api/video/rooms')
+ const res = await fetch('/api/video/rooms', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success) {

@@ -58,7 +58,7 @@ const AdminManagementPage = () => {
  useEffect(() => {
  const fetchAdmins = async () => {
  try {
- const res = await fetch('/api/admin/admins')
+ const res = await fetch('/api/admin/admins', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success) {

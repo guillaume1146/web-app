@@ -16,11 +16,13 @@ describe('Patient Sidebar Config', () => {
  expect(ids).toContain('chat')
  })
 
- it('has correct href for each item based on /patient or /search base', () => {
+ it('has correct href for each item based on /patient, /search, or global base', () => {
  for (const item of PATIENT_SIDEBAR_ITEMS) {
  if (item.divider) continue
- // Core items use /patient base, search items use /search base
- expect(item.href).toMatch(/^\/(patient|search)/)
+ // Core items use /patient base, search items use /search base,
+ // some top-level routes (e.g. /invite) are shared across all dashboards
+ expect(item.href).toMatch(/^\//)
+ expect(item.href).not.toBe('')
  }
  })
 

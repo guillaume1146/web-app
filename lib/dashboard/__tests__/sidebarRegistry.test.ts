@@ -7,7 +7,7 @@ import { filterSidebarByFeatures } from '@/hooks/useRoleFeatureConfig'
 
 describe('getSidebarConfig', () => {
   it('returns null for PATIENT (now a provider role)', () => {
-    expect(getSidebarConfig('PATIENT')).toBeNull()
+    expect(getSidebarConfig('MEMBER')).toBeNull()
   })
 
   it('returns config for INSURANCE_REP', () => {
@@ -48,7 +48,7 @@ describe('getSidebarConfig', () => {
 
 describe('getUserTypeSlug', () => {
   it('returns null for PATIENT (no longer dedicated)', () => {
-    expect(getUserTypeSlug('PATIENT')).toBeNull()
+    expect(getUserTypeSlug('MEMBER')).toBeNull()
   })
 
   it('returns correct slugs for non-provider roles', () => {

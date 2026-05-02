@@ -5,6 +5,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import { toast } from 'react-toastify'
 import { useSocket } from '@/hooks/useSocket'
 import { useWebRTC } from '@/hooks/useWebRTC'
 import VideoCallRoom from './VideoCallRoom'
@@ -102,7 +103,7 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({ currentUser, pati
  const userInfo = {
  id: effectiveUser?.id || '',
  name: effectiveType === 'doctor'
- ? `Dr. ${effectiveUser?.firstName} ${effectiveUser?.lastName}`
+ ? `Dr. ${effectiveUser?.firstName || ''} ${effectiveUser?.lastName || ''}`.trim()
  : `${effectiveUser?.firstName || ''} ${effectiveUser?.lastName || ''}`.trim(),
  type: effectiveType
  }
@@ -168,7 +169,8 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({ currentUser, pati
  userId: userInfo.id,
  userName: userInfo.name,
  userType: userInfo.type
- })
+ }),
+ credentials: 'include',
  })
 
  if (response.ok) {
@@ -188,7 +190,7 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({ currentUser, pati
 
  const checkExistingSession = async (roomId: string) => {
  try {
- const response = await fetch(`/api/webrtc/session?roomId=${roomId}`)
+ const response = await fetch(`/api/webrtc/session?roomId=${roomId}`, { credentials: 'include' })
  if (response.ok) {
  const data = await response.json()
  if (data.data && data.data.isActive) {
@@ -216,7 +218,8 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({ currentUser, pati
  const response = await fetch('/api/webrtc/recovery', {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify({ roomId, userId: userInfo.id })
+ body: JSON.stringify({ roomId, userId: userInfo.id }),
+ credentials: 'include',
  })
 
  if (response.ok) {
@@ -248,7 +251,8 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({ currentUser, pati
  userId: userInfo.id,
  connectionState: connectionStatus,
  iceState: connectionHealth === 'good' ? 'connected' : 'checking'
- })
+ }),
+ credentials: 'include',
  })
  } catch (error) {
  console.error('Session health check failed:', error)
@@ -331,7 +335,7 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({ currentUser, pati
 
  const joinCall = async (appointment: VideoAppointment) => {
  if (!appointment.roomId) {
- alert('No room ID found for this appointment')
+ toast.error('No room ID found for this appointment. Please contact support.')
  return
  }
 
@@ -348,7 +352,8 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({ currentUser, pati
  if (sessionData) {
  try {
  await fetch(`/api/webrtc/session?sessionId=${sessionData.sessionId}&userId=${userInfo.id}`, {
- method: 'DELETE'
+ method: 'DELETE',
+ credentials: 'include',
  })
  } catch (error) {
  console.error('Failed to end database session:', error)

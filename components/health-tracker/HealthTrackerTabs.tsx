@@ -30,7 +30,10 @@ const TABS = [
  { id: 'ai-coach', label: 'AI Coach', icon: FaRobot },
  { id: 'progress', label: 'Progress', icon: FaChartLine },
  { id: 'meal-plan', label: 'Meal Plan', icon: FaCalendarAlt },
- { id: 'profile', label: 'Profile', icon: FaUser },
+ // Profile & goals moved to the centralised profile page (`/profile/[id]` →
+ // 🔒 Health Goals tab). One canonical destination — per
+ // `.claude/rules/…/feedback_centralised_profile.md`. The health tracker
+ // now focuses on daily-logging surfaces (food, exercise, sleep, BP).
  { id: 'bp-check', label: 'BP Check', icon: FaHeartbeat },
 ]
 
@@ -47,8 +50,7 @@ export default function HealthTrackerTabs({ userName, healthScore }: HealthTrack
  case 4: return <AiCoachTab userName={userName} healthScore={healthScore} />
  case 5: return <ProgressTab />
  case 6: return <MealPlannerTab />
- case 7: return <ProfileGoalsTab />
- case 8: return <BloodPressureScanner />
+ case 7: return <BloodPressureScanner />
  default: return <DashboardTab onNavigateToTab={setActiveTab} />
  }
  }

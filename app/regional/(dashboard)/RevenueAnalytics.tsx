@@ -29,13 +29,26 @@ interface RevenueStream {
  trend: number;
 }
 
-const CURRENCIES = [
+interface CurrencyOption {
+ code: string;
+ symbol: string;
+ rate: number;
+}
+
+// Fallback currencies when regions API is unavailable
+const FALLBACK_CURRENCIES: CurrencyOption[] = [
  { code: 'USD', symbol: '$', rate: 1 },
- { code: 'EUR', symbol: '€', rate: 0.92 },
+ { code: 'EUR', symbol: '\u20AC', rate: 0.92 },
  { code: 'MUR', symbol: 'Rs', rate: 45.5 },
  { code: 'KES', symbol: 'KSh', rate: 153.5 },
  { code: 'ZAR', symbol: 'R', rate: 18.9 }
 ];
+
+// Known exchange rates relative to USD (revenue is stored in USD)
+const EXCHANGE_RATES: Record<string, number> = {
+ USD: 1, EUR: 0.92, MUR: 45.5, KES: 153.5, ZAR: 18.9,
+ MGA: 4550, GBP: 0.79, XOF: 603, RWF: 1300, BIF: 2850,
+};
 
 // Chart options
 const chartOptions = {
@@ -53,13 +66,51 @@ export default function RevenueAnalytics({ timeRange, region }: { timeRange: str
  const [totalRevenue, setTotalRevenue] = useState(0);
  const [revenueGrowth, setRevenueGrowth] = useState(0);
  const [selectedCurrency, setSelectedCurrency] = useState('MUR');
+ const [currencies, setCurrencies] = useState<CurrencyOption[]>(FALLBACK_CURRENCIES);
 
- const currentCurrency = CURRENCIES.find(c => c.code === selectedCurrency) || CURRENCIES[0];
+ // Fetch regions to build dynamic currency list
+ useEffect(() => {
+  const fetchCurrencies = async () => {
+   try {
+    const res = await fetch('/api/regions')
+    if (!res.ok) return
+    const json = await res.json()
+    if (!json.success || !Array.isArray(json.data)) return
+
+    const seen = new Set<string>()
+    const regionCurrencies: CurrencyOption[] = []
+
+    // Always include USD as base
+    seen.add('USD')
+    regionCurrencies.push({ code: 'USD', symbol: '$', rate: 1 })
+
+    for (const r of json.data) {
+     const code = r.currency as string
+     if (!code || seen.has(code)) continue
+     seen.add(code)
+     regionCurrencies.push({
+      code,
+      symbol: r.currencySymbol || code,
+      rate: EXCHANGE_RATES[code] ?? 1,
+     })
+    }
+
+    if (regionCurrencies.length > 1) {
+     setCurrencies(regionCurrencies)
+    }
+   } catch {
+    // Keep fallback currencies
+   }
+  }
+  fetchCurrencies()
+ }, [])
+
+ const currentCurrency = currencies.find(c => c.code === selectedCurrency) || currencies[0];
 
  useEffect(() => {
  const fetchRevenue = async () => {
  try {
- const res = await fetch('/api/admin/metrics')
+ const res = await fetch('/api/admin/metrics', { credentials: 'include' })
  if (!res.ok) return
  const json = await res.json()
  if (!json.success) return
@@ -116,7 +167,7 @@ export default function RevenueAnalytics({ timeRange, region }: { timeRange: str
  onChange={(e) => setSelectedCurrency(e.target.value)}
  className="px-4 py-2 border rounded-lg"
  >
- {CURRENCIES.map(curr => (
+ {currencies.map(curr => (
  <option key={curr.code} value={curr.code}>{curr.symbol} {curr.code}</option>
  ))}
  </select>

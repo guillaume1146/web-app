@@ -38,7 +38,7 @@ function formatUserType(userType: string) {
 
 const STATUS_FILTER_OPTIONS = ['all', 'active', 'pending', 'suspended']
 const USER_TYPE_OPTIONS = [
- 'All', 'DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER', 'PATIENT'
+ 'All', 'DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER', 'MEMBER'
 ]
 
 export default function ProfileManagement() {
@@ -56,7 +56,7 @@ export default function ProfileManagement() {
  try {
  const params = new URLSearchParams()
  if (statusFilter !== 'all') params.set('status', statusFilter)
- const res = await fetch(`/api/admin/accounts?${params.toString()}`)
+ const res = await fetch(`/api/admin/accounts?${params.toString()}`, { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success) {

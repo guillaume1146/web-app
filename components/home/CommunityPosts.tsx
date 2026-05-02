@@ -65,10 +65,10 @@ export default function CommunityPosts() {
   if (loading) {
     return (
       <section className="py-8 sm:py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-14">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-64 mb-6" />
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 lg:gap-6">
               {[1, 2, 3].map(i => (
                 <div key={i} className="h-48 bg-gray-100 rounded-2xl" />
               ))}
@@ -83,21 +83,31 @@ export default function CommunityPosts() {
 
   return (
     <section className="py-8 sm:py-12 bg-white">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">From the Community</h2>
-            <p className="text-sm sm:text-base text-gray-600 mt-1">Latest health tips and updates from our providers</p>
+      <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-14">
+        {/* Sticky header — pinned to the top of the viewport while the user
+            scrolls past the community grid. Negative horizontal margins +
+            matching padding give it an edge-to-edge backdrop. */}
+        <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-10 xl:-mx-14 px-4 sm:px-6 lg:px-10 xl:px-14 py-4 mb-6 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">From the Community</h2>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">
+                Most reacted posts on MediWyz — browse freely, no account needed
+              </p>
+            </div>
+            <Link
+              href="/feed"
+              className="hidden sm:flex flex-col items-end gap-0.5 group"
+            >
+              <span className="flex items-center gap-1.5 text-sm font-medium text-[#0C6780] group-hover:text-[#001E40] transition-colors">
+                See All <FaArrowRight className="text-xs" />
+              </span>
+              <span className="text-[10px] text-gray-400 group-hover:text-gray-600 transition-colors">No login needed</span>
+            </Link>
           </div>
-          <Link
-            href="/feed"
-            className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-[#0C6780] hover:text-[#001E40] transition-colors"
-          >
-            View All <FaArrowRight className="text-xs" />
-          </Link>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
           {posts.map(post => (
             <article
               key={post.id}
@@ -167,13 +177,14 @@ export default function CommunityPosts() {
           ))}
         </div>
 
-        {/* Mobile "View All" link */}
+        {/* Mobile "See All" link */}
         <div className="text-center mt-6 sm:hidden">
           <Link
             href="/feed"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0C6780] text-white rounded-xl text-sm font-medium hover:bg-[#0a5568] transition-colors"
+            className="inline-flex flex-col items-center gap-0.5 px-5 py-2.5 bg-[#0C6780] text-white rounded-xl text-sm font-medium hover:bg-[#001E40] transition-colors"
           >
-            View All Posts <FaArrowRight className="text-xs" />
+            <span className="flex items-center gap-2">See All Posts <FaArrowRight className="text-xs" /></span>
+            <span className="text-[10px] opacity-80">No login needed</span>
           </Link>
         </div>
       </div>

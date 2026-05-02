@@ -12,7 +12,7 @@ export interface Notification {
 }
 
 export async function fetchNotifications(userId: string): Promise<Notification[]> {
-  const res = await fetch(`/api/users/${userId}/notifications`)
+  const res = await fetch(`/api/users/${userId}/notifications`, { credentials: 'include' })
   if (!res.ok) return []
   const data = await res.json()
   return data.success ? data.data : []
@@ -26,6 +26,7 @@ export async function markNotificationsRead(
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ids: notificationIds }),
+    credentials: 'include',
   })
   return res.json()
 }

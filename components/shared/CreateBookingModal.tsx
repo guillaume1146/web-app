@@ -96,6 +96,12 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  const [error, setError] = useState<string | null>(null)
 
  const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset])
+ // Show BOTH this week AND next week on screen at once — 14 days visible
+ // so the user doesn't have to navigate with chevrons to find a free slot.
+ const twoWeekDates = useMemo(
+  () => [...getWeekDates(weekOffset), ...getWeekDates(weekOffset + 1)],
+  [weekOffset],
+ )
 
  // Determine initial step based on defaults
  useEffect(() => {
@@ -146,17 +152,18 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  .catch(() => {})
  }, [selectedRole])
 
- // Fetch available slots for the whole week when provider + week changes
+ // Fetch available slots for BOTH visible weeks (14 days total) so the
+ // whole picker is pre-loaded before the user taps a day.
  const fetchWeekSlots = useCallback(async () => {
  if (!selectedProvider || !selectedRole) return
  setSlotsLoading(true)
  const providerType = getSlotProviderType(selectedRole.role)
  const slotMap: Record<string, string[]> = {}
 
- // Fetch all 7 days in parallel
- const promises = weekDates.filter(d => !d.isPast).map(async (day) => {
+ // Fetch all 14 days in parallel (this week + next week)
+ const promises = twoWeekDates.filter(d => !d.isPast).map(async (day) => {
  try {
- const res = await fetch(`/api/bookings/available-slots?providerId=${selectedProvider.id}&date=${day.date}&providerType=${providerType}`)
+ const res = await fetch(`/api/bookings/available-slots?providerId=${selectedProvider.id}&date=${day.date}&providerType=${providerType}`, { credentials: 'include' })
  const json = await res.json()
  if (json.success && json.slots && json.slots.length > 0) {
  slotMap[day.date] = json.slots
@@ -176,7 +183,7 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  await Promise.all(promises)
  setWeekSlots(slotMap)
  setSlotsLoading(false)
- }, [selectedProvider, selectedRole, weekDates])
+ }, [selectedProvider, selectedRole, twoWeekDates])
 
  useEffect(() => {
  if (step === 4) fetchWeekSlots()
@@ -200,52 +207,29 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  setError(null)
 
  try {
- const isOldRole = ['DOCTOR', 'NURSE', 'NANNY', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER'].includes(selectedRole?.role || '')
- const roleToEndpoint: Record<string, string> = {
- DOCTOR: 'doctor', NURSE: 'nurse', NANNY: 'nanny',
- LAB_TECHNICIAN: 'lab-test', EMERGENCY_WORKER: 'emergency',
- }
- const endpoint = isOldRole
- ? `/api/bookings/${roleToEndpoint[selectedRole?.role || '']}`
- : '/api/bookings/service'
+ // Universal booking endpoint — no role-specific branching
+ const endpoint = '/api/bookings'
 
- const roleToBodyKey: Record<string, string> = {
- DOCTOR: 'doctorId', NURSE: 'nurseId', NANNY: 'nannyId',
- LAB_TECHNICIAN: 'labTechId', EMERGENCY_WORKER: 'emergencyWorkerId',
- }
-
- const body = isOldRole
- ? (() => {
+ const body = (() => {
  const b: Record<string, unknown> = {
-   [roleToBodyKey[selectedRole?.role || '']]: selectedProvider.id,
-   consultationType: consultType,
-   scheduledDate: selectedDate,
-   scheduledTime: selectedTime,
- }
- if (reason) b.reason = reason
- if (selectedService?.serviceName) b.serviceName = selectedService.serviceName
- if (selectedService?.defaultPrice != null) b.servicePrice = selectedService.defaultPrice
- return b
- })()
- : (() => {
- const body: Record<string, unknown> = {
    providerUserId: selectedProvider.id,
    providerType: selectedRole?.role || selectedRole?.code || '',
    scheduledDate: selectedDate,
    scheduledTime: selectedTime,
    type: consultType,
  }
- if (reason) body.reason = reason
- if (selectedService?.serviceName) body.serviceName = selectedService.serviceName
- if (selectedService?.defaultPrice != null) body.servicePrice = selectedService.defaultPrice
- if (selectedProvider.specializations?.[0] || selectedSpecialty) body.specialty = selectedProvider.specializations?.[0] || selectedSpecialty
- return body
+ if (reason) b.reason = reason
+ if (selectedService?.serviceName) b.serviceName = selectedService.serviceName
+ if (selectedService?.defaultPrice != null) b.servicePrice = selectedService.defaultPrice
+ if (selectedProvider.specializations?.[0] || selectedSpecialty) b.specialty = selectedProvider.specializations?.[0] || selectedSpecialty
+ return b
  })()
 
  const res = await fetch(endpoint, {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify(body),
+ credentials: 'include',
  })
  const json = await res.json()
 
@@ -291,7 +275,7 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
 
  return (
  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
- <div className="bg-white rounded-xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+ <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
  {/* Header */}
  <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
  <div className="flex items-center gap-2">
@@ -423,50 +407,49 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  {/* Step 4: Weekly calendar with time slots */}
  {step === 4 && (
  <div>
- <h4 className="text-sm font-semibold text-gray-800 mb-3">Choose date & time</h4>
+ <h4 className="text-base font-semibold text-gray-800 mb-1">Choose date & time</h4>
+ <p className="text-xs text-gray-500 mb-4">
+  Showing the next two weeks. Days with a green dot have open slots — already-booked times are hidden.
+ </p>
 
- {/* Week navigation */}
- <div className="flex items-center justify-between mb-3">
- <button onClick={() => { setWeekOffset(Math.max(0, weekOffset - 1)); setSelectedDate(''); setSelectedTime('') }}
- disabled={weekOffset === 0}
- className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30">
- <FaChevronLeft className="text-xs" />
- </button>
- <span className="text-xs font-medium text-gray-600">
- {weekDates[0]?.dayNum} {weekDates[0]?.monthShort} — {weekDates[6]?.dayNum} {weekDates[6]?.monthShort}
- </span>
- <button onClick={() => { setWeekOffset(weekOffset + 1); setSelectedDate(''); setSelectedTime('') }}
- disabled={weekOffset >= 4}
- className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30">
- <FaChevronRight className="text-xs" />
- </button>
- </div>
-
- {/* Day pills */}
- <div className="grid grid-cols-7 gap-1 mb-4">
- {weekDates.map(day => {
- const hasSlots = (weekSlots[day.date] || []).length > 0
- const isSelected = selectedDate === day.date
- return (
- <button
- key={day.date}
- onClick={() => { if (!day.isPast) { setSelectedDate(day.date); setSelectedTime('') } }}
- disabled={day.isPast}
- className={`flex flex-col items-center py-2 rounded-lg text-center transition ${
- isSelected ? 'bg-blue-600 text-white' :
- day.isPast ? 'bg-gray-50 text-gray-300 cursor-not-allowed' :
- day.isToday ? 'bg-blue-50 text-blue-700 border border-blue-200' :
- 'bg-white border border-gray-200 text-gray-700 hover:border-blue-200 hover:bg-blue-50'
- }`}
- >
- <span className="text-[9px] font-medium uppercase">{day.dayName}</span>
- <span className="text-sm font-bold">{day.dayNum}</span>
- {!day.isPast && hasSlots && !isSelected && (
- <span className="w-1 h-1 rounded-full bg-green-500 mt-0.5" />
- )}
- </button>
- )
- })}
+ {/* Two-week day grid — stacked, no chevron navigation needed */}
+ <div className="space-y-3 mb-5">
+  {[0, 1].map(rowIdx => {
+   const rowDays = twoWeekDates.slice(rowIdx * 7, rowIdx * 7 + 7)
+   return (
+    <div key={rowIdx}>
+     <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+      {rowIdx === 0 ? 'This week' : 'Next week'}
+     </p>
+     <div className="grid grid-cols-7 gap-2">
+      {rowDays.map(day => {
+       const hasSlots = (weekSlots[day.date] || []).length > 0
+       const isSelected = selectedDate === day.date
+       return (
+        <button
+         key={day.date}
+         onClick={() => { if (!day.isPast) { setSelectedDate(day.date); setSelectedTime('') } }}
+         disabled={day.isPast}
+         className={`flex flex-col items-center py-3 rounded-lg text-center transition ${
+          isSelected ? 'bg-blue-600 text-white shadow-md' :
+          day.isPast ? 'bg-gray-50 text-gray-300 cursor-not-allowed' :
+          day.isToday ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+          'bg-white border border-gray-200 text-gray-700 hover:border-blue-400 hover:bg-blue-50'
+         }`}
+        >
+         <span className="text-[10px] font-semibold uppercase">{day.dayName}</span>
+         <span className="text-lg font-bold">{day.dayNum}</span>
+         <span className="text-[9px] text-gray-400">{day.monthShort}</span>
+         {!day.isPast && hasSlots && !isSelected && (
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1" />
+         )}
+        </button>
+       )
+      })}
+     </div>
+    </div>
+   )
+  })}
  </div>
 
  {/* Time slots for selected day */}
@@ -484,13 +467,13 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  const evening = daySlots.filter(t => { const h = parseInt(t); return h >= 17 })
 
  const SlotGroup = ({ label, slots }: { label: string; slots: string[] }) => slots.length === 0 ? null : (
- <div className="mb-2">
- <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
- <div className="grid grid-cols-4 gap-1.5">
+ <div className="mb-3">
+ <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">{label} <span className="text-gray-400 font-normal">({slots.length})</span></p>
+ <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
  {slots.map(time => (
  <button key={time} onClick={() => setSelectedTime(time)}
- className={`px-2 py-2 border rounded-lg text-xs font-medium transition ${
- selectedTime === time ? 'border-blue-500 bg-blue-600 text-white' : 'text-gray-700 hover:bg-blue-50 hover:border-blue-200'
+ className={`px-2 py-2.5 border rounded-lg text-sm font-medium transition ${
+ selectedTime === time ? 'border-blue-500 bg-blue-600 text-white shadow' : 'border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-300'
  }`}>
  {time}
  </button>
@@ -527,7 +510,7 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  <div>
  <h4 className="text-sm font-semibold text-gray-800 mb-3">Review & Confirm</h4>
  <div className="bg-gray-50 rounded-lg p-4 space-y-2.5 text-sm mb-4">
- <div className="flex justify-between"><span className="text-gray-500">Provider</span><span className="font-medium">{selectedRole?.role === 'DOCTOR' ? 'Dr. ' : ''}{selectedProvider?.firstName} {selectedProvider?.lastName}</span></div>
+ <div className="flex justify-between"><span className="text-gray-500">Provider</span><span className="font-medium">{selectedRole?.role === 'DOCTOR' ? 'Dr. ' : ''}{selectedProvider?.firstName || ''} {selectedProvider?.lastName || ''}</span></div>
  <div className="flex justify-between"><span className="text-gray-500">Type</span><span className="font-medium text-blue-600">{selectedRole?.label}</span></div>
  <div className="flex justify-between"><span className="text-gray-500">Service</span><span className="font-medium">{selectedService?.serviceName || 'General Consultation'}</span></div>
  <div className="flex justify-between"><span className="text-gray-500">Format</span><span className="font-medium">{consultType === 'in_person' ? 'At Office' : consultType === 'home_visit' ? 'At Home' : 'Video Call'}</span></div>

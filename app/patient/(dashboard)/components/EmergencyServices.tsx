@@ -33,6 +33,7 @@ import {
  FaChevronDown,
  FaChevronUp
 } from 'react-icons/fa'
+import { toast } from 'react-toastify'
 
 interface Props {
  patientData: Patient
@@ -67,7 +68,7 @@ const EmergencyServices: React.FC<Props> = ({ patientData }) => {
  useEffect(() => {
  const fetchMedications = async () => {
  try {
- const res = await fetch(`/api/patients/${patientData.id}/prescriptions?active=true`)
+ const res = await fetch(`/api/patients/${patientData.id}/prescriptions?active=true`, { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
@@ -88,12 +89,20 @@ const EmergencyServices: React.FC<Props> = ({ patientData }) => {
  useEffect(() => {
  const fetchResponders = async () => {
  try {
- const res = await fetch('/api/responders/available')
+ const res = await fetch('/api/search/providers?type=EMERGENCY_WORKER')
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
- setEmergencyServices(json.data.map((r: { id: string; name: string; service: string; phone: string; available24h: boolean; responseTime: string; specialization: string[]; location: string }) => ({
- ...r,
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ setEmergencyServices(json.data.map((r: any) => ({
+ id: r.id,
+ name: `${r.firstName} ${r.lastName}`,
+ service: r.service || 'Emergency Service',
+ phone: r.phone || '',
+ available24h: r.available24h ?? true,
+ responseTime: r.responseTime || 'N/A',
+ specialization: r.specialization || [],
+ location: r.address || '',
  distance: 'N/A',
  })))
  }
@@ -106,26 +115,29 @@ const EmergencyServices: React.FC<Props> = ({ patientData }) => {
  }, [])
 
  const initiateEmergencyCall = (service: EmergencyContact) => {
+ if (service.phone) {
+   window.location.href = `tel:${service.phone.replace(/\s/g, '')}`
+   return
+ }
  setIsEmergencyCall(true)
- // In a real app, this would initiate the call
- setTimeout(() => {
- setIsEmergencyCall(false)
- alert(`Emergency call initiated to ${service.name}`)
- }, 3000)
+ toast.info(`Connecting to ${service.name}…`, { autoClose: 3000 })
+ setTimeout(() => setIsEmergencyCall(false), 3000)
  }
 
  const shareLocation = () => {
- if (navigator.geolocation) {
+ if (!navigator.geolocation) {
+   toast.error('Geolocation is not supported by your browser.')
+   return
+ }
  navigator.geolocation.getCurrentPosition(
- (position) => {
- const { latitude, longitude } = position.coords
- alert(`Location shared: ${latitude}, ${longitude}`)
- },
- (error) => {
- alert('Unable to get location. Please check your permissions.')
- }
+   (position) => {
+   const { latitude, longitude } = position.coords
+   const mapsUrl = `https://maps.google.com?q=${latitude},${longitude}`
+   navigator.clipboard?.writeText(mapsUrl).catch(() => {})
+   toast.success('Location copied to clipboard. Share it with emergency services.')
+   },
+   () => toast.error('Unable to get location. Please check your permissions.')
  )
- }
  }
 
  const sections = [

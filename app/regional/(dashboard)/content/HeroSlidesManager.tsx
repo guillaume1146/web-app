@@ -60,12 +60,14 @@ export default function HeroSlidesManager({ slides, onRefresh }: HeroSlidesManag
  method: 'PUT',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify(formData),
+ credentials: 'include',
  })
  } else {
  await fetch('/api/cms/hero-slides', {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify(formData),
+ credentials: 'include',
  })
  }
  closeForm()
@@ -83,6 +85,7 @@ export default function HeroSlidesManager({ slides, onRefresh }: HeroSlidesManag
  method: 'PUT',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ isActive: !slide.isActive }),
+ credentials: 'include',
  })
  onRefresh()
  } catch (err) {
@@ -102,11 +105,13 @@ export default function HeroSlidesManager({ slides, onRefresh }: HeroSlidesManag
  method: 'PUT',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ sortOrder: targetSlide.sortOrder }),
+ credentials: 'include',
  }),
  fetch(`/api/cms/hero-slides/${targetSlide.id}`, {
  method: 'PUT',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ sortOrder: slide.sortOrder }),
+ credentials: 'include',
  }),
  ])
  onRefresh()
@@ -118,7 +123,7 @@ export default function HeroSlidesManager({ slides, onRefresh }: HeroSlidesManag
  const handleDelete = async (id: string) => {
  if (!confirm('Are you sure you want to delete this slide?')) return
  try {
- await fetch(`/api/cms/hero-slides/${id}`, { method: 'DELETE' })
+ await fetch(`/api/cms/hero-slides/${id}`, { method: 'DELETE', credentials: 'include' })
  onRefresh()
  } catch (err) {
  console.error('Failed to delete slide:', err)

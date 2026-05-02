@@ -56,9 +56,17 @@ function HealthShopContent() {
       const res = await fetch(`/api/search/health-shop?${params}`)
       const data = await res.json()
       if (data.success) {
-        setItems(data.data.items)
-        setTotal(data.data.total)
-        if (data.data.categories) setCategories(data.data.categories)
+        // Backend returns { success, data: items[], total }. Older shape nested
+        // items+total+categories under `data` — support both defensively.
+        const items = Array.isArray(data.data) ? data.data : data.data?.items ?? []
+        const total = typeof data.total === 'number' ? data.total : data.data?.total ?? items.length
+        const cats = data.data?.categories ?? data.categories
+        setItems(items)
+        setTotal(total)
+        if (Array.isArray(cats)) setCategories(cats)
+      } else {
+        setItems([])
+        setTotal(0)
       }
     } catch { /* */ }
     finally { setLoading(false) }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useUser } from '@/hooks/useUser'
 import {
  FaUser,
@@ -123,7 +124,9 @@ interface TabConfig {
  icon: React.ComponentType<{ className?: string }>
 }
 
-const PROVIDER_TYPES = ['DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER']
+// Role types that do NOT act as providers (no reviews, no posts feed authoring).
+// Everyone else is treated as a provider — aligned with dynamic-roles principle.
+const NON_PROVIDER_TYPES = new Set(['MEMBER', 'REGIONAL_ADMIN', 'CORPORATE_ADMIN', 'INSURANCE_REP', 'REFERRAL_PARTNER'])
 
 function getTabsForUserType(userType: string): TabConfig[] {
  const tabs: TabConfig[] = [
@@ -131,17 +134,15 @@ function getTabsForUserType(userType: string): TabConfig[] {
  { id: 'documents', label: 'Documents', icon: FaFileAlt },
  ]
 
- if (userType === 'PATIENT') {
+ if (userType === 'MEMBER') {
  tabs.push({ id: 'info', label: 'Medical Info', icon: FaNotesMedical })
  } else {
  tabs.push({ id: 'info', label: 'Professional Info', icon: FaBriefcaseMedical })
  }
 
- if (PROVIDER_TYPES.includes(userType)) {
+ // All provider roles get reviews + posts — no role-specific gating.
+ if (!NON_PROVIDER_TYPES.has(userType)) {
  tabs.push({ id: 'reviews', label: 'Reviews', icon: FaStar })
- }
-
- if (userType === 'DOCTOR') {
  tabs.push({ id: 'posts', label: 'Posts', icon: FaPenFancy })
  }
 
@@ -151,7 +152,7 @@ function getTabsForUserType(userType: string): TabConfig[] {
 /* ─── Constants ──────────────────────────────────────────────────────────── */
 
 const USER_TYPE_LABELS: Record<string, string> = {
- PATIENT: 'Patient',
+ MEMBER: 'Member',
  DOCTOR: 'Doctor',
  NURSE: 'Nurse',
  NANNY: 'Nanny',
@@ -228,77 +229,16 @@ interface EditableField {
  suffix?: string
 }
 
-function getEditableFieldsForType(userType: string): EditableField[] {
- switch (userType) {
- case 'PATIENT':
- return [
- { key: 'bloodType', label: 'Blood Type', type: 'select', options: BLOOD_TYPES, profileField: true },
- { key: 'allergies', label: 'Allergies', type: 'tags', profileField: true },
- { key: 'chronicConditions', label: 'Chronic Conditions', type: 'tags', profileField: true },
- { key: 'healthScore', label: 'Health Score', type: 'readonly', profileField: true },
- ]
- case 'DOCTOR':
- return [
- { key: 'specialty', label: 'Specialty', type: 'text', profileField: true },
- { key: 'licenseNumber', label: 'License Number', type: 'text', profileField: true },
- { key: 'clinicAffiliation', label: 'Clinic Affiliation', type: 'text', profileField: true },
- { key: 'consultationFee', label: 'Consultation Fee', type: 'number', profileField: true, suffix: 'Rs' },
- { key: 'bio', label: 'Bio', type: 'text', profileField: true },
- ]
- case 'NURSE':
- return [
- { key: 'licenseNumber', label: 'License Number', type: 'text', profileField: true },
- { key: 'experience', label: 'Experience (years)', type: 'number', profileField: true },
- { key: 'specializations', label: 'Specializations', type: 'tags', profileField: true },
- ]
- case 'NANNY':
- return [
- { key: 'experience', label: 'Experience (years)', type: 'number', profileField: true },
- { key: 'certifications', label: 'Certifications', type: 'tags', profileField: true },
- ]
- case 'PHARMACIST':
- return [
- { key: 'licenseNumber', label: 'License Number', type: 'text', profileField: true },
- { key: 'pharmacyName', label: 'Pharmacy Name', type: 'text', profileField: true },
- ]
- case 'LAB_TECHNICIAN':
- return [
- { key: 'licenseNumber', label: 'License Number', type: 'text', profileField: true },
- { key: 'labName', label: 'Lab Name', type: 'text', profileField: true },
- { key: 'specializations', label: 'Specializations', type: 'tags', profileField: true },
- ]
- case 'EMERGENCY_WORKER':
- return [
- { key: 'certifications', label: 'Certifications', type: 'tags', profileField: true },
- { key: 'vehicleType', label: 'Vehicle Type', type: 'text', profileField: true },
- { key: 'responseZone', label: 'Response Zone', type: 'text', profileField: true },
- { key: 'emtLevel', label: 'EMT Level', type: 'text', profileField: true },
- ]
- case 'INSURANCE_REP':
- return [
- { key: 'companyName', label: 'Company Name', type: 'text', profileField: true },
- { key: 'coverageTypes', label: 'Coverage Types', type: 'tags', profileField: true },
- ]
- case 'CORPORATE_ADMIN':
- return [
- { key: 'companyName', label: 'Company Name', type: 'text', profileField: true },
- { key: 'employeeCount', label: 'Employee Count', type: 'number', profileField: true },
- ]
- case 'REFERRAL_PARTNER':
- return [
- { key: 'businessType', label: 'Business Type', type: 'text', profileField: true },
- { key: 'commissionRate', label: 'Commission Rate (%)', type: 'number', profileField: true },
- { key: 'referralCode', label: 'Referral Code', type: 'readonly', profileField: true },
- ]
- case 'REGIONAL_ADMIN':
- return [
- { key: 'region', label: 'Region', type: 'text', profileField: true },
- { key: 'country', label: 'Country', type: 'text', profileField: true },
- ]
- default:
- return []
- }
+// DB-driven profile field schema. Reads ProviderRole.profileFields (returned
+// by /api/roles) so regional admins can add a new role + its form via CRUD
+// without any code change. Hardcoded switches for DOCTOR/NURSE/etc. are gone.
+function getEditableFieldsForType(
+ userType: string,
+ profileFieldsByCode: Record<string, EditableField[]>,
+): EditableField[] {
+ return profileFieldsByCode[userType] ?? []
 }
+
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* Main component */
@@ -306,14 +246,20 @@ function getEditableFieldsForType(userType: string): EditableField[] {
 
 export default function UserProfile({ userId, userType, settingsPath }: UserProfileProps) {
  const { updateUser } = useUser()
+ const searchParams = useSearchParams()
+ const initialTab = (searchParams?.get('tab') as TabId) || 'overview'
+ const validTabs: TabId[] = ['overview', 'documents', 'info', 'reviews', 'posts']
  const [userData, setUserData] = useState<UserData | null>(null)
  const [loading, setLoading] = useState(true)
- const [activeTab, setActiveTab] = useState<TabId>('overview')
+ const [activeTab, setActiveTab] = useState<TabId>(
+  validTabs.includes(initialTab) ? initialTab : 'overview'
+ )
 
  // Documents state
  const [documents, setDocuments] = useState<DocumentData[]>([])
  const [docsLoading, setDocsLoading] = useState(false)
  const [docsFetched, setDocsFetched] = useState(false)
+ const [requiredDocs, setRequiredDocs] = useState<Array<{ documentName: string; required: boolean }>>([])
  const [uploadOpen, setUploadOpen] = useState(false)
  const [uploadName, setUploadName] = useState('')
  const [uploadType, setUploadType] = useState<string>('other')
@@ -364,7 +310,7 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  try {
  const fd = new FormData()
  fd.append('file', file)
- const uploadRes = await fetch('/api/upload/local', { method: 'POST', body: fd })
+ const uploadRes = await fetch('/api/upload/local', { method: 'POST', body: fd, credentials: 'include' })
  const uploadResult = await uploadRes.json()
  if (!uploadResult.success) throw new Error(uploadResult.message || 'Upload failed')
 
@@ -373,6 +319,7 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ profileImage: uploadResult.data.url }),
+ credentials: 'include',
  })
  const patchResult = await patchRes.json()
  if (!patchRes.ok || !patchResult.success) throw new Error(patchResult.message || 'Failed to update profile image')
@@ -391,11 +338,14 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  }
  }
 
- // Document file upload handler
- const handleDocumentFileUpload = async (file: File) => {
+ // Document file upload handler — name and type included so the backend creates
+ // the document record with the correct metadata in a single request.
+ const handleDocumentFileUpload = async (file: File, name?: string, type?: string) => {
  const fd = new FormData()
  fd.append('file', file)
- const uploadRes = await fetch('/api/upload/local', { method: 'POST', body: fd })
+ if (name) fd.append('name', name)
+ if (type) fd.append('type', type)
+ const uploadRes = await fetch('/api/upload/local', { method: 'POST', body: fd, credentials: 'include' })
  const uploadResult = await uploadRes.json()
  if (!uploadResult.success) throw new Error(uploadResult.message)
  return uploadResult.data
@@ -403,12 +353,16 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
 
  const tabs = getTabsForUserType(userType)
 
- /* ─── Fetch user data ──────────────────────────────────────────────────── */
+ // Editable profile fields are DB-driven: ProviderRole.profileFields.
+ // Fetched once from /api/roles and looked up by userType code.
+ const [profileFieldsByCode, setProfileFieldsByCode] = useState<Record<string, EditableField[]>>({})
+
+ /* ─── Fetch user data + role profile-field schema ─────────────────────── */
 
  useEffect(() => {
  async function fetchUser() {
  try {
- const res = await fetch(`/api/users/${userId}`)
+ const res = await fetch(`/api/users/${userId}`, { credentials: 'include' })
  const json = await res.json()
  if (json.data) {
  setUserData(json.data)
@@ -422,12 +376,30 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  fetchUser()
  }, [userId])
 
+ useEffect(() => {
+ // Include legacy codes (PATIENT, CORPORATE_ADMIN, INSURANCE_REP, …)
+ // so users with any historical userType still get their form.
+ fetch('/api/roles?all=true&includeLegacy=true', { credentials: 'include' })
+ .then(r => r.json())
+ .then(j => {
+ if (!j?.success || !Array.isArray(j.data)) return
+ const map: Record<string, EditableField[]> = {}
+ for (const role of j.data) {
+ if (role?.code && Array.isArray(role?.profileFields)) {
+ map[role.code] = role.profileFields as EditableField[]
+ }
+ }
+ setProfileFieldsByCode(map)
+ })
+ .catch(() => { /* fall back to empty — form shows user-level fields only */ })
+ }, [])
+
  /* ─── Initialize edit state when entering edit mode ────────────────────── */
 
  const startEditing = useCallback(() => {
  if (!userData) return
  const profile = userData.profile
- const fields = getEditableFieldsForType(userType)
+ const fields = getEditableFieldsForType(userType, profileFieldsByCode)
  const values: Record<string, unknown> = {}
  for (const f of fields) {
  values[f.key] = (profile as Record<string, unknown> | null)?.[f.key] ?? (f.type === 'tags' ? [] : '')
@@ -444,7 +416,7 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  address: userData.address || '',
  })
 
- if (userType === 'PATIENT' && profile?.emergencyContact) {
+ if (userType === 'MEMBER' && profile?.emergencyContact) {
  setEditedEmergency({
  name: profile.emergencyContact.name || '',
  relationship: profile.emergencyContact.relationship || '',
@@ -473,20 +445,21 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  address: editedGeneral.address || undefined,
  profileData: editedProfile,
  }
- if (userType === 'PATIENT' && editedEmergency.name) {
+ if (userType === 'MEMBER' && editedEmergency.name) {
  body.emergencyContact = editedEmergency
  }
  const res = await fetch(`/api/users/${userId}`, {
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify(body),
+ credentials: 'include',
  })
  if (!res.ok) {
  const json = await res.json()
  throw new Error(json.message || 'Failed to save')
  }
  // Re-fetch profile
- const profileRes = await fetch(`/api/users/${userId}`)
+ const profileRes = await fetch(`/api/users/${userId}`, { credentials: 'include' })
  const profileJson = await profileRes.json()
  if (profileJson.success && profileJson.data) {
  setUserData(profileJson.data)
@@ -512,7 +485,7 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  const fetchDocuments = useCallback(async () => {
  setDocsLoading(true)
  try {
- const res = await fetch(`/api/users/${userId}/documents`)
+ const res = await fetch(`/api/users/${userId}/documents`, { credentials: 'include' })
  const json = await res.json()
  if (json.data) setDocuments(json.data)
  } catch (err) {
@@ -524,30 +497,30 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  }, [userId])
 
  useEffect(() => {
- if (activeTab === 'documents' && !docsFetched) {
+ if ((activeTab === 'documents' || activeTab === 'overview') && !docsFetched) {
  fetchDocuments()
  }
  }, [activeTab, docsFetched, fetchDocuments])
 
+ /* ─── Fetch required documents for this user type ───────────────────────── */
+ useEffect(() => {
+ if (!userType) return
+ fetch(`/api/required-documents?userType=${encodeURIComponent(userType)}`)
+ .then(r => r.json())
+ .then(json => {
+ if (json.success && Array.isArray(json.data)) setRequiredDocs(json.data)
+ })
+ .catch(() => {})
+ }, [userType])
+
  /* ─── Upload document ──────────────────────────────────────────────────── */
 
- const handleUpload = async () => {
- if (!uploadName.trim() || !uploadUrl.trim()) {
- setDocError('Name and URL are required')
- return
- }
+ const handleDocUpload = async (file: File) => {
  setUploading(true)
  setDocError('')
  try {
- const res = await fetch(`/api/users/${userId}/documents`, {
- method: 'POST',
- headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify({ name: uploadName, type: uploadType, url: uploadUrl }),
- })
- if (!res.ok) {
- const json = await res.json()
- throw new Error(json.message || 'Failed to upload')
- }
+ const name = uploadName.trim() || file.name.replace(/\.[^.]+$/, '')
+ await handleDocumentFileUpload(file, name, uploadType)
  setUploadName('')
  setUploadUrl('')
  setUploadType('other')
@@ -568,6 +541,7 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  method: 'DELETE',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ documentId: docId }),
+ credentials: 'include',
  })
  if (res.ok) {
  setDocuments((prev) => prev.filter((d) => d.id !== docId))
@@ -673,6 +647,62 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  </div>
  </div>
 
+ {/* Required documents checklist — always visible */}
+ {(() => {
+  const uploadedNames = new Set(documents.map(d => d.name.toLowerCase().trim()))
+  const checklist = requiredDocs.map(rd => ({
+   ...rd,
+   uploaded: uploadedNames.has(rd.documentName.toLowerCase().trim()),
+  }))
+  const missingCount = checklist.filter(c => c.required && !c.uploaded).length
+  return (
+   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <div className="flex items-center justify-between mb-3">
+     <div>
+      <h3 className="text-lg font-semibold text-gray-900">Required Documents</h3>
+      <p className="text-xs text-gray-500 mt-0.5">
+       {checklist.length === 0
+        ? 'No required documents for your account type'
+        : missingCount === 0
+         ? 'All required documents uploaded ✓'
+         : `${missingCount} required document${missingCount > 1 ? 's' : ''} still needed`}
+      </p>
+     </div>
+     <button
+      onClick={() => setActiveTab('documents')}
+      className="text-xs px-3 py-1.5 bg-[#0C6780]/10 text-[#0C6780] rounded-lg hover:bg-[#0C6780]/20 font-medium"
+     >
+      Manage →
+     </button>
+    </div>
+    {checklist.length === 0 ? (
+     <p className="text-sm text-gray-400 italic py-2">No required documents are configured for your account type.</p>
+    ) : (
+     <ul className="divide-y divide-gray-100">
+      {checklist.map(item => (
+       <li key={item.documentName} className="flex items-center justify-between py-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+         <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs ${
+          item.uploaded ? 'bg-green-100 text-green-700' : item.required ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
+         }`}>
+          {item.uploaded ? '✓' : item.required ? '!' : '•'}
+         </span>
+         <span className="text-sm text-gray-800 truncate">{item.documentName}</span>
+         {!item.required && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-50 text-gray-500">Optional</span>
+         )}
+        </div>
+        <span className={`text-xs font-medium ${item.uploaded ? 'text-green-600' : item.required ? 'text-amber-600' : 'text-gray-400'}`}>
+         {item.uploaded ? 'Uploaded' : item.required ? 'Missing' : 'Not uploaded'}
+        </span>
+       </li>
+      ))}
+     </ul>
+    )}
+   </div>
+  )
+ })()}
+
  {/* Type-specific overview (read-only summary) */}
  {renderTypeSpecificSummary(userType, userData.profile)}
  </div>
@@ -680,8 +710,66 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
 
  /* ─── Tab: Documents ───────────────────────────────────────────────────── */
 
- const renderDocuments = () => (
+ const renderDocuments = () => {
+ // Compare required docs vs uploaded docs (by name, case-insensitive)
+ const uploadedNames = new Set(documents.map(d => d.name.toLowerCase().trim()))
+ const checklist = requiredDocs.map(rd => ({
+  ...rd,
+  uploaded: uploadedNames.has(rd.documentName.toLowerCase().trim()),
+ }))
+ const missingRequired = checklist.filter(c => c.required && !c.uploaded).length
+
+ return (
  <div className="space-y-6">
+ {/* Required documents checklist — always visible */}
+ <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+  <div className="flex items-center justify-between mb-3">
+   <div>
+    <h3 className="text-lg font-semibold text-gray-900">Required Documents</h3>
+    <p className="text-xs text-gray-500 mt-0.5">
+     {checklist.length === 0
+      ? 'No required documents for your role'
+      : missingRequired === 0
+       ? 'All required documents uploaded ✓'
+       : `${missingRequired} required document${missingRequired > 1 ? 's' : ''} still needed`}
+    </p>
+   </div>
+   <button
+    onClick={() => setUploadOpen(true)}
+    className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 font-medium"
+   >
+    Upload
+   </button>
+   </div>
+   {checklist.length === 0 ? (
+    <p className="text-sm text-gray-400 italic py-2">No required documents are configured for your account type.</p>
+   ) : (
+    <ul className="divide-y divide-gray-100">
+     {checklist.map(item => (
+      <li key={item.documentName} className="flex items-center justify-between py-2.5">
+       <div className="flex items-center gap-2 min-w-0">
+        <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs ${
+         item.uploaded ? 'bg-green-100 text-green-700' : item.required ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
+        }`}>
+         {item.uploaded ? '✓' : item.required ? '!' : '•'}
+        </span>
+        <span className="text-sm text-gray-800 truncate">{item.documentName}</span>
+        {item.required && !item.uploaded && (
+         <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">Required</span>
+        )}
+        {!item.required && (
+         <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-50 text-gray-500">Optional</span>
+        )}
+       </div>
+       <span className={`text-xs font-medium ${item.uploaded ? 'text-green-600' : item.required ? 'text-amber-600' : 'text-gray-400'}`}>
+        {item.uploaded ? 'Uploaded' : item.required ? 'Missing' : 'Not uploaded'}
+       </span>
+      </li>
+     ))}
+    </ul>
+   )}
+  </div>
+
  {/* Upload section */}
  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
  <div className="flex items-center justify-between mb-4">
@@ -696,8 +784,27 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  </button>
  </div>
 
+ {/* Per-required-document upload slots */}
+ {checklist.filter(c => !c.uploaded).length > 0 && (
+ <div className="mb-5 space-y-3">
+ <p className="text-sm font-medium text-gray-700">Upload required documents:</p>
+ {checklist.filter(c => !c.uploaded).map(item => (
+ <RequiredDocUploadSlot
+ key={item.documentName}
+ documentName={item.documentName}
+ required={item.required}
+ userId={userId}
+ onUploaded={async () => {
+ await fetchDocuments()
+ }}
+ />
+ ))}
+ </div>
+ )}
+
  {uploadOpen && (
  <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200 space-y-3">
+ <p className="text-sm font-semibold text-gray-700">Upload additional document</p>
  <div>
  <label className="block text-sm font-medium text-gray-700 mb-1">Document Name</label>
  <input
@@ -723,25 +830,19 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  </select>
  </div>
  <div>
- <label className="block text-sm font-medium text-gray-700 mb-1">Upload File</label>
+ <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
  <input
  type="file"
  accept="image/jpeg,image/png,image/webp,application/pdf"
+ disabled={uploading}
  onChange={async (e) => {
  const file = e.target.files?.[0]
- if (!file) return
- try {
- const result = await handleDocumentFileUpload(file)
- setUploadUrl(result.url)
- if (!uploadName.trim()) setUploadName(file.name.replace(/\.[^.]+$/, ''))
- } catch {
- setDocError('Failed to upload file')
- }
+ if (file) handleDocUpload(file)
  }}
  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
  />
- {uploadUrl && (
- <p className="text-xs text-green-600 mt-1">File uploaded successfully</p>
+ {uploading && (
+ <p className="text-xs text-blue-600 mt-1 flex items-center gap-1"><FaSpinner className="animate-spin text-[10px]" /> Uploading…</p>
  )}
  </div>
  {docError && (
@@ -751,18 +852,9 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  )}
  <div className="flex gap-2">
  <button
- onClick={handleUpload}
- disabled={uploading || !uploadUrl}
- className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
- >
- {uploading ? <FaSpinner className="animate-spin" /> : <FaSave />}
- Save
- </button>
- <button
  onClick={() => {
  setUploadOpen(false)
  setDocError('')
- setUploadUrl('')
  }}
  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
  >
@@ -784,7 +876,7 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  </div>
  ) : (
  <div className="space-y-3">
- {documents.map((doc) => (
+ {documents.map((doc: DocumentData) => (
  <div
  key={doc.id}
  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors"
@@ -841,11 +933,12 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  </div>
  </div>
  )
+ }
 
  /* ─── Tab: Medical / Professional Info (editable) ──────────────────────── */
 
  const renderInfo = () => {
- const fields = getEditableFieldsForType(userType)
+ const fields = getEditableFieldsForType(userType, profileFieldsByCode)
  const profile = userData.profile
 
  if (!profile && fields.length === 0) {
@@ -1121,7 +1214,7 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  </div>
 
  {/* Emergency Contact (Patient only) */}
- {userType === 'PATIENT' && (
+ {userType === 'MEMBER' && (
  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
  <FaExclamationTriangle className="text-orange-500" />
@@ -1246,12 +1339,6 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  </span>
  )}
  </div>
- <button
- onClick={() => { setIsEditing(true); setActiveTab('info') }}
- className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
- >
- <FaEdit /> Edit Profile
- </button>
  </div>
  </div>
 
@@ -1285,14 +1372,14 @@ export default function UserProfile({ userId, userType, settingsPath }: UserProf
  {activeTab === 'overview' && renderOverview()}
  {activeTab === 'documents' && renderDocuments()}
  {activeTab === 'info' && renderInfo()}
- {activeTab === 'reviews' && PROVIDER_TYPES.includes(userType) && (
+ {activeTab === 'reviews' && !NON_PROVIDER_TYPES.has(userType) && (
  <ProviderReviews
  providerUserId={userId}
  providerLabel={USER_TYPE_LABELS[userType] || userType}
  isOwner
  />
  )}
- {activeTab === 'posts' && userType === 'DOCTOR' && (
+ {activeTab === 'posts' && !NON_PROVIDER_TYPES.has(userType) && (
  <div className="space-y-6">
  <CreatePostForm />
  <PostFeed currentUserId={userId} currentUserType={userType} />
@@ -1408,7 +1495,7 @@ function renderTypeSpecificSummary(userType: string, profile: UserProfileData | 
  return (
  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
  <h3 className="text-lg font-semibold text-gray-900 mb-4">
- {userType === 'PATIENT' ? 'Medical Summary' : 'Professional Details'}
+ {userType === 'MEMBER' ? 'Medical Summary' : 'Professional Details'}
  </h3>
  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
  {validFields.map((field) => (
@@ -1421,5 +1508,69 @@ function renderTypeSpecificSummary(userType: string, profile: UserProfileData | 
  ))}
  </div>
  </div>
+ )
+}
+
+/* ─── Per-required-document upload slot ─────────────────────────────────── */
+
+function RequiredDocUploadSlot({
+ documentName,
+ required,
+ userId,
+ onUploaded,
+}: {
+ documentName: string
+ required: boolean
+ userId: string
+ onUploaded: () => Promise<void>
+}) {
+ const [uploading, setUploading] = useState(false)
+ const [done, setDone] = useState(false)
+ const [error, setError] = useState('')
+
+ const handleFile = async (file: File) => {
+  setUploading(true)
+  setError('')
+  try {
+   const fd = new FormData()
+   fd.append('file', file)
+   fd.append('type', 'id_proof')
+   fd.append('name', documentName)
+   // /api/upload/local already creates the document DB record internally
+   const uploadRes = await fetch('/api/upload/local', { method: 'POST', body: fd, credentials: 'include' })
+   const uploadResult = await uploadRes.json()
+   if (!uploadResult.success) throw new Error(uploadResult.message || 'Upload failed')
+   setDone(true)
+   await onUploaded()
+  } catch (err) {
+   setError(err instanceof Error ? err.message : 'Upload failed')
+  } finally {
+   setUploading(false)
+  }
+ }
+
+ if (done) return null
+
+ return (
+  <div className="border border-dashed border-gray-300 rounded-lg p-3 bg-gray-50">
+   <p className="text-sm font-medium text-gray-800 mb-1.5">
+    {documentName}
+    {required && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">Required</span>}
+   </p>
+   <label className="cursor-pointer">
+    <input
+     type="file"
+     accept="image/jpeg,image/png,image/webp,application/pdf"
+     className="hidden"
+     disabled={uploading}
+     onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+    />
+    <div className={`flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors ${uploading ? 'opacity-50 cursor-default' : 'cursor-pointer'}`}>
+     {uploading ? <FaSpinner className="animate-spin text-xs" /> : <FaUpload className="text-xs" />}
+     <span>{uploading ? 'Uploading…' : 'Choose file (JPG, PNG, PDF)'}</span>
+    </div>
+   </label>
+   {error && <p className="text-xs text-red-600 mt-1 flex items-center gap-1"><FaExclamationTriangle className="text-[10px]" /> {error}</p>}
+  </div>
  )
 }

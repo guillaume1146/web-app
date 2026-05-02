@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { toast } from 'react-toastify'
 import { useSocket } from '@/hooks/useSocket'
 import { useWebRTC } from '@/hooks/useWebRTC'
 import { useUser } from '@/hooks/useUser'
@@ -143,11 +144,11 @@ export default function PatientVideoCall() {
  if (authUser.userType === 'patient' && authUser.id) {
  setPatientInfo({ id: authUser.id, name: `${authUser.firstName ?? ''} ${authUser.lastName ?? ''}`.trim(), type: 'patient' })
  } else {
- alert('Please login as a patient to join this consultation')
+ toast.warn('Please login as a patient to join this consultation')
  router.push('/login')
  }
  } else {
- alert('Please login to join the consultation')
+ toast.warn('Please login to join the consultation')
  router.push('/login')
  }
  const storedAppointment = localStorage.getItem(`appointment_${roomId}`)
@@ -224,7 +225,7 @@ export default function PatientVideoCall() {
  `Media access error: ${err.message}`
  }
  setMediaError(errorMessage)
- alert(errorMessage)
+ toast.error(errorMessage)
  }
  }
 

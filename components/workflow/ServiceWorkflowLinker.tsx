@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { toast } from 'react-toastify'
 import { FiLink, FiX, FiPlus, FiChevronDown, FiCheckCircle, FiArrowRight } from 'react-icons/fi'
 import Link from 'next/link'
 
@@ -46,7 +47,7 @@ export default function ServiceWorkflowLinker({ serviceId, providerType, createW
 
   useEffect(() => {
     if (prefetched) { setWorkflows(prefetched); setLoading(false); return }
-    fetch(`/api/workflow/templates?providerType=${providerType}`)
+    fetch(`/api/workflow/templates?providerType=${providerType}`, { credentials: 'include' })
       .then(r => r.json())
       .then(data => { if (data.success) setWorkflows(data.data) })
       .catch(() => {})
@@ -58,19 +59,20 @@ export default function ServiceWorkflowLinker({ serviceId, providerType, createW
 
   async function link(wId: string) {
     try {
-      const r = await fetch(`/api/workflow/templates/${wId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ platformServiceId: serviceId }) })
+      const r = await fetch(`/api/workflow/templates/${wId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ platformServiceId: serviceId }), credentials: 'include' })
       const d = await r.json()
       if (d.success) { setWorkflows(prev => prev.map(w => w.id === wId ? { ...w, platformServiceId: serviceId } : w)); setShowDropdown(false) }
-      else alert(d.message || 'Failed')
-    } catch { alert('Network error') }
+      else toast.error(d.message || 'Failed to link workflow')
+    } catch { toast.error('Network error') }
   }
 
   async function unlink(wId: string) {
     try {
-      const r = await fetch(`/api/workflow/templates/${wId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ platformServiceId: null }) })
+      const r = await fetch(`/api/workflow/templates/${wId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ platformServiceId: null }), credentials: 'include' })
       const d = await r.json()
       if (d.success) setWorkflows(prev => prev.map(w => w.id === wId ? { ...w, platformServiceId: null } : w))
-    } catch { alert('Network error') }
+      else toast.error(d.message || 'Failed to unlink workflow')
+    } catch { toast.error('Network error') }
   }
 
   if (loading) return <div className="animate-pulse h-5 bg-gray-100 rounded w-24" />

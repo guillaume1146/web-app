@@ -32,7 +32,7 @@ export default function NotificationsPage() {
  const fetchNotifications = useCallback(async () => {
  if (!userId) return
  try {
- const res = await fetch(`/api/users/${userId}/notifications`)
+ const res = await fetch(`/api/users/${userId}/notifications`, { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success) {
@@ -56,6 +56,7 @@ export default function NotificationsPage() {
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ notificationId, read: true }),
+ credentials: 'include',
  })
  if (res.ok) {
  setNotifications((prev) =>
@@ -71,6 +72,7 @@ export default function NotificationsPage() {
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ markAllRead: true }),
+ credentials: 'include',
  })
  if (res.ok) {
  setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))

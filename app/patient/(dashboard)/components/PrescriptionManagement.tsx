@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { toast } from 'react-toastify'
 import { getUserId } from '@/hooks/useUser'
 import Link from 'next/link'
 import { Patient, Prescription } from '@/lib/data/patients'
@@ -114,8 +115,8 @@ const PrescriptionManagement: React.FC<Props> = ({ patientData }) => {
  const fetchPrescriptions = useCallback(async () => {
  try {
  const [activeRes, allRes] = await Promise.all([
- fetch(`/api/patients/${patientData.id}/prescriptions?active=true`).catch(() => null),
- fetch(`/api/patients/${patientData.id}/prescriptions`).catch(() => null),
+ fetch(`/api/patients/${patientData.id}/prescriptions?active=true`, { credentials: 'include' }).catch(() => null),
+ fetch(`/api/patients/${patientData.id}/prescriptions`, { credentials: 'include' }).catch(() => null),
  ])
  const [activeData, allData] = await Promise.all([
  activeRes?.ok ? activeRes.json() : null,
@@ -139,7 +140,7 @@ const PrescriptionManagement: React.FC<Props> = ({ patientData }) => {
  try {
  const userId = getUserId()
  if (!userId) return
- const res = await fetch(`/api/patients/${userId}/pill-reminders`)
+ const res = await fetch(`/api/patients/${userId}/pill-reminders`, { credentials: 'include' })
  const data = await res.json()
  if (data.data) {
  // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -162,7 +163,7 @@ const PrescriptionManagement: React.FC<Props> = ({ patientData }) => {
  try {
  const userId = getUserId()
  if (!userId) return
- const res = await fetch(`/api/patients/${userId}/bookings?type=pharmacy&limit=1`)
+ const res = await fetch('/api/bookings/unified?role=patient&type=pharmacy&limit=1', { credentials: 'include' })
  const data = await res.json()
  if (data.data?.[0]) {
  const order = data.data[0]
@@ -280,11 +281,11 @@ const PrescriptionManagement: React.FC<Props> = ({ patientData }) => {
  <p className="text-xs opacity-80 hidden sm:block">Ask questions</p>
  </Link>
 
- <button className="bg-white transition-all transform hover:scale-105 text-center">
+ <Link href="/patient/ai-assistant" className="bg-white transition-all transform hover:scale-105 text-center block">
  <FaAllergies className="text-xl sm:text-2xl mx-auto mb-1 sm:mb-2" />
  <p className="font-semibold text-xs sm:text-sm md:text-base">Drug Interactions</p>
  <p className="text-xs opacity-80 hidden sm:block">Safety check</p>
- </button>
+ </Link>
  </div>
 
  {/* Refill Alerts */}
@@ -309,9 +310,9 @@ const PrescriptionManagement: React.FC<Props> = ({ patientData }) => {
  Refill needed in {days} days • Next refill: {prescription.nextRefill}
  </p>
  </div>
- <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-xs sm:text-sm">
+ <Link href="/search/health-shop" className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-xs sm:text-sm inline-block">
  Refill Now
- </button>
+ </Link>
  </div>
  </div>
  )
@@ -590,7 +591,9 @@ const PrescriptionManagement: React.FC<Props> = ({ patientData }) => {
  </div>
 
  <div className="flex sm:flex-col gap-2">
- <button className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-sky-50 transition text-xs sm:text-sm">
+ <button
+   onClick={() => toast.success(`${reminder.medicineName} marked as taken`)}
+   className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-sky-50 hover:bg-green-50 text-green-700 rounded-lg transition text-xs sm:text-sm">
  <FaCheckCircle className="inline mr-1" />
  Mark Taken
  </button>
@@ -780,12 +783,16 @@ const PrescriptionManagement: React.FC<Props> = ({ patientData }) => {
  </div>
 
  <div className="mt-4 sm:mt-6 space-y-2 sm:space-y-3">
- <button className="w-full bg-green-500 text-white py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-semibold hover:bg-green-600 transition text-sm sm:text-base">
+ <Link
+   href="/search/health-shop"
+   className="block w-full text-center bg-green-500 text-white py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-semibold hover:bg-green-600 transition text-sm sm:text-base">
  Confirm Order
- </button>
- <button className="w-full bg-blue-500 text-white py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-semibold hover:bg-blue-600 transition text-sm sm:text-base">
+ </Link>
+ <Link
+   href="/patient/insurance"
+   className="block w-full text-center bg-blue-500 text-white py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-semibold hover:bg-blue-600 transition text-sm sm:text-base">
  Pay with Insurance
- </button>
+ </Link>
  </div>
  </div>
  </div>

@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
  FaFileAlt, FaSearch, FaClock, FaCheck,
- FaTimes, FaSpinner, FaEye, FaFilter
+ FaTimes, FaSpinner, FaEye, FaFilter, FaShieldAlt
 } from 'react-icons/fa'
 import { useUser } from '@/hooks/useUser'
+import { useCurrency } from '@/hooks/useCurrency'
 import { InsuranceClaim } from '../types'
+import ClaimReviewDrawer, { ClaimDetail } from '@/components/insurance/ClaimReviewDrawer'
 
 const CLAIM_STATUSES = [
  { value: '', label: 'All Statuses' },
@@ -39,6 +41,8 @@ export default function InsuranceClaimsPage() {
  const userId = currentUser?.id ?? ''
  const [statusFilter, setStatusFilter] = useState('')
  const [searchTerm, setSearchTerm] = useState('')
+ const [reviewClaim, setReviewClaim] = useState<ClaimDetail | null>(null)
+ const { format } = useCurrency()
 
  const fetchClaims = useCallback(async () => {
  if (!userId) return
@@ -47,7 +51,7 @@ export default function InsuranceClaimsPage() {
  setError(null)
  const params = new URLSearchParams({ limit: '50' })
  if (statusFilter) params.set('status', statusFilter)
- const res = await fetch(`/api/insurance/claims?${params}`)
+ const res = await fetch(`/api/insurance/claims?${params}`, { credentials: 'include' })
  if (!res.ok) throw new Error('Failed to fetch claims')
  const json = await res.json()
  if (json.success) {
@@ -69,25 +73,8 @@ export default function InsuranceClaimsPage() {
  fetchClaims()
  }, [fetchClaims])
 
- const handleUpdateClaim = async (claimId: string, newStatus: string) => {
- const action = newStatus === 'approved' ? 'approve' : 'reject'
- try {
- const res = await fetch(`/api/insurance/claims/${claimId}`, {
- method: 'PATCH',
- headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify({ action }),
- })
- if (res.ok) {
- setClaims(prev =>
- prev.map(c =>
- c.id === claimId ? { ...c, status: newStatus as InsuranceClaim['status'] } : c
- )
- )
- }
- } catch {
- // Silent failure — claim status unchanged in UI
- }
- }
+ // Legacy PATCH flow replaced by ClaimReviewDrawer which calls the
+ // server-authoritative /approve + /deny endpoints (rules engine + audit log).
 
  const filteredClaims = claims.filter(claim => {
  const matchesStatus = !statusFilter || claim.status === statusFilter
@@ -181,7 +168,7 @@ export default function InsuranceClaimsPage() {
  Type
  </th>
  <th className="text-right px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
- Amount (MUR)
+ Amount
  </th>
  <th className="text-center px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
  Status
@@ -213,7 +200,7 @@ export default function InsuranceClaimsPage() {
  </td>
  <td className="px-6 py-4 text-gray-600">{claim.policyType}</td>
  <td className="px-6 py-4 text-right font-semibold text-gray-900">
- Rs {claim.claimAmount.toLocaleString()}
+ {format(claim.claimAmount)}
  </td>
  <td className="px-6 py-4 text-center">
  <span
@@ -228,27 +215,25 @@ export default function InsuranceClaimsPage() {
  </td>
  <td className="px-6 py-4">
  <div className="flex items-center justify-center gap-2">
- <button className="bg-blue-500 text-white text-xs font-bold py-2 px-3 rounded-lg hover:bg-blue-600 transition-colors">
+ {claim.status === 'pending' ? (
+ <button
+ onClick={() => setReviewClaim({
+  id: claim.id,
+  memberName: claim.policyHolderName,
+  description: claim.description ?? '',
+  amount: claim.claimAmount,
+  receiptUrl: (claim as { receiptUrl?: string | null }).receiptUrl ?? null,
+  createdAt: claim.submittedDate,
+ })}
+ className="bg-indigo-600 text-white text-xs font-bold py-2 px-3 rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center gap-1.5"
+ >
+ <FaShieldAlt /> Review
+ </button>
+ ) : (
+ <button className="bg-gray-100 text-gray-700 text-xs font-bold py-2 px-3 rounded-lg hover:bg-gray-200 transition-colors">
  <FaEye className="inline mr-1" />
  View
  </button>
- {claim.status === 'pending' && (
- <>
- <button
- onClick={() => handleUpdateClaim(claim.id, 'approved')}
- className="bg-green-500 text-white text-xs font-bold py-2 px-3 rounded-lg hover:bg-green-600 transition-colors"
- >
- <FaCheck className="inline mr-1" />
- Approve
- </button>
- <button
- onClick={() => handleUpdateClaim(claim.id, 'rejected')}
- className="bg-red-500 text-white text-xs font-bold py-2 px-3 rounded-lg hover:bg-red-600 transition-colors"
- >
- <FaTimes className="inline mr-1" />
- Reject
- </button>
- </>
  )}
  </div>
  </td>
@@ -260,6 +245,12 @@ export default function InsuranceClaimsPage() {
  </div>
  </div>
  )}
+
+ <ClaimReviewDrawer
+  claim={reviewClaim}
+  onClose={() => setReviewClaim(null)}
+  onResolved={() => { setReviewClaim(null); fetchClaims() }}
+ />
  </div>
  )
 }

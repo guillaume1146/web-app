@@ -79,31 +79,40 @@ export default function PostCard({
  children,
 }: PostCardProps) {
  const [expanded, setExpanded] = useState(false)
+ // Defensive fallback: a freshly-created post occasionally arrives without
+ // its `author` relation (caller bug). Render a stub so the feed doesn't
+ // crash — the next refetch will fill it in properly.
+ const author = post.author ?? {
+  id: '', firstName: 'Unknown', lastName: '', profileImage: null, userType: 'MEMBER', verified: false,
+ }
  const isLong = post.content.length > 300
  const displayContent = isLong && !expanded ? post.content.slice(0, 300) + '...' : post.content
- const specialty = post.author.doctorProfile?.specialty?.join(', ')
+ const specialty = author.doctorProfile?.specialty?.join(', ')
 
  return (
  <div className="bg-white rounded-xl shadow hover:shadow-lg transition-shadow duration-200 p-4 sm:p-6">
  {/* Author row */}
  <div className="flex items-start gap-3">
- {post.author.profileImage ? (
+ {author.profileImage ? (
  <img
- src={post.author.profileImage}
- alt={`${post.author.firstName} ${post.author.lastName}`}
+ src={author.profileImage}
+ alt={`${author.firstName} ${author.lastName}`}
  className="w-10 h-10 rounded-full object-cover flex-shrink-0"
  />
  ) : (
  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold text-sm flex-shrink-0">
- {getInitials(post.author.firstName, post.author.lastName)}
+ {getInitials(author.firstName, author.lastName)}
  </div>
  )}
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2 flex-wrap">
  <span className="font-semibold text-gray-900 text-sm sm:text-base">
- {post.company ? post.company.companyName : `Dr. ${post.author.firstName} ${post.author.lastName}`}
+ {/* Only prefix "Dr." for users with a doctorProfile — MEMBERs and other roles get their real name. */}
+ {post.company ? post.company.companyName
+  : author.doctorProfile ? `Dr. ${author.firstName} ${author.lastName}`
+  : `${author.firstName} ${author.lastName}`}
  </span>
- {post.author.verified && (
+ {author.verified && (
  <FaCheckCircle className="text-blue-500 text-xs flex-shrink-0" title="Verified" />
  )}
  <span className="text-gray-400 text-xs sm:text-sm">
@@ -112,7 +121,7 @@ export default function PostCard({
  </div>
  {post.company ? (
  <p className="text-gray-500 text-xs sm:text-sm truncate">
- Posted by {post.author.firstName} {post.author.lastName}
+ Posted by {author.firstName} {author.lastName}
  </p>
  ) : specialty ? (
  <p className="text-gray-500 text-xs sm:text-sm truncate">{specialty}</p>

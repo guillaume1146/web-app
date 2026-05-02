@@ -20,7 +20,7 @@ export default function SuperAdminSecurityPage() {
  useEffect(() => {
  const fetchSecurity = async () => {
  try {
- const res = await fetch('/api/admin/security')
+ const res = await fetch('/api/admin/security', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success) {

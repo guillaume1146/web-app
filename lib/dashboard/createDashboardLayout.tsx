@@ -7,6 +7,9 @@ import type { SidebarItem } from '@/components/dashboard/DashboardSidebar'
 import { useUser } from '@/hooks/useUser'
 import { useDynamicSearchItems } from '@/hooks/useDynamicSearchItems'
 import { useRoleFeatureConfig, filterSidebarByFeatures } from '@/hooks/useRoleFeatureConfig'
+import { useCorporateCapability } from '@/hooks/useCorporateCapability'
+import { useInsuranceCapability } from '@/hooks/useInsuranceCapability'
+import { FaBuilding, FaShieldAlt, FaUserCircle, FaGift, FaBell } from 'react-icons/fa'
 
 interface UserData {
   id: string
@@ -108,6 +111,8 @@ export function createDashboardLayout(config: DashboardLayoutConfig) {
     // Must call hooks before any early returns (React rules of hooks)
     const dynamicSearch = useDynamicSearchItems(dynamicSearchBasePath || '')
     const featureConfig = useRoleFeatureConfig(hookUser?.userType)
+    const { has: hasCorporateCapability } = useCorporateCapability()
+    const { has: hasInsuranceCapability } = useInsuranceCapability()
 
     if (loading) return <DashboardLoadingState />
     if (error || !userData) return <DashboardErrorState message={error} />
@@ -128,6 +133,79 @@ export function createDashboardLayout(config: DashboardLayoutConfig) {
 
     // Filter sidebar items based on role feature config (admin-configurable)
     finalSidebarItems = filterSidebarByFeatures(finalSidebarItems, featureConfig)
+
+    // Inject "My Profile" near the TOP of the sidebar — right after the
+    // Dashboard/overview item. User explicitly asked for top placement;
+    // profile is a primary-navigation target, not a Search & Browse
+    // afterthought.
+    if (hookUser?.id && !finalSidebarItems.some(i => i.id === 'my-profile')) {
+      const profileItem = {
+        id: 'my-profile', label: 'My Profile', icon: FaUserCircle,
+        color: 'text-[#0C6780]', bgColor: 'bg-sky-50',
+        href: `/profile/${hookUser.id}`,
+      }
+      const overviewIdx = finalSidebarItems.findIndex((i) => i.id === 'overview')
+      const insertAt = overviewIdx >= 0
+        ? overviewIdx + 1
+        : Math.min(1, finalSidebarItems.length)
+      finalSidebarItems = [
+        ...finalSidebarItems.slice(0, insertAt),
+        profileItem,
+        ...finalSidebarItems.slice(insertAt),
+      ]
+    }
+
+    // Inject "My Company" entry for any user with corporate-admin capability —
+    // capability, not role: granted by buying a corporate/enterprise plan or owning a company.
+    if (hasCorporateCapability && !finalSidebarItems.some(i => i.id === 'my-company')) {
+      finalSidebarItems = [
+        ...finalSidebarItems,
+        { id: 'my-company', label: 'My Company', icon: FaBuilding, color: 'text-slate-600', bgColor: 'bg-slate-50', href: '/corporate' },
+      ]
+    }
+    // Same pattern for insurance-company owners. A MEMBER, DOCTOR, or any
+    // role who owns a `CorporateAdminProfile` with `isInsuranceCompany: true`
+    // gets a "My Insurance Company" shortcut in their sidebar regardless of
+    // their userType. NOT tied to the legacy INSURANCE_REP role.
+    if (hasInsuranceCapability && !finalSidebarItems.some(i => i.id === 'my-insurance-company')) {
+      finalSidebarItems = [
+        ...finalSidebarItems,
+        { id: 'my-insurance-company', label: 'My Insurance Company', icon: FaShieldAlt, color: 'text-blue-600', bgColor: 'bg-blue-50', href: '/my-insurance-company' },
+      ]
+    }
+
+    // Notifications — every user should have this. Fallback inject if the
+    // sidebar config missed it or the feature-config filter stripped it.
+    if (hookUser?.id && !finalSidebarItems.some(i => i.id === 'notifications')) {
+      finalSidebarItems = [
+        ...finalSidebarItems,
+        { id: 'notifications', label: 'Notifications', icon: FaBell, color: 'text-amber-600', bgColor: 'bg-amber-50', href: '/notifications' },
+      ]
+    }
+
+    // "Invite friends" — every authenticated user has a referral code and
+    // earns wallet credit per successful signup. Injected here so sidebar
+    // configs don't need to remember to add it (regional / admin were
+    // missing it; user flagged it).
+    if (hookUser?.id && !finalSidebarItems.some(i => i.id === 'invite')) {
+      finalSidebarItems = [
+        ...finalSidebarItems,
+        { id: 'invite', label: 'Invite friends', icon: FaGift, color: 'text-pink-600', bgColor: 'bg-pink-50', href: '/invite' },
+      ]
+    }
+
+    // Dedupe by id — a couple of sidebar helpers (`getSearchItems` +
+    // `getSearchItemsFromRoles`) can both emit a 'search-insurance' entry
+    // when combined, which triggered React's "unique key" warning on login.
+    // Keep the first occurrence, drop any subsequent collisions.
+    {
+      const seen = new Set<string>()
+      finalSidebarItems = finalSidebarItems.filter((item) => {
+        if (seen.has(item.id)) return false
+        seen.add(item.id)
+        return true
+      })
+    }
 
     const content = (
       <DashboardLayout

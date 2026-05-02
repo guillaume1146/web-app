@@ -137,7 +137,7 @@ describe('AccountTypeStep: dynamic role fetching', () => {
 
   it('API roles include cookieValue for form submission', () => {
     const roles = [
-      { cookieValue: 'patient', code: 'PATIENT' },
+      { cookieValue: 'patient', code: 'MEMBER' },
       { cookieValue: 'doctor', code: 'DOCTOR' },
       { cookieValue: 'nurse', code: 'NURSE' },
       { cookieValue: 'child-care-nurse', code: 'NANNY' },

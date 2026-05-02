@@ -87,6 +87,7 @@ const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = ({
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ preferences: settings }),
+ credentials: 'include',
  })
 
  if (!res.ok) {

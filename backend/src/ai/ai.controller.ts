@@ -1,0 +1,120 @@
+import { Controller, Get, Post, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { AiService } from './ai.service';
+import { Public } from '../auth/decorators/public.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtPayload } from '../auth/jwt.strategy';
+
+@ApiTags('AI Chat')
+@Controller('ai')
+export class AiController {
+  constructor(private aiService: AiService) {}
+
+  @Get('chat')
+  async listSessions(@CurrentUser() user: JwtPayload) {
+    try {
+      const sessions = await this.aiService.listSessions(user.sub);
+      return { success: true, data: sessions };
+    } catch {
+      return { success: true, data: [] };
+    }
+  }
+
+  @Post('chat')
+  async chat(
+    @Body() body: { message: string; sessionId?: string },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    try {
+      const result = await this.aiService.chatWithAssistant(user.sub, body.message, body.sessionId);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('POST /ai/chat error:', error);
+      return {
+        success: true,
+        data: {
+          response:
+            'AI assistant is temporarily unavailable. Please try again later.',
+          sessionId: body.sessionId || 'temp',
+          title: 'Chat',
+        },
+      };
+    }
+  }
+
+  @Public()
+  @Post('support')
+  async support(@Body() body: { message: string }) {
+    return {
+      success: true,
+      data: {
+        response:
+          'Our support team will get back to you shortly. In the meantime, please browse our FAQ section.',
+      },
+    };
+  }
+
+  /**
+   * POST /api/ai/widget-chat — public endpoint for the floating Health AI
+   * Assistant widget. No auth required so landing-page visitors can use it.
+   * Calls Groq with a platform-specific system prompt. The authenticated
+   * `POST /api/ai/chat` route serves logged-in users with full context.
+   */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('widget-chat')
+  async widgetChat(@Body() body: { message: string }) {
+    if (!body?.message?.trim()) {
+      return { success: false, data: { response: 'Please type a message.' } };
+    }
+    try {
+      const response = await this.aiService.publicWidgetChat(body.message);
+      return { success: true, data: { response } };
+    } catch (error) {
+      console.error('POST /ai/widget-chat error:', error);
+      return {
+        success: true,
+        data: {
+          response:
+            "I'm having trouble connecting right now. Please try again in a moment, or visit our Help Centre.",
+        },
+      };
+    }
+  }
+
+  @Post('generate-features')
+  async generateFeatures(@Body() body: any) {
+    return {
+      success: true,
+      data: { features: ['Consultation', 'Follow-up', 'Prescription', 'Lab Tests'] },
+    };
+  }
+
+  @Get('chat/:sessionId')
+  async getSession(
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    try {
+      const result = await this.aiService.getSession(sessionId, user.sub);
+      if (!result) return { success: false, message: 'Session not found' };
+      return { success: true, data: result };
+    } catch {
+      return { success: false, message: 'Failed to fetch session' };
+    }
+  }
+
+  @Delete('chat/:sessionId')
+  async deleteSession(
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    try {
+      const deleted = await this.aiService.deleteSession(sessionId, user.sub);
+      if (!deleted) return { success: false, message: 'Session not found' };
+      return { success: true, message: 'Session deleted' };
+    } catch {
+      return { success: false, message: 'Failed to delete session' };
+    }
+  }
+}

@@ -21,7 +21,7 @@ interface AccountRecord {
 
 export default function AccountValidation() {
  const [accounts, setAccounts] = useState<AccountRecord[]>([])
- const [statusFilter, setStatusFilter] = useState('pending')
+ const [statusFilter, setStatusFilter] = useState('unverified')
  const [searchTerm, setSearchTerm] = useState('')
  const [loading, setLoading] = useState(true)
  const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -31,7 +31,7 @@ export default function AccountValidation() {
  setLoading(true)
  setError(null)
  try {
- const res = await fetch(`/api/admin/accounts?status=${status}`)
+ const res = await fetch(`/api/admin/accounts?status=${status}`, { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success) setAccounts(json.data || [])
@@ -56,6 +56,7 @@ export default function AccountValidation() {
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ userId, action }),
+ credentials: 'include',
  })
  if (res.ok) {
  setAccounts(prev => prev.filter(a => a.id !== userId))
@@ -146,17 +147,23 @@ export default function AccountValidation() {
  <div className="bg-white rounded-xl p-4 shadow mb-6">
  <div className="flex flex-wrap gap-4 items-center justify-between">
  <div className="flex flex-wrap gap-2">
- {['pending', 'active', 'suspended'].map(status => (
+ {[
+ { key: 'unverified', label: 'Pending Verification' },
+ { key: 'verified', label: 'Verified' },
+ { key: 'suspended', label: 'Suspended' },
+ { key: 'rejected', label: 'Rejected' },
+ { key: 'all', label: 'All' },
+ ].map(({ key, label }) => (
  <button
- key={status}
- onClick={() => setStatusFilter(status)}
+ key={key}
+ onClick={() => setStatusFilter(key)}
  className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition ${
- statusFilter === status
+ statusFilter === key
  ? 'bg-blue-600 text-white'
  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
  }`}
  >
- {status}
+ {label}
  </button>
  ))}
  </div>
@@ -185,8 +192,8 @@ export default function AccountValidation() {
  {filteredAccounts.length === 0 ? (
  <div className="text-center py-16 text-gray-500">
  <FaUsers className="text-4xl mx-auto mb-3 text-gray-300" />
- <p className="text-lg font-medium">No {statusFilter} accounts found</p>
- <p className="text-sm mt-1">Accounts with &quot;{statusFilter}&quot; status will appear here</p>
+ <p className="text-lg font-medium">No accounts found</p>
+ <p className="text-sm mt-1">{statusFilter === 'unverified' ? 'All provider accounts have been verified' : 'No accounts match this filter'}</p>
  </div>
  ) : (
  <table className="w-full">

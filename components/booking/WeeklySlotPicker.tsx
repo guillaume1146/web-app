@@ -195,42 +195,33 @@ export default function WeeklySlotPicker({
  }`}>
  <FaClock className="text-xs text-gray-400" />
  <span className="text-sm font-medium text-gray-700">{day.dateLabel}</span>
- <span className="text-xs text-gray-400">({day.slots.length} available{day.bookedSlots.length > 0 ? `, ${day.bookedSlots.length} booked` : ''})</span>
+ <span className="text-xs text-gray-400">({day.slots.length} available)</span>
  </div>
  <div className="p-2 flex flex-wrap gap-1.5">
- {/* All slots sorted chronologically — available ones clickable, booked ones grayed out */}
- {[...day.slots.map(s => ({ time: s, booked: false })), ...day.bookedSlots.map(s => ({ time: s, booked: true }))]
- .sort((a, b) => a.time.localeCompare(b.time))
- .map(({ time: slot, booked }) => {
- if (booked) {
- return (
- <button
- key={`${day.date}-${slot}-booked`}
- type="button"
- disabled
- className="px-2.5 py-1.5 border-2 border-gray-100 rounded-lg text-xs sm:text-sm font-medium bg-gray-100 text-gray-400 cursor-not-allowed line-through"
- title="This slot is already booked"
- >
- {formatTime(slot)}
- </button>
- )
- }
- const selected = isSlotSelected(day.date, slot)
- return (
- <button
- key={`${day.date}-${slot}`}
- type="button"
- onClick={() => handleSlotClick(day.date, slot)}
- className={`px-2.5 py-1.5 border-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
- selected
- ? `${colors.selected} shadow-md`
- : `border-gray-200 text-gray-700 ${colors.hover}`
- }`}
- >
- {formatTime(slot)}
- </button>
- )
- })}
+ {/* Only available slots are shown — already-booked ones are
+  filtered out entirely (previously rendered as grayed-out
+  buttons, which added noise and suggested they were selectable). */}
+ {day.slots.length === 0 ? (
+ <span className="text-xs text-gray-400 italic px-2 py-1">No free slots on this day</span>
+ ) : (
+ [...day.slots].sort((a, b) => a.localeCompare(b)).map(slot => {
+  const selected = isSlotSelected(day.date, slot)
+  return (
+   <button
+    key={`${day.date}-${slot}`}
+    type="button"
+    onClick={() => handleSlotClick(day.date, slot)}
+    className={`px-2.5 py-1.5 border-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+     selected
+      ? `${colors.selected} shadow-md`
+      : `border-gray-200 text-gray-700 ${colors.hover}`
+    }`}
+   >
+    {formatTime(slot)}
+   </button>
+  )
+ })
+ )}
  </div>
  </div>
  ))}

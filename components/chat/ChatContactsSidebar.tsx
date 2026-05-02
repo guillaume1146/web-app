@@ -54,6 +54,12 @@ const USER_TYPE_LABELS: Record<string, string> = {
  REGIONAL_ADMIN: 'Admin',
 }
 
+function avatarUrl(p: Participant): string {
+ if (p.avatarUrl) return p.avatarUrl
+ const seed = encodeURIComponent(`${p.firstName} ${p.lastName}`)
+ return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=0c6780,001e40,0a3d62&fontFamily=Arial&fontSize=40&radius=50`
+}
+
 function timeAgo(dateStr: string): string {
  const diff = Date.now() - new Date(dateStr).getTime()
  const mins = Math.floor(diff / 60000)
@@ -141,9 +147,15 @@ export default function ChatContactsSidebar({ currentUserId, messagesPath }: Cha
  >
  {/* Avatar */}
  <div className="relative flex-shrink-0">
- <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold">
- {other.firstName?.[0]}{other.lastName?.[0]}
- </div>
+ <img
+   src={avatarUrl(other)}
+   alt={`${other.firstName} ${other.lastName}`}
+   className="w-9 h-9 rounded-full object-cover border border-gray-100 bg-gray-100"
+   onError={e => {
+     const el = e.currentTarget
+     el.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(other.firstName + ' ' + other.lastName)}&backgroundColor=0c6780&fontFamily=Arial&radius=50`
+   }}
+ />
  {conv.unreadCount > 0 && (
  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
  {conv.unreadCount > 9 ? '9+' : conv.unreadCount}

@@ -12,6 +12,9 @@ vi.mock('../tabs/FoodDiaryTab', () => ({
 vi.mock('../tabs/ExerciseTab', () => ({
  default: () => <div data-testid="exercise-tab">Exercise Tab</div>,
 }))
+vi.mock('../tabs/SleepTab', () => ({
+ default: () => <div data-testid="sleep-tab">Sleep Tab</div>,
+}))
 vi.mock('../tabs/AiCoachTab', () => ({
  default: () => <div data-testid="ai-coach-tab">AI Coach Tab</div>,
 }))
@@ -24,6 +27,9 @@ vi.mock('../tabs/MealPlannerTab', () => ({
 vi.mock('../tabs/ProfileGoalsTab', () => ({
  default: () => <div data-testid="profile-tab">Profile Goals Tab</div>,
 }))
+vi.mock('../BloodPressureScanner', () => ({
+ default: () => <div data-testid="bp-tab">BP Check Tab</div>,
+}))
 
 describe('HealthTrackerTabs', () => {
  it('renders with dashboard tab by default', () => {
@@ -33,23 +39,20 @@ describe('HealthTrackerTabs', () => {
 
  it('switches to food diary tab on click', () => {
  render(<HealthTrackerTabs />)
- // Find the food diary tab button (the one with FaUtensils icon)
- const buttons = screen.getAllByRole('button')
- // Second button is Food Diary (index 1 in desktop, also in mobile)
- fireEvent.click(buttons[1])
+ fireEvent.click(screen.getByText('Food Diary'))
  expect(screen.getByTestId('food-tab')).toBeInTheDocument()
  })
 
- it('renders all 7 tab buttons on desktop', () => {
+ it('renders all 8 tab buttons on desktop', () => {
  render(<HealthTrackerTabs />)
- // Desktop tabs have labels
  expect(screen.getByText('Dashboard')).toBeInTheDocument()
  expect(screen.getByText('Food Diary')).toBeInTheDocument()
  expect(screen.getByText('Exercise')).toBeInTheDocument()
+ expect(screen.getByText('Sleep')).toBeInTheDocument()
  expect(screen.getByText('AI Coach')).toBeInTheDocument()
  expect(screen.getByText('Progress')).toBeInTheDocument()
  expect(screen.getByText('Meal Plan')).toBeInTheDocument()
- expect(screen.getByText('Profile')).toBeInTheDocument()
+ expect(screen.getByText('BP Check')).toBeInTheDocument()
  })
 
  it('switches to exercise tab', () => {
@@ -76,9 +79,9 @@ describe('HealthTrackerTabs', () => {
  expect(screen.getByTestId('meal-plan-tab')).toBeInTheDocument()
  })
 
- it('switches to profile tab', () => {
+ it('switches to BP Check tab', () => {
  render(<HealthTrackerTabs />)
- fireEvent.click(screen.getByText('Profile'))
- expect(screen.getByTestId('profile-tab')).toBeInTheDocument()
+ fireEvent.click(screen.getByText('BP Check'))
+ expect(screen.getByTestId('bp-tab')).toBeInTheDocument()
  })
 })

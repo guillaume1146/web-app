@@ -51,7 +51,7 @@ export default function AdminUsersPage() {
  try {
  const params = new URLSearchParams()
  if (statusFilter !== 'all') params.set('status', statusFilter)
- const res = await fetch(`/api/admin/accounts?${params.toString()}`)
+ const res = await fetch(`/api/admin/accounts?${params.toString()}`, { credentials: 'include' })
  if (res.ok) {
  const data = await res.json()
  if (data.success) {

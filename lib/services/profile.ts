@@ -16,7 +16,7 @@ export interface UserProfile {
 }
 
 export async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
-  const res = await fetch(`/api/users/${userId}`)
+  const res = await fetch(`/api/users/${userId}`, { credentials: 'include' })
   if (!res.ok) return null
   const data = await res.json()
   return data.success ? data.data : null
@@ -30,6 +30,7 @@ export async function updateUserProfile(
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
+    credentials: 'include',
   })
   return res.json()
 }
@@ -43,6 +44,7 @@ export async function changePassword(
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ currentPassword, newPassword }),
+    credentials: 'include',
   })
   return res.json()
 }

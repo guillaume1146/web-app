@@ -1,4 +1,4 @@
-import { FaHome, FaNewspaper, FaUsers, FaShieldAlt, FaComments, FaVideo, FaFileAlt, FaMoneyBillWave, FaGlobeAmericas, FaToggleOn, FaSlidersH, FaBell, FaRobot } from 'react-icons/fa'
+import { FaHome, FaNewspaper, FaUsers, FaShieldAlt, FaComments, FaVideo, FaFileAlt, FaMoneyBillWave, FaGlobeAmericas, FaToggleOn, FaSlidersH, FaBell, FaRobot, FaClipboardCheck, FaProjectDiagram, FaLayerGroup, FaHistory } from 'react-icons/fa'
 import type { SidebarItem } from '@/components/dashboard/DashboardSidebar'
 import { createGetActiveSectionFromPath } from '@/lib/dashboard/getActiveSectionFromPath'
 import { getSearchItems } from '@/lib/dashboard/patientHealthItems'
@@ -9,6 +9,7 @@ export const ADMIN_SIDEBAR_ITEMS: SidebarItem[] = [
   { id: 'feed', label: 'Feed', icon: FaNewspaper, color: 'text-orange-600', bgColor: 'bg-orange-50', href: `${base}/feed` },
   { id: 'overview', label: 'Dashboard', icon: FaHome, color: 'text-blue-600', bgColor: 'bg-blue-50', href: base },
   { id: 'users', label: 'Users', icon: FaUsers, color: 'text-purple-600', bgColor: 'bg-purple-50', href: `${base}/users` },
+  { id: 'validation', label: 'Validation', icon: FaClipboardCheck, color: 'text-amber-600', bgColor: 'bg-amber-50', href: `${base}/validation` },
   { id: 'security', label: 'Security', icon: FaShieldAlt, color: 'text-red-600', bgColor: 'bg-red-50', href: `${base}/security` },
   { id: 'content', label: 'Content', icon: FaFileAlt, color: 'text-indigo-600', bgColor: 'bg-indigo-50', href: `${base}/content` },
   { id: 'commission-config', label: 'Commission Config', icon: FaSlidersH, color: 'text-orange-600', bgColor: 'bg-orange-50', href: `${base}/commission-config` },
@@ -19,6 +20,10 @@ export const ADMIN_SIDEBAR_ITEMS: SidebarItem[] = [
   { id: 'messages', label: 'Messages', icon: FaComments, color: 'text-pink-600', bgColor: 'bg-pink-50', href: `${base}/messages` },
   { id: 'notifications', label: 'Notifications', icon: FaBell, color: 'text-yellow-600', bgColor: 'bg-yellow-50', href: `${base}/notifications` },
   { id: 'ai-assistant', label: 'AI Health Assistant', labelKey: 'nav.aiAssistant', icon: FaRobot, color: 'text-indigo-600', bgColor: 'bg-indigo-50', href: `${base}/ai-assistant` },
+  { id: 'workflows', label: 'Workflows', icon: FaProjectDiagram, color: 'text-violet-600', bgColor: 'bg-violet-50', href: `${base}/workflows` },
+  { id: 'workflow-templates', label: 'System Templates', icon: FaLayerGroup, color: 'text-violet-600', bgColor: 'bg-violet-50', href: `${base}/workflows/templates` },
+  { id: 'workflow-compliance', label: 'Compliance', icon: FaShieldAlt, color: 'text-rose-600', bgColor: 'bg-rose-50', href: `${base}/workflows/compliance` },
+  { id: 'workflow-audit', label: 'Workflow Audit', icon: FaHistory, color: 'text-slate-600', bgColor: 'bg-slate-50', href: `${base}/workflows/audit` },
   ...getSearchItems(base),
 ]
 

@@ -74,7 +74,7 @@ const ChildcareServices: React.FC<Props> = ({ patientData, onVideoCall }) => {
  // Fetch childcare bookings for this patient
  const fetchBookings = useCallback(async () => {
  try {
- const res = await fetch(`/api/patients/${patientData.id}/bookings`)
+ const res = await fetch('/api/bookings/unified?role=patient', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
@@ -110,11 +110,19 @@ const ChildcareServices: React.FC<Props> = ({ patientData, onVideoCall }) => {
  const fetchNannies = async () => {
  setLoadingNannies(true)
  try {
- const res = await fetch('/api/nannies/available')
+ const res = await fetch('/api/search/providers?type=NANNY')
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
- setAvailableNannies(json.data)
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ setAvailableNannies(json.data.map((n: any) => ({
+ id: n.id,
+ userId: n.id,
+ name: `${n.firstName} ${n.lastName}`,
+ profileImage: n.profileImage || null,
+ experience: n.experience || '',
+ certifications: n.certifications || [],
+ })))
  }
  }
  } catch (error) {
@@ -137,7 +145,7 @@ const ChildcareServices: React.FC<Props> = ({ patientData, onVideoCall }) => {
  const fetchServices = async () => {
  setLoadingServices(true)
  try {
- const res = await fetch(`/api/nannies/${selectedNannyId}/services`)
+ const res = await fetch(`/api/providers/${selectedNannyId}/services`, { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
@@ -176,10 +184,12 @@ const ChildcareServices: React.FC<Props> = ({ patientData, onVideoCall }) => {
  let successCount = 0
 
  for (const slot of selectedSlots) {
- const res = await fetch('/api/bookings/nanny', {
+ const res = await fetch('/api/bookings', {
  method: 'POST',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
+ providerType: 'NANNY',
  nannyId: selectedNannyId,
  consultationType,
  scheduledDate: slot.date,

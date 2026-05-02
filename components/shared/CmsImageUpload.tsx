@@ -20,7 +20,7 @@ export default function CmsImageUpload({ value, onChange, label = 'Image' }: Cms
  try {
  const fd = new FormData()
  fd.append('file', file)
- const res = await fetch('/api/upload/cms', { method: 'POST', body: fd })
+ const res = await fetch('/api/upload/cms', { method: 'POST', body: fd, credentials: 'include' })
  const result = await res.json()
  if (result.success) {
  onChange(result.data.url)

@@ -24,13 +24,14 @@ export const useSocket = () => {
   const socketRef = useRef<Socket | null>(null)
 
   useEffect(() => {
-    // Determine socket URL
-    let socketUrl = 'http://localhost:3000'
+    // Determine socket URL — points to NestJS backend
+    let socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'
 
     if (typeof window !== 'undefined') {
+      // In production, use env var or derive from current origin
       if (window.location.hostname !== 'localhost' &&
           window.location.hostname !== '127.0.0.1') {
-        socketUrl = window.location.origin
+        socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin
         debug('Production mode detected, using:', socketUrl)
       } else {
         debug('Development mode, using:', socketUrl)

@@ -4,7 +4,7 @@ import { USER_TYPE_LABELS, USER_TYPE_SLUGS, PLATFORM_FEES } from '../constants'
 describe('USER_TYPE_LABELS', () => {
   it('has labels for all 11 user types', () => {
     const expectedTypes = [
-      'PATIENT', 'DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST',
+      'MEMBER', 'DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST',
       'LAB_TECHNICIAN', 'EMERGENCY_WORKER', 'INSURANCE_REP',
       'CORPORATE_ADMIN', 'REFERRAL_PARTNER', 'REGIONAL_ADMIN',
     ]
@@ -20,7 +20,7 @@ describe('USER_TYPE_LABELS', () => {
 describe('USER_TYPE_SLUGS', () => {
   it('has slugs for all 11 user types', () => {
     const expectedTypes = [
-      'PATIENT', 'DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST',
+      'MEMBER', 'DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST',
       'LAB_TECHNICIAN', 'EMERGENCY_WORKER', 'INSURANCE_REP',
       'CORPORATE_ADMIN', 'REFERRAL_PARTNER', 'REGIONAL_ADMIN',
     ]
@@ -32,7 +32,7 @@ describe('USER_TYPE_SLUGS', () => {
   })
 
   it('maps specific types to correct slugs', () => {
-    expect(USER_TYPE_SLUGS['PATIENT']).toBe('patient')
+    expect(USER_TYPE_SLUGS['MEMBER']).toBe('patient')
     expect(USER_TYPE_SLUGS['DOCTOR']).toBe('doctor')
     expect(USER_TYPE_SLUGS['EMERGENCY_WORKER']).toBe('responder')
     expect(USER_TYPE_SLUGS['REGIONAL_ADMIN']).toBe('regional')

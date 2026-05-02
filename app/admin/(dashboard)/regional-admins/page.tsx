@@ -41,7 +41,7 @@ export default function AdminRegionalAdminsPage() {
  const fetchAdmins = useCallback(async () => {
  setLoading(true)
  try {
- const res = await fetch('/api/admin/admins')
+ const res = await fetch('/api/admin/admins', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success) setAdmins(json.data || [])
@@ -62,6 +62,7 @@ export default function AdminRegionalAdminsPage() {
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ userId, action }),
+ credentials: 'include',
  })
  const data = await res.json()
  if (data.success) fetchAdmins()

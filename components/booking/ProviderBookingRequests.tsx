@@ -42,7 +42,7 @@ interface BookingRequest {
 }
 
 interface ProviderBookingRequestsProps {
- /** API endpoint to fetch booking requests, e.g. `/api/doctors/{id}/booking-requests` */
+ /** API endpoint to fetch booking requests, e.g. `/api/providers/{id}/booking-requests` */
  apiEndpoint: string
  /** API endpoint to accept/decline, e.g. `/api/bookings/doctor` */
  actionEndpoint: string

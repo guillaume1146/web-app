@@ -12,7 +12,7 @@ export async function seedDoctorPosts(prisma: PrismaClient) {
 
   // Get some patients and other users for comments
   const commenters = await prisma.user.findMany({
-    where: { userType: { in: ['PATIENT', 'NURSE', 'PHARMACIST'] } },
+    where: { userType: { in: ['MEMBER', 'NURSE', 'PHARMACIST'] } },
     select: { id: true, firstName: true, userType: true },
     take: 6,
   })

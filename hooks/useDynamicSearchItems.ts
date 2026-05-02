@@ -22,7 +22,21 @@ export function useDynamicSearchItems(basePath: string): SidebarItem[] {
   const [items, setItems] = useState<SidebarItem[]>([])
 
   useEffect(() => {
-    fetch('/api/roles?searchEnabled=true')
+    // Look up the user's region first so the sidebar matches the regional
+    // admin's CRUD (which is region-scoped). Fall back to global-only on error.
+    const runFetch = async () => {
+      let regionCode: string | null = null
+      try {
+        const meRes = await fetch('/api/auth/me', { credentials: 'include' })
+        const meJson = await meRes.json()
+        regionCode = meJson?.user?.regionCode ?? null
+      } catch { /* swallow */ }
+      const qs = new URLSearchParams({ searchEnabled: 'true' })
+      if (regionCode) qs.set('regionCode', regionCode)
+      return fetch(`/api/roles?${qs.toString()}`, { credentials: 'include' })
+    }
+
+    runFetch()
       .then(r => r.json())
       .then(json => {
         if (!json.success || !json.data) return

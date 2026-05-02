@@ -13,7 +13,7 @@ export async function seedHealthTrackerDemo(prisma: PrismaClient) {
 
   // Get all patients
   const patients = await prisma.user.findMany({
-    where: { userType: 'PATIENT' },
+    where: { userType: 'MEMBER' },
     select: { id: true, firstName: true, gender: true },
     take: 3,
   })

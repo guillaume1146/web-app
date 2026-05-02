@@ -29,7 +29,14 @@ const typeIcons: Record<string, React.ReactNode> = {
  EMERGENCY_WORKER: <FaAmbulance className="text-red-500" />,
 }
 
-export default function UserSuggestions({ currentUserId, maxResults = 5, className = '' }: UserSuggestionsProps) {
+function avatarUrl(user: SuggestedUser): string {
+ if (user.profileImage) return user.profileImage
+ // Generate a consistent branded avatar when no photo is uploaded
+ const seed = encodeURIComponent(`${user.firstName} ${user.lastName}`)
+ return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=0c6780,001e40,0a3d62&fontFamily=Arial&fontSize=40&radius=50`
+}
+
+export default function UserSuggestions({ currentUserId, maxResults = 7, className = '' }: UserSuggestionsProps) {
  const [suggestions, setSuggestions] = useState<SuggestedUser[]>([])
  const [loading, setLoading] = useState(true)
  const [error, setError] = useState('')
@@ -39,7 +46,7 @@ export default function UserSuggestions({ currentUserId, maxResults = 5, classNa
  try {
  setError('')
  setLoading(true)
- const res = await fetch(`/api/connections/suggestions?userId=${currentUserId}&limit=${maxResults}`)
+ const res = await fetch(`/api/connections/suggestions?userId=${currentUserId}&limit=${maxResults}`, { credentials: 'include' })
  const data = await res.json()
  if (data.success) {
  setSuggestions(data.data)
@@ -62,6 +69,7 @@ export default function UserSuggestions({ currentUserId, maxResults = 5, classNa
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ senderId: currentUserId, receiverId: targetId }),
+ credentials: 'include',
  })
  const data = await res.json()
  if (data.success) {
@@ -81,7 +89,7 @@ export default function UserSuggestions({ currentUserId, maxResults = 5, classNa
  <div className={`bg-white rounded-sm shadow p-4 ${className}`}>
  <h3 className="font-semibold text-gray-900 mb-3">People You May Know</h3>
  <div className="space-y-3">
- {[1, 2, 3].map(i => (
+ {Array.from({ length: 7 }).map((_, i) => (
  <div key={i} className="animate-pulse flex items-center gap-3">
  <div className="w-10 h-10 rounded-full bg-gray-200" />
  <div className="flex-1">
@@ -120,21 +128,19 @@ export default function UserSuggestions({ currentUserId, maxResults = 5, classNa
  return (
  <div key={user.id} className="flex items-center gap-3">
  <Link href={`/profile/${user.id}`} className="flex-shrink-0">
- {user.profileImage ? (
  <img
- src={user.profileImage}
+ src={avatarUrl(user)}
  alt={`${user.firstName} ${user.lastName}`}
- className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+ className="w-10 h-10 rounded-full object-cover border-2 border-gray-100 bg-gray-100"
+ onError={e => {
+   const el = e.currentTarget
+   el.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.firstName + ' ' + user.lastName)}&backgroundColor=0c6780&fontFamily=Arial&radius=50`
+ }}
  />
- ) : (
- <div className={`w-10 h-10 rounded-full ${colors.gradient} flex items-center justify-center text-white text-xs font-bold`}>
- {user.firstName[0]}{user.lastName[0]}
- </div>
- )}
  </Link>
  <div className="flex-1 min-w-0">
  <p className="text-sm font-medium text-gray-900 truncate">
- {user.userType === 'DOCTOR' ? 'Dr. ' : ''}{user.firstName} {user.lastName}
+ {user.firstName} {user.lastName}
  </p>
  <div className="flex items-center gap-1.5">
  {typeIcons[user.userType] || null}

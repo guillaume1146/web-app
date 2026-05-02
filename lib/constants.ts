@@ -50,7 +50,8 @@ export const DEFAULT_PRICES = {
 
 /** Human-readable labels for each UserType enum value. */
 export const USER_TYPE_LABELS: Record<string, string> = {
-  PATIENT: 'Patient',
+  MEMBER: 'Member',
+  PATIENT: 'Member', // legacy alias — MEMBER is the canonical key
   DOCTOR: 'Doctor',
   NURSE: 'Nurse',
   NANNY: 'Nanny',
@@ -65,7 +66,8 @@ export const USER_TYPE_LABELS: Record<string, string> = {
 
 /** URL path slugs for each UserType (used in routing). */
 export const USER_TYPE_SLUGS: Record<string, string> = {
-  PATIENT: 'patient',
+  MEMBER: 'patient', // MEMBER routes under /patient/* for URL stability
+  PATIENT: 'patient', // legacy alias
   DOCTOR: 'doctor',
   NURSE: 'nurse',
   NANNY: 'nanny',

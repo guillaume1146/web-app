@@ -1,324 +1,108 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { FaPaperPlane, FaRobot, FaUser, FaCopy, FaThumbsUp, FaThumbsDown, FaUserMd, FaAmbulance, FaShieldAlt, FaUserNurse, FaPills, FaFlask, FaLightbulb, FaExclamationTriangle } from 'react-icons/fa'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { FaRobot, FaSignInAlt, FaUserPlus, FaShieldAlt } from 'react-icons/fa'
+import BotHealthAssistant from '@/app/patient/(dashboard)/components/BotHealthAssistant'
 
-interface Message {
- id: string
- type: 'user' | 'assistant'
- content: string
- timestamp: Date
+interface Me {
+  user?: { id: string; firstName: string; healthScore?: number }
 }
 
-const initialMessages: Message[] = [
- {
- id: '1',
- type: 'assistant',
- content: `Hello! I'm your AI Medical Support Assistant. I'm here to help you with:
+export default function PublicAIAssistantPage() {
+  const [me, setMe] = useState<Me | null>(null)
+  const [checked, setChecked] = useState(false)
 
-• **Emergency Procedures** - Steps to follow in medical emergencies
-• **Booking Guidance** - How to book doctors, tests, or services
-• **Insurance Information** - Understanding your coverage and claims
-• **Medication Advice** - Information about medicines and prescriptions
-• **Healthcare Navigation** - Finding the right services for your needs
-• **Administrative Procedures** - Help with healthcare paperwork and processes
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (data?.user) setMe(data)
+      })
+      .catch(() => {})
+      .finally(() => setChecked(true))
+  }, [])
 
-How can I assist you today?`,
- timestamp: new Date()
- }
-]
+  if (!checked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-10 h-10 border-2 border-[#0C6780] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
-const quickPrompts = [
- {
- icon: FaAmbulance,
- text: "Emergency procedure steps",
- prompt: "What are the steps I should follow in a medical emergency?"
- },
- {
- icon: FaUserMd,
- text: "How to book a doctor",
- prompt: "Can you guide me through the process of booking a doctor appointment?"
- },
- {
- icon: FaShieldAlt,
- text: "Insurance claim process",
- prompt: "How do I file a health insurance claim and what documents do I need?"
- },
- {
- icon: FaPills,
- text: "Medication guidance",
- prompt: "I need help understanding my prescription and how to take my medications properly."
- },
- {
- icon: FaFlask,
- text: "Lab test booking",
- prompt: "What's the process for booking lab tests and preparing for them?"
- },
- {
- icon: FaUserNurse,
- text: "When to call a nurse",
- prompt: "What symptoms or situations require calling a nurse for home care?"
- }
-]
+  // Authenticated → render the canonical MediWyz AI component used everywhere
+  // else (patient, provider, admin, regional dashboards). Same sessions API,
+  // same UX.
+  if (me?.user) {
+    return (
+      <div className="absolute inset-0 overflow-hidden">
+        <BotHealthAssistant
+          userName={me.user.firstName}
+          healthScore={me.user.healthScore}
+        />
+      </div>
+    )
+  }
 
+  // Guest → invite them to sign in. The floating widget at the bottom-right
+  // remains available for one-off questions without an account.
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#001E40] via-[#0a3d62] to-[#0C6780] flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div className="bg-gradient-to-r from-[#001E40] to-[#0C6780] px-6 sm:px-10 py-8 text-center">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-white/15 flex items-center justify-center mb-4">
+            <FaRobot className="text-3xl text-white" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">MediWyz AI Assistant</h1>
+          <p className="text-sm sm:text-base text-white/85">
+            Personalised health guidance powered by your profile, conditions, goals, and tracker data.
+          </p>
+        </div>
 
-export default function AIMedicalChatbot() {
- const [messages, setMessages] = useState<Message[]>(initialMessages)
- const [inputMessage, setInputMessage] = useState('')
- const [isTyping, setIsTyping] = useState(false)
- const messagesEndRef = useRef<HTMLDivElement>(null)
- const inputRef = useRef<HTMLInputElement>(null)
+        <div className="px-6 sm:px-10 py-7 space-y-5">
+          <ul className="space-y-3 text-sm text-gray-700">
+            <li className="flex gap-3">
+              <span className="text-[#0C6780] flex-shrink-0">•</span>
+              <span>Conversations grounded in <strong>your real profile</strong> — allergies, medications, goals, recent activity.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="text-[#0C6780] flex-shrink-0">•</span>
+              <span>Saved chat history across all your sessions.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="text-[#0C6780] flex-shrink-0">•</span>
+              <span>Booking, medication, and emergency guidance — all in one place.</span>
+            </li>
+          </ul>
 
- const scrollToBottom = () => {
- messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
- }
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-3">
+            <FaShieldAlt className="text-amber-600 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-amber-900 leading-relaxed">
+              For medical emergencies, call <strong>114</strong> immediately. The assistant provides general guidance only — never diagnoses.
+            </p>
+          </div>
 
- useEffect(() => {
- scrollToBottom()
- }, [messages])
+          <div className="flex flex-col sm:flex-row gap-3 pt-1">
+            <Link
+              href="/login?returnUrl=%2Fsearch%2Fai"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0C6780] text-white font-semibold hover:bg-[#001E40] transition"
+            >
+              <FaSignInAlt /> Sign in
+            </Link>
+            <Link
+              href="/signup?returnUrl=%2Fsearch%2Fai"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white border-2 border-[#0C6780] text-[#0C6780] font-semibold hover:bg-[#0C6780] hover:text-white transition"
+            >
+              <FaUserPlus /> Create account
+            </Link>
+          </div>
 
- const handleSendMessage = async () => {
- if (!inputMessage.trim()) return
-
- const userMessage: Message = {
- id: Date.now().toString(),
- type: 'user',
- content: inputMessage,
- timestamp: new Date()
- }
-
- const currentMessages = [...messages, userMessage]
- setMessages(currentMessages)
- setInputMessage('')
- setIsTyping(true)
-
- try {
- const history = currentMessages
- .slice(-20)
- .filter(m => m.id !== '1')
- .map(m => ({
- role: m.type === 'user' ? 'user' as const : 'assistant' as const,
- content: m.content,
- }))
-
- const res = await fetch('/api/ai/support', {
- method: 'POST',
- headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify({ message: inputMessage, history }),
- })
-
- const json = await res.json()
- const responseText = res.ok && json.success
- ? json.data.response
- : 'Sorry, I could not process your request at this time. Please try again or contact support.'
-
- const aiResponse: Message = {
- id: (Date.now() + 1).toString(),
- type: 'assistant',
- content: responseText,
- timestamp: new Date()
- }
-
- setMessages(prev => [...prev, aiResponse])
- } catch {
- const errorResponse: Message = {
- id: (Date.now() + 1).toString(),
- type: 'assistant',
- content: 'Sorry, I am unable to connect to the AI service right now. Please try again later or call emergency services directly at 114 for urgent matters.',
- timestamp: new Date()
- }
- setMessages(prev => [...prev, errorResponse])
- } finally {
- setIsTyping(false)
- }
- }
-
- const handleQuickPrompt = (prompt: string) => {
- setInputMessage(prompt)
- inputRef.current?.focus()
- }
-
- const handleKeyPress = (e: React.KeyboardEvent) => {
- if (e.key === 'Enter' && !e.shiftKey) {
- e.preventDefault()
- handleSendMessage()
- }
- }
-
- return (
- <div className="min-h-screen to-black">
- <div className="container mx-auto px-4 py-8 max-w-4xl">
- <div className="text-center mb-8">
- <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
- <div className="flex items-center justify-center gap-3 mb-4">
- <div className=" p-3 rounded-full">
- <FaRobot className="text-2xl text-white" />
- </div>
- <h1 className="text-3xl font-bold text-white">AI Medical Support Assistant</h1>
- </div>
- <p className="text-blue-100 text-lg">
- Get instant guidance on medical procedures, emergency steps, booking services, and healthcare navigation
- </p>
- </div>
- </div>
-
- <div className="mb-6">
- <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
- <FaLightbulb className="text-yellow-400" />
- Quick Help Topics
- </h3>
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
- {quickPrompts.map((prompt, index) => (
- <button
- key={index}
- onClick={() => handleQuickPrompt(prompt.prompt)}
- className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-3 text-white hover:bg-white/20 transition-all duration-200 text-left"
- >
- <div className="flex items-center gap-3">
- <prompt.icon className="text-blue-400 text-lg" />
- <span className="text-sm font-medium">{prompt.text}</span>
- </div>
- </button>
- ))}
- </div>
- </div>
-
- <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/20 overflow-hidden">
- <div className="h-96 md:h-[500px] overflow-y-auto p-4 space-y-4">
- {messages.map((message) => (
- <div
- key={message.id}
- className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
- >
- {message.type === 'assistant' && (
- <div className=" p-2 rounded-full self-start">
- <FaRobot className="text-white text-sm" />
- </div>
- )}
- 
- <div className={`max-w-[80%] ${message.type === 'user' ? 'order-first' : ''}`}>
- <div
- className={`rounded-2xl p-4 ${
- message.type === 'user'
- ? ' text-white ml-auto'
- : 'bg-white/10 backdrop-blur-sm border border-white/20 text-white'
- }`}
- >
- <div className="prose prose-invert max-w-none">
- {message.content.split('\n').map((line, i) => {
- if (line.trim() === '') return <br key={i} />
- if (line.includes('**')) {
- const parts = line.split('**')
- return (
- <p key={i} className="mb-2">
- {parts.map((part, j) => 
- j % 2 === 1 ? <strong key={j}>{part}</strong> : part
- )}
- </p>
- )
- }
- 
- if (line.trim().startsWith('•') || line.trim().startsWith('-')) {
- return (
- <div key={i} className="flex items-start gap-2 mb-1">
- <span className="text-blue-400 mt-1">•</span>
- <span>{line.replace(/^[•-]\s*/, '')}</span>
- </div>
- )
- }
- 
- return <p key={i} className="mb-2">{line}</p>
- })}
- </div>
- </div>
- <div className="flex items-center gap-2 mt-2">
- <span className="text-xs text-white/60">
- {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
- </span>
- {message.type === 'assistant' && (
- <div className="flex gap-1">
- <button className="text-white/60 hover:text-green-400 transition-colors">
- <FaThumbsUp className="text-xs" />
- </button>
- <button className="text-white/60 hover:text-red-400 transition-colors">
- <FaThumbsDown className="text-xs" />
- </button>
- <button className="text-white/60 hover:text-blue-400 transition-colors">
- <FaCopy className="text-xs" />
- </button>
- </div>
- )}
- </div>
- </div>
-
- {message.type === 'user' && (
- <div className=" p-2 rounded-full self-start">
- <FaUser className="text-white text-sm" />
- </div>
- )}
- </div>
- ))}
-
- {isTyping && (
- <div className="flex gap-3 justify-start">
- <div className=" p-2 rounded-full">
- <FaRobot className="text-white text-sm" />
- </div>
- <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
- <div className="flex gap-1">
- <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
- <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
- <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
- </div>
- </div>
- </div>
- )}
- 
- <div ref={messagesEndRef} />
- </div>
-
- <div className="border-t border-white/20 p-4">
- <div className="flex gap-3">
- <input
- ref={inputRef}
- type="text"
- value={inputMessage}
- onChange={(e) => setInputMessage(e.target.value)}
- onKeyPress={handleKeyPress}
- placeholder="Ask me about medical procedures, emergency steps, booking guidance, or any healthcare question..."
- className="flex-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/60 focus:outline-none focus:border-blue-400 transition-colors"
- />
- <button
- onClick={handleSendMessage}
- disabled={!inputMessage.trim() || isTyping}
- className=" disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-all duration-200"
- >
- <FaPaperPlane className="text-lg" />
- </button>
- </div>
- <div className="flex items-center gap-4 mt-3 text-xs text-white/60">
- <span>Press Enter to send, Shift+Enter for new line</span>
- <div className="flex items-center gap-1">
- <div className="w-2 h-2 bg-green-400 rounded-full"></div>
- <span>AI Assistant Online</span>
- </div>
- </div>
- </div>
- </div>
-
- <div className="mt-6 bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4">
- <div className="flex items-start gap-3">
- <FaExclamationTriangle className="text-yellow-400 text-lg mt-1" />
- <div>
- <h4 className="text-yellow-200 font-semibold mb-1">Medical Disclaimer</h4>
- <p className="text-yellow-100/80 text-sm">
- This AI assistant provides general information and guidance only. For medical emergencies, call 114 immediately. 
- Always consult qualified healthcare professionals for medical advice, diagnosis, or treatment decisions.
- </p>
- </div>
- </div>
- </div>
- </div>
- </div>
- )
+          <p className="text-center text-xs text-gray-500 pt-1">
+            Just want a quick question? Use the <strong>Assistant Santé IA</strong> bubble at the bottom right of every page.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
 }

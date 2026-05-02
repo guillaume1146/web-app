@@ -62,7 +62,7 @@ export default function FinancialReporting() {
  useEffect(() => {
  const fetchMetrics = async () => {
  try {
- const res = await fetch('/api/admin/metrics')
+ const res = await fetch('/api/admin/metrics', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {

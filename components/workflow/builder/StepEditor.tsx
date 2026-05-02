@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { FiTrash2, FiChevronDown, FiChevronUp, FiPlus, FiMenu } from 'react-icons/fi'
+import { useState, useCallback } from 'react'
+import { FiTrash2, FiChevronDown, FiChevronUp, FiPlus, FiMenu, FiZap } from 'react-icons/fi'
 import StepFlagToggles, { type StepFlags } from './StepFlagToggles'
+import { STEP_ICON_EMOJI, STEP_ICON_LABEL, inferStepIcon, type StepIcon as RegistryStepIcon } from '../stepIconRegistry'
 
 export interface StepAction {
   action: string
@@ -11,11 +12,29 @@ export interface StepAction {
   style: 'primary' | 'danger' | 'secondary'
 }
 
+export type StepCategory = 'pending' | 'active' | 'success' | 'danger' | 'waiting'
+
+export type StepIcon =
+  | 'pending' | 'accepted' | 'payment' | 'paid' | 'refund'
+  | 'transport' | 'at_home' | 'at_office' | 'at_lab' | 'at_hospital'
+  | 'video_call' | 'audio_call' | 'chat'
+  | 'sample_collection' | 'analysis' | 'surgery'
+  | 'prescription' | 'document' | 'review'
+  | 'completed' | 'cancelled' | 'waiting'
+
 export interface WorkflowStep {
   order: number
   statusCode: string
   label: string
   description?: string
+  /** Optional visual bucket. When omitted, the engine derives one from the
+   *  step's shape (first → pending, terminal → success/danger, else active).
+   *  Authors only need to set this to override the derived value. */
+  category?: StepCategory
+  /** Optional explicit icon — authors pick from a closed set when the
+   *  auto-inferred icon doesn't match (e.g. a `confirmed` step that should
+   *  really render as a surgery icon). If omitted, engine infers. */
+  icon?: StepIcon
   actionsForPatient: StepAction[]
   actionsForProvider: StepAction[]
   flags: StepFlags
@@ -34,10 +53,48 @@ interface StepEditorProps {
 
 export default function StepEditor({ step, allStatusCodes, onChange, onRemove, isFirst }: StepEditorProps) {
   const [expanded, setExpanded] = useState(false)
+  const [autoFillLoading, setAutoFillLoading] = useState(false)
+  const [autoFillHint, setAutoFillHint] = useState<string | null>(null)
 
   function updateField<K extends keyof WorkflowStep>(key: K, value: WorkflowStep[K]) {
     onChange({ ...step, [key]: value })
   }
+
+  // When the user changes the status code, check if a step type exists for it
+  // and surface an "auto-fill" hint button so they can pre-populate defaults.
+  const handleStatusCodeChange = useCallback(async (code: string) => {
+    const clean = code.toLowerCase().replace(/[^a-z0-9_]/g, '')
+    updateField('statusCode', clean)
+    if (!clean || clean.length < 3) { setAutoFillHint(null); return }
+    try {
+      const res = await fetch(`/api/workflow/step-types/${clean.toUpperCase()}/defaults`, { credentials: 'include' })
+      const j = await res.json()
+      if (j.success) setAutoFillHint(j.data.label)
+      else setAutoFillHint(null)
+    } catch {
+      setAutoFillHint(null)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const applyAutoFill = useCallback(async () => {
+    setAutoFillLoading(true)
+    try {
+      const res = await fetch(`/api/workflow/step-types/${step.statusCode.toUpperCase()}/defaults`, { credentials: 'include' })
+      const j = await res.json()
+      if (j.success) {
+        onChange({
+          ...step,
+          label: step.label || j.data.label,
+          description: step.description || j.data.description || '',
+          flags: { ...j.data.defaultFlags, ...step.flags },
+          actionsForProvider: step.actionsForProvider.length > 0 ? step.actionsForProvider : (j.data.defaultActionsProvider ?? []),
+          actionsForPatient: step.actionsForPatient.length > 0 ? step.actionsForPatient : (j.data.defaultActionsPatient ?? []),
+        })
+        setAutoFillHint(null)
+      }
+    } catch {}
+    setAutoFillLoading(false)
+  }, [step, onChange])
 
   function addAction(role: 'patient' | 'provider') {
     const key = role === 'patient' ? 'actionsForPatient' : 'actionsForProvider'
@@ -65,6 +122,10 @@ export default function StepEditor({ step, allStatusCodes, onChange, onRemove, i
         <div className="w-7 h-7 bg-brand-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
           {step.order}
         </div>
+        {/* Inferred (or explicit) emoji — makes the flow visual at a glance */}
+        <span className="text-lg leading-none flex-shrink-0" aria-hidden="true" title={STEP_ICON_LABEL[(step.icon as RegistryStepIcon) ?? inferStepIcon({ statusCode: step.statusCode, label: step.label, flags: step.flags as Record<string, unknown>, category: step.category, hasActions: (step.actionsForPatient?.length ?? 0) + (step.actionsForProvider?.length ?? 0) > 0 })]}>
+          {STEP_ICON_EMOJI[(step.icon as RegistryStepIcon) ?? inferStepIcon({ statusCode: step.statusCode, label: step.label, flags: step.flags as Record<string, unknown>, category: step.category, hasActions: (step.actionsForPatient?.length ?? 0) + (step.actionsForProvider?.length ?? 0) > 0 })]}
+        </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <input
@@ -79,7 +140,7 @@ export default function StepEditor({ step, allStatusCodes, onChange, onRemove, i
           </div>
           {/* Flag badges */}
           <div className="flex flex-wrap gap-1 mt-1">
-            {Object.entries(step.flags).filter(([, v]) => v).map(([key]) => (
+            {Object.entries(step.flags ?? {}).filter(([, v]) => v).map(([key]) => (
               <span key={key} className="px-1.5 py-0.5 bg-brand-teal/10 text-brand-teal text-[10px] rounded font-medium">
                 {key.replace(/triggers_|requires_/g, '')}
               </span>
@@ -102,9 +163,21 @@ export default function StepEditor({ step, allStatusCodes, onChange, onRemove, i
               <input
                 type="text"
                 value={step.statusCode}
-                onChange={(e) => updateField('statusCode', e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                onChange={(e) => handleStatusCodeChange(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-teal focus:border-brand-teal font-mono"
+                placeholder="e.g. sample_collected"
               />
+              {autoFillHint && (
+                <button
+                  type="button"
+                  onClick={applyAutoFill}
+                  disabled={autoFillLoading}
+                  className="mt-1.5 flex items-center gap-1 text-xs text-brand-teal hover:text-brand-navy font-medium"
+                >
+                  <FiZap className="w-3 h-3" />
+                  {autoFillLoading ? 'Applying...' : `Auto-fill from "${autoFillHint}" template`}
+                </button>
+              )}
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 block mb-1">Description (optional)</label>
@@ -114,6 +187,35 @@ export default function StepEditor({ step, allStatusCodes, onChange, onRemove, i
                 onChange={(e) => updateField('description', e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
               />
+            </div>
+          </div>
+
+          {/* Icon picker — override the auto-inferred icon if needed */}
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">
+              Visual icon
+              <span className="ml-1 text-gray-400 font-normal">(auto-inferred — override if needed)</span>
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => updateField('icon', undefined)}
+                className={`px-2 py-1 rounded-lg border text-[11px] ${!step.icon ? 'border-brand-teal bg-brand-teal/10 text-brand-navy' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                title="Let the engine infer from flags + label"
+              >
+                Auto
+              </button>
+              {(Object.keys(STEP_ICON_EMOJI) as RegistryStepIcon[]).map(key => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => updateField('icon', key)}
+                  className={`px-2 py-1 rounded-lg border text-sm flex items-center gap-1 ${step.icon === key ? 'border-brand-teal bg-brand-teal/10' : 'border-gray-200 hover:bg-gray-50'}`}
+                  title={STEP_ICON_LABEL[key]}
+                >
+                  <span aria-hidden="true">{STEP_ICON_EMOJI[key]}</span>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -132,7 +234,7 @@ export default function StepEditor({ step, allStatusCodes, onChange, onRemove, i
                 </button>
               </div>
               <div className="space-y-2">
-                {step[role === 'patient' ? 'actionsForPatient' : 'actionsForProvider'].map((action, idx) => (
+                {(step[role === 'patient' ? 'actionsForPatient' : 'actionsForProvider'] ?? []).map((action, idx) => (
                   <div key={idx} className="flex items-center gap-2 bg-white rounded-lg p-2 border border-gray-100">
                     <input type="text" value={action.action} onChange={(e) => updateAction(role, idx, { ...action, action: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })} placeholder="action_code" className="flex-1 border border-gray-200 rounded px-2 py-1.5 text-xs font-mono focus:ring-1 focus:ring-brand-teal" />
                     <input type="text" value={action.label} onChange={(e) => updateAction(role, idx, { ...action, label: e.target.value })} placeholder="Button Label" className="flex-1 border border-gray-200 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-brand-teal" />

@@ -1,11 +1,6 @@
-import prisma from '@/lib/db'
 import HeroSection from '@/components/home/HeroSection'
-import StatsSection from '@/components/home/StatsSection'
-import ProviderMarketplace from '@/components/home/ProviderMarketplace'
-import HealthShopMarketplace from '@/components/home/HealthShopMarketplace'
+import MarketplaceTwoColumn from '@/components/home/MarketplaceTwoColumn'
 import CommunityPosts from '@/components/home/CommunityPosts'
-import WhyChooseSection from '@/components/home/WhyChooseSection'
-import FaqSection from '@/components/home/FaqSection'
 import LandingPageContent from '@/components/home/LandingPageContent'
 import { HeroContent, HeroSlide } from '@/types'
 
@@ -13,23 +8,17 @@ export const revalidate = 60
 
 async function getCmsData() {
  try {
- const [sections, heroSlides] = await Promise.all([
- prisma.cmsSection.findMany({
- where: { isVisible: true, countryCode: null },
- orderBy: { sortOrder: 'asc' },
- }),
- prisma.cmsHeroSlide.findMany({
- where: { isActive: true, countryCode: null },
- orderBy: { sortOrder: 'asc' },
- }),
+ const apiUrl = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+ const [sectionsRes, slidesRes] = await Promise.all([
+   fetch(`${apiUrl}/api/cms/sections`, { next: { revalidate: 60 } }),
+   fetch(`${apiUrl}/api/cms/hero-slides`, { next: { revalidate: 60 } }),
  ])
-
- const sectionMap: Record<string, unknown> = {}
- for (const section of sections) {
- sectionMap[section.sectionType] = section.content
+ const sectionsJson = await sectionsRes.json()
+ const slidesJson = await slidesRes.json()
+ return {
+   sectionMap: sectionsJson.data?.sectionMap || {},
+   heroSlides: slidesJson.data || [],
  }
-
- return { sectionMap, heroSlides }
  } catch {
  return { sectionMap: {}, heroSlides: [] }
  }
@@ -40,7 +29,6 @@ export default async function HomePage() {
 
  const heroContent = sectionMap['hero'] as HeroContent | undefined
  const statsContent = sectionMap['stats'] as { items: { number: string; label: string; color?: string }[] } | undefined
- const whyChooseContent = sectionMap['why_choose'] as { title: string; subtitle: string; items: { icon: string; title: string; description: string }[] } | undefined
 
  const slides: HeroSlide[] = heroSlides.map((s: { id: string; title: string; subtitle: string | null; imageUrl: string; sortOrder: number }) => ({
  id: s.id,
@@ -50,17 +38,18 @@ export default async function HomePage() {
  sortOrder: s.sortOrder,
  }))
 
+ // Priority order: book-a-provider + shop-health-products at the top
+ // (primary marketplace), then stats + community suggestions, then AI
+ // agent (replaces static FAQ) and value proposition.
+ // The MediWyzAgentSection (static FAQ/chat) has been removed — replaced
+ // by the FloatingChatWidget available on every page (see app/layout.tsx).
  const sections = [
  <HeroSection key="hero" content={heroContent} slides={slides.length > 0 ? slides : undefined} />,
- <StatsSection key="stats" />,
- <ProviderMarketplace key="providers" />,
- <HealthShopMarketplace key="shop" />,
+ <MarketplaceTwoColumn key="marketplace" />,
  <CommunityPosts key="community" />,
- <WhyChooseSection key="why" title={whyChooseContent?.title} subtitle={whyChooseContent?.subtitle} items={whyChooseContent?.items} />,
- <FaqSection key="faq" />,
  ]
 
- const labels = ['Welcome', 'Our Impact', 'Providers', 'Health Shop', 'Community', 'Why MediWyz', 'FAQ']
+ const labels = ['Welcome', 'Marketplace', 'Community']
 
  return (
  <LandingPageContent sections={sections} labels={labels} />

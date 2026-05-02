@@ -5,7 +5,7 @@ import { UserType } from '@prisma/client'
  * to the Prisma UserType enum values stored in the database.
  */
 export const cookieToPrismaUserType: Record<string, UserType> = {
-  'patient':          UserType.PATIENT,
+  'patient':          UserType.MEMBER,
   'doctor':           UserType.DOCTOR,
   'nurse':            UserType.NURSE,
   'child-care-nurse': UserType.NANNY,
@@ -28,7 +28,7 @@ export const cookieToPrismaUserType: Record<string, UserType> = {
  * Reverse mapping: Prisma UserType enum -> cookie/form string value.
  */
 export const prismaUserTypeToCookie: Record<UserType, string> = {
-  [UserType.PATIENT]:          'patient',
+  [UserType.MEMBER]:          'patient',
   [UserType.DOCTOR]:           'doctor',
   [UserType.NURSE]:            'nurse',
   [UserType.NANNY]:            'child-care-nurse',
@@ -51,7 +51,7 @@ export const prismaUserTypeToCookie: Record<UserType, string> = {
  * on the User model, so we can dynamically include the right profile.
  */
 export const userTypeToProfileRelation: Record<UserType, string> = {
-  [UserType.PATIENT]:          'patientProfile',
+  [UserType.MEMBER]:          'patientProfile',
   [UserType.DOCTOR]:           'doctorProfile',
   [UserType.NURSE]:            'nurseProfile',
   [UserType.NANNY]:            'nannyProfile',

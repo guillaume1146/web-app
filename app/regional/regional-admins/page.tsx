@@ -89,11 +89,12 @@ export default function RegionalAdminsPage() {
  useEffect(() => {
  const fetchAdmins = async () => {
  try {
- const res = await fetch('/api/admin/regional-activity')
+ const res = await fetch('/api/admin/regional-activity', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
- if (json.success && json.data?.regions?.length > 0) {
- setAdmins(json.data.regions.map(mapApiToAdmin))
+ const regions = Array.isArray(json.data) ? json.data : (json.data?.regions ?? [])
+ if (json.success && regions.length > 0) {
+ setAdmins(regions.map(mapApiToAdmin))
  setLoading(false)
  return
  }

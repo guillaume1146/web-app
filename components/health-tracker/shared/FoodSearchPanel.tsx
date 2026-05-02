@@ -52,7 +52,7 @@ export default function FoodSearchPanel({ onSelect }: FoodSearchPanelProps) {
  const params = new URLSearchParams()
  if (q.trim()) params.set('q', q.trim())
  if (cat !== 'All') params.set('category', cat)
- const res = await fetch(`/api/ai/health-tracker/food-db?${params.toString()}`)
+ const res = await fetch(`/api/ai/health-tracker/food-db?${params.toString()}`, { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  setResults(Array.isArray(json.data) ? json.data : [])
@@ -130,9 +130,9 @@ export default function FoodSearchPanel({ onSelect }: FoodSearchPanelProps) {
  <div className="text-center py-4 text-sm text-gray-400">No results found</div>
  )}
  {!loading &&
- results.map((food) => (
+ results.map((food, idx) => (
  <button
- key={food.id}
+ key={`${food.id ?? 'f'}-${idx}`}
  onClick={() => onSelect(food)}
  className="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300"
  >

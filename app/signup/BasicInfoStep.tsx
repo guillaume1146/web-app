@@ -1,4 +1,5 @@
 import { ChangeEvent, useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { FaEye, FaEyeSlash, FaUsers, FaCamera, FaBuilding } from 'react-icons/fa'
 import { SignupFormData, UserType } from './types'
 
@@ -361,215 +362,6 @@ export default function BasicInfoStep({
  </div>
  </div>
  )}
-
- {/* Corporate Administrator specific fields */}
- {formData.userType === 'corporate' && (
- <>
- <div>
- <label className="block text-gray-700 font-medium mb-2">Company Name *</label>
- <input
- type="text"
- name="companyName"
- required
- placeholder="Enter your company name"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.companyName || ''}
- onChange={onFormChange}
- />
- </div>
-
- <div>
- <label className="block text-gray-700 font-medium mb-2">Job Title *</label>
- <input
- type="text"
- name="jobTitle"
- required
- placeholder="Your position in the company"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.jobTitle || ''}
- onChange={onFormChange}
- />
- </div>
-
- <div>
- <label className="block text-gray-700 font-medium mb-2">Company Registration Number</label>
- <input
- type="text"
- name="companyRegistrationNumber"
- placeholder="Official company registration number"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.companyRegistrationNumber || ''}
- onChange={onFormChange}
- />
- </div>
- </>
- )}
-
- {/* Regional Administrator specific fields */}
- {formData.userType === 'regional-admin' && (
- <>
- <div>
- <label className="block text-gray-700 font-medium mb-2">Target Country *</label>
- <select
- name="targetCountry"
- required
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.targetCountry || ''}
- onChange={(e) => {
- onFormChange(e)
- const opt = e.target.selectedOptions[0]
- const code = opt?.getAttribute('data-code') || ''
- onFormChange({ target: { name: 'countryCode', value: code, type: 'text' } } as ChangeEvent<HTMLInputElement>)
- }}
- >
- <option value="">Select Country</option>
- <option value="Madagascar" data-code="MG">Madagascar</option>
- <option value="Kenya" data-code="KE">Kenya</option>
- <option value="India" data-code="IN">India</option>
- <option value="France" data-code="FR">France</option>
- <option value="Germany" data-code="DE">Germany</option>
- <option value="United Kingdom" data-code="GB">United Kingdom</option>
- <option value="United States" data-code="US">United States</option>
- <option value="South Africa" data-code="ZA">South Africa</option>
- <option value="Mauritius" data-code="MU">Mauritius</option>
- <option value="Seychelles" data-code="SC">Seychelles</option>
- <option value="Tanzania" data-code="TZ">Tanzania</option>
- <option value="Uganda" data-code="UG">Uganda</option>
- <option value="Nigeria" data-code="NG">Nigeria</option>
- <option value="Ghana" data-code="GH">Ghana</option>
- <option value="Senegal" data-code="SN">Senegal</option>
- <option value="Morocco" data-code="MA">Morocco</option>
- <option value="Egypt" data-code="EG">Egypt</option>
- <option value="UAE" data-code="AE">UAE</option>
- </select>
- </div>
-
- <div>
- <label className="block text-gray-700 font-medium mb-2">Target Region/State</label>
- <input
- type="text"
- name="targetRegion"
- placeholder="Specific region or state (optional)"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.targetRegion || ''}
- onChange={onFormChange}
- />
- </div>
- </>
- )}
-
- {/* Referral Partner specific fields */}
- {formData.userType === 'referral-partner' && (
- <>
- <div>
- <label className="block text-gray-700 font-medium mb-2">Business Type</label>
- <select
- name="businessType"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.businessType || ''}
- onChange={onFormChange}
- >
- <option value="">Select Business Type</option>
- <option value="individual">Individual Marketer</option>
- <option value="agency">Marketing Agency</option>
- <option value="influencer">Social Media Influencer</option>
- <option value="healthcare-related">Healthcare Related Business</option>
- <option value="other">Other</option>
- </select>
- </div>
-
- <div>
- <label className="block text-gray-700 font-medium mb-2">Marketing Experience</label>
- <select
- name="marketingExperience"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.marketingExperience || ''}
- onChange={onFormChange}
- >
- <option value="">Select Experience</option>
- <option value="beginner">Beginner (0-1 years)</option>
- <option value="intermediate">Intermediate (2-5 years)</option>
- <option value="experienced">Experienced (5+ years)</option>
- </select>
- </div>
-
- <div>
- <label className="block text-gray-700 font-medium mb-2">Social Media Handles</label>
- <input
- type="text"
- name="socialMediaHandles"
- placeholder="Your main social media profiles (optional)"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.socialMediaHandles || ''}
- onChange={onFormChange}
- />
- </div>
- </>
- )}
-
- {/* Professional fields for healthcare workers */}
- {['doctor', 'nurse', 'pharmacist', 'lab', 'emergency'].includes(formData.userType) && (
- <>
- <div>
- <label className="block text-gray-700 font-medium mb-2">License/Registration Number</label>
- <input
- type="text"
- name="licenseNumber"
- placeholder="Enter your professional license number"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.licenseNumber || ''}
- onChange={onFormChange}
- />
- </div>
-
- <div>
- <label className="block text-gray-700 font-medium mb-2">
- {formData.userType === 'doctor' ? 'Specialization' : 
- formData.userType === 'nurse' ? 'Area of Expertise' :
- formData.userType === 'pharmacist' ? 'Pharmacy Type' :
- 'Area of Work'}
- </label>
- <input
- type="text"
- name="specialization"
- placeholder={`Enter your ${formData.userType === 'doctor' ? 'medical specialization' : 'area of expertise'}`}
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.specialization || ''}
- onChange={onFormChange}
- />
- </div>
-
- <div>
- <label className="block text-gray-700 font-medium mb-2">Institution/Workplace</label>
- <input
- type="text"
- name="institution"
- placeholder="Enter your current workplace"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.institution || ''}
- onChange={onFormChange}
- />
- </div>
-
- <div>
- <label className="block text-gray-700 font-medium mb-2">Years of Experience</label>
- <select
- name="experience"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.experience || ''}
- onChange={onFormChange}
- >
- <option value="">Select Experience</option>
- <option value="0-1">0-1 years</option>
- <option value="2-5">2-5 years</option>
- <option value="6-10">6-10 years</option>
- <option value="11-15">11-15 years</option>
- <option value="16-20">16-20 years</option>
- <option value="20+">20+ years</option>
- </select>
- </div>
- </>
- )}
  </div>
 
  <div>
@@ -585,82 +377,42 @@ export default function BasicInfoStep({
  />
  </div>
 
- {/* Corporate Administrator company address */}
- {formData.userType === 'corporate' && (
- <div>
- <label className="block text-gray-700 font-medium mb-2">Company Address *</label>
- <textarea
- name="companyAddress"
- required
- rows={3}
- placeholder="Enter your company's complete address"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.companyAddress || ''}
- onChange={onFormChange}
- />
- </div>
- )}
-
- {/* Regional Administrator business plan */}
- {formData.userType === 'regional-admin' && (
- <div>
- <label className="block text-gray-700 font-medium mb-2">Business Plan Overview *</label>
- <textarea
- name="businessPlan"
- required
- rows={4}
- placeholder="Provide a brief overview of your business plan for managing MediWyz in your target region"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.businessPlan || ''}
- onChange={onFormChange}
- />
- </div>
- )}
-
- {/* Emergency Contact */}
+ {/* Terms and Conditions Agreement */}
  <div className="border-t pt-6">
- <h3 className="text-lg font-bold text-gray-900 mb-4">Emergency Contact Information</h3>
- <div className="grid md:grid-cols-3 gap-4">
- <div>
- <label className="block text-gray-700 font-medium mb-2">Contact Name</label>
- <input
- type="text"
- name="emergencyContactName"
- placeholder="Full name"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.emergencyContactName || ''}
- onChange={onFormChange}
- />
+ <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+ <h3 className="font-bold text-lg text-gray-900 mb-4">Terms and Conditions</h3>
+ <div className="space-y-4 text-sm text-gray-700">
+ <div className="flex items-start gap-3">
+ <input type="checkbox" id="agreeToTerms" name="agreeToTerms" className="mt-1" checked={formData.agreeToTerms} onChange={onFormChange} required />
+ <label htmlFor="agreeToTerms" className="flex-1">
+ I agree to the <Link href="/terms" className="text-blue-600 hover:underline">Terms of Service</Link> and
+ <Link href="/privacy" className="text-blue-600 hover:underline ml-1">Privacy Policy</Link>
+ </label>
  </div>
- <div>
- <label className="block text-gray-700 font-medium mb-2">Contact Phone</label>
- <input
- type="tel"
- name="emergencyContactPhone"
- placeholder="+230 5xxx xxxx"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.emergencyContactPhone || ''}
- onChange={onFormChange}
- />
+
+ <div className="flex items-start gap-3">
+ <input type="checkbox" id="agreeToPrivacy" name="agreeToPrivacy" className="mt-1" checked={formData.agreeToPrivacy} onChange={onFormChange} required />
+ <label htmlFor="agreeToPrivacy" className="flex-1">
+ I certify that all information provided is accurate and complete. I understand that false information may result in account suspension.
+ </label>
  </div>
- <div>
- <label className="block text-gray-700 font-medium mb-2">Relationship</label>
- <select
- name="emergencyContactRelation"
- className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:border-blue-600"
- value={formData.emergencyContactRelation || ''}
- onChange={onFormChange}
- >
- <option value="">Select Relationship</option>
- <option value="spouse">Spouse</option>
- <option value="parent">Parent</option>
- <option value="child">Child</option>
- <option value="sibling">Sibling</option>
- <option value="friend">Friend</option>
- <option value="other">Other</option>
- </select>
+
+ <div className="flex items-start gap-3">
+ <input type="checkbox" id="agreeToDisclaimer" name="agreeToDisclaimer" className="mt-1" checked={formData.agreeToDisclaimer} onChange={onFormChange} required />
+ <label htmlFor="agreeToDisclaimer" className="flex-1">
+ I consent to the verification of my documents and credentials by MediWyz and relevant regulatory bodies.
+ </label>
  </div>
  </div>
+ </div>
+
+ {formData.userType !== 'patient' && (
+ <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4">
+ <p className="text-blue-700 text-sm">
+ After registration, you will need to upload your professional documents from your account settings to unlock all features.
+ </p>
+ </div>
+ )}
  </div>
  </form>
  </div>

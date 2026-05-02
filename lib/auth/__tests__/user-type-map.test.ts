@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 // Mock @prisma/client since it depends on generated code
 vi.mock('@prisma/client', () => ({
   UserType: {
-    PATIENT: 'PATIENT',
+    MEMBER: 'MEMBER',
     DOCTOR: 'DOCTOR',
     NURSE: 'NURSE',
     NANNY: 'NANNY',
@@ -28,7 +28,7 @@ import { cookieToPrismaUserType, prismaUserTypeToCookie, userTypeToProfileRelati
 describe('cookieToPrismaUserType', () => {
   it('maps all cookie types to Prisma enums', () => {
     const expectedMappings: Record<string, string> = {
-      'patient': 'PATIENT',
+      'patient': 'MEMBER',
       'doctor': 'DOCTOR',
       'nurse': 'NURSE',
       'child-care-nurse': 'NANNY',
@@ -68,7 +68,7 @@ describe('prismaUserTypeToCookie', () => {
 
 describe('userTypeToProfileRelation', () => {
   it('maps all types to profile relation names', () => {
-    expect(userTypeToProfileRelation['PATIENT']).toBe('patientProfile')
+    expect(userTypeToProfileRelation['MEMBER']).toBe('patientProfile')
     expect(userTypeToProfileRelation['DOCTOR']).toBe('doctorProfile')
     expect(userTypeToProfileRelation['NURSE']).toBe('nurseProfile')
     expect(userTypeToProfileRelation['NANNY']).toBe('nannyProfile')

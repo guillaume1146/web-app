@@ -42,7 +42,9 @@ const VIDEO_ROUTES: Record<string, string> = {
 
 // From LandingPageContent.tsx
 const FEED_ROUTES: Record<string, string> = {
-  PATIENT: '/feed',
+  MEMBER: '/feed',
+  PATIENT: '/feed', // legacy alias
+
   DOCTOR: '/feed',
   NURSE: '/feed',
   NANNY: '/feed',
@@ -105,7 +107,7 @@ describe('CallButton: clean URL routing', () => {
 
 describe('LandingPageContent: clean URL feed routing', () => {
   it('PATIENT uses /feed (not /patient/feed)', () => {
-    expect(FEED_ROUTES['PATIENT']).toBe('/feed')
+    expect(FEED_ROUTES['MEMBER']).toBe('/feed')
   })
 
   it('all provider types use /feed', () => {

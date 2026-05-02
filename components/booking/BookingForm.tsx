@@ -46,6 +46,11 @@ interface ServiceOption {
  duration?: number
 }
 
+interface ProviderCapabilities {
+ homeVisitAvailable?: boolean
+ telemedicineAvailable?: boolean
+}
+
 interface BookingFormProps {
  providerType: 'doctor' | 'nurse' | 'nanny' | 'lab-test' | 'emergency'
  providerId?: string // profile ID for availability check
@@ -56,6 +61,7 @@ interface BookingFormProps {
  showConsultationType?: boolean // true for doctor/nurse/nanny
  price?: number // consultation fee
  services?: ServiceOption[] // provider's service catalog
+ providerCapabilities?: ProviderCapabilities // filter consultation types based on provider settings
  onSubmit: (data: BookingSubmitData) => Promise<void>
  isSubmitting?: boolean
  walletBalance?: number
@@ -87,6 +93,7 @@ const CONSULTATION_TYPES = [
  },
 ]
 
+// Intentionally static — standard emergency classification categories
 const EMERGENCY_TYPES = [
  'Medical',
  'Accident',
@@ -95,6 +102,7 @@ const EMERGENCY_TYPES = [
  'Other',
 ]
 
+// Intentionally static — standard triage priority levels used across all emergency services
 const PRIORITY_OPTIONS = [
  { value: 'low', label: 'Low', color: 'text-green-600 bg-green-50 border-green-200' },
  { value: 'medium', label: 'Medium', color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
@@ -199,10 +207,22 @@ export default function BookingForm({
  showConsultationType,
  price,
  services,
+ providerCapabilities,
  onSubmit,
  isSubmitting = false,
  walletBalance,
 }: BookingFormProps) {
+ // Filter consultation types based on provider capabilities.
+ // If providerCapabilities is not provided, all types are shown (backward compatible).
+ const availableConsultationTypes = useMemo(() => {
+  if (!providerCapabilities) return CONSULTATION_TYPES
+  return CONSULTATION_TYPES.filter((ct) => {
+   if (ct.value === 'home_visit' && providerCapabilities.homeVisitAvailable === false) return false
+   if (ct.value === 'video' && providerCapabilities.telemedicineAvailable === false) return false
+   return true
+  })
+ }, [providerCapabilities])
+
  const [step, setStep] = useState(1)
 
  // Form state
@@ -451,7 +471,7 @@ export default function BookingForm({
  {/* Doctor / Nurse / Nanny — consultation type cards */}
  {(providerType === 'doctor' || providerType === 'nurse' || providerType === 'nanny') && (
  <div className="grid sm:grid-cols-3 gap-4">
- {CONSULTATION_TYPES.map((ct) => {
+ {availableConsultationTypes.map((ct) => {
  const isSelected = consultationType === ct.value
  const colors = colorMap[ct.color]
  const Icon = ct.icon

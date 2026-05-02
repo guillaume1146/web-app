@@ -34,7 +34,7 @@ export default function PlatformHealth() {
  useEffect(() => {
  const fetchHealth = async () => {
  try {
- const res = await fetch('/api/admin/system-health')
+ const res = await fetch('/api/admin/system-health', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success) {

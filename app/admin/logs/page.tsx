@@ -78,7 +78,7 @@ export default function AdminLogsPage() {
  useEffect(() => {
  const fetchLogs = async () => {
  try {
- const res = await fetch('/api/admin/security')
+ const res = await fetch('/api/admin/security', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {

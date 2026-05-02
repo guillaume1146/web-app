@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { toast } from 'react-toastify'
 import { Patient } from '@/lib/data/patients'
 import { useUser } from '@/hooks/useUser'
 import { 
@@ -66,12 +68,12 @@ const InsuranceInfo: React.FC<Props> = ({ patientData }) => {
  useEffect(() => {
  async function fetchClaims() {
  try {
- const meRes = await fetch('/api/auth/me')
+ const meRes = await fetch('/api/auth/me', { credentials: 'include' })
  if (!meRes.ok) return
  const meData = await meRes.json()
  const userId = meData.user?.id
  if (!userId) return
- const claimsRes = await fetch(`/api/patients/${userId}/claims`)
+ const claimsRes = await fetch(`/api/patients/${userId}/claims`, { credentials: 'include' })
  if (!claimsRes.ok) return
  const claimsData = await claimsRes.json()
  if (claimsData.success && Array.isArray(claimsData.data)) {
@@ -308,10 +310,10 @@ const InsuranceInfo: React.FC<Props> = ({ patientData }) => {
  ))}
  </div>
 
- <button className="mt-4 w-full px-4 py-2 bg-white transition flex items-center justify-center gap-2 text-sm sm:text-base">
+ <Link href="/patient/settings" className="mt-4 w-full px-4 py-2 bg-white transition flex items-center justify-center gap-2 text-sm sm:text-base hover:bg-gray-50 rounded-lg border border-gray-200">
  <FaCreditCard />
  Add New Payment Method
- </button>
+ </Link>
  </div>
 
  {/* Recent Transactions */}
@@ -544,9 +546,9 @@ const InsuranceInfo: React.FC<Props> = ({ patientData }) => {
  )}
 
  {realClaims.length > 5 && (
- <button className="mt-4 w-full px-4 py-2 bg-sky-50 text-orange-700 rounded-lg transition text-sm">
+ <Link href="/patient/insurance?tab=claims" className="mt-4 block w-full text-center px-4 py-2 bg-sky-50 text-orange-700 rounded-lg transition text-sm hover:bg-sky-100">
  View All Claims History
- </button>
+ </Link>
  )}
  </div>
  </div>
@@ -753,29 +755,33 @@ const InsuranceInfo: React.FC<Props> = ({ patientData }) => {
  <div className="bg-brand-navy rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 text-white">
  <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Quick Actions</h3>
  <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-4 sm:gap-3 md:gap-4">
- <button className="w-full bg-sky-100/30 transition text-left">
+ <button
+   onClick={() => { setExpandedSection('claims'); setShowClaimForm(true) }}
+   className="w-full bg-sky-100/30 hover:bg-sky-100/50 transition text-left p-3 rounded-lg">
  <FaFileInvoice className="text-xl sm:text-2xl mb-2" />
  <p className="font-medium text-sm sm:text-base">File a Claim</p>
  <p className="text-xs sm:text-sm opacity-90">Submit new claim</p>
  </button>
- 
- <button className="w-full bg-sky-100/30 transition text-left">
+
+ <button
+   onClick={() => { window.print(); toast.info('Opening print dialog for insurance card') }}
+   className="w-full bg-sky-100/30 hover:bg-sky-100/50 transition text-left p-3 rounded-lg">
  <FaDownload className="text-xl sm:text-2xl mb-2" />
  <p className="font-medium text-sm sm:text-base">Download Card</p>
  <p className="text-xs sm:text-sm opacity-90">Get insurance card</p>
  </button>
- 
- <button className="w-full bg-sky-100/30 transition text-left">
+
+ <Link href="/patient/messages" className="w-full bg-sky-100/30 hover:bg-sky-100/50 transition text-left p-3 rounded-lg block">
  <FaPhone className="text-xl sm:text-2xl mb-2" />
  <p className="font-medium text-sm sm:text-base">Contact Support</p>
  <p className="text-xs sm:text-sm opacity-90">Insurance help</p>
- </button>
- 
- <button className="w-full bg-sky-100/30 transition text-left">
+ </Link>
+
+ <Link href="/search/providers" className="w-full bg-sky-100/30 hover:bg-sky-100/50 transition text-left p-3 rounded-lg block">
  <FaHospital className="text-xl sm:text-2xl mb-2" />
  <p className="font-medium text-sm sm:text-base">Find Provider</p>
  <p className="text-xs sm:text-sm opacity-90">Network hospitals</p>
- </button>
+ </Link>
  </div>
  </div>
 

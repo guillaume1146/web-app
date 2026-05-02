@@ -21,7 +21,7 @@ function SystemHealthCard() {
  useEffect(() => {
  const fetchHealth = async () => {
  try {
- const res = await fetch('/api/admin/system-health')
+ const res = await fetch('/api/admin/system-health', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success) {
@@ -114,13 +114,19 @@ const AdminDashboard = () => {
  if (!userId) return
  const fetchDashboard = async () => {
  try {
- const res = await fetch('/api/admin/dashboard')
+ const res = await fetch('/api/admin/dashboard', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success) {
- setStats(json.data.stats)
- setCategoryStats(json.data.categoryStats || [])
- setRecentActivity(json.data.recentActivity || [])
+ const s = json.data?.stats ?? {}
+ setStats({
+ totalUsers: Number(s.totalUsers ?? 0),
+ pendingValidations: Number(s.pendingValidations ?? 0),
+ monthlyRevenue: Number(s.monthlyRevenue ?? 0),
+ activeSessions: Number(s.activeSessions ?? 0),
+ })
+ setCategoryStats(json.data?.categoryStats || [])
+ setRecentActivity(json.data?.recentActivity || [])
  }
  }
  } catch (error) {
@@ -136,7 +142,18 @@ const AdminDashboard = () => {
  useEffect(() => {
  fetch('/api/admin/platform-commission', { credentials: 'include' })
  .then((res) => res.json())
- .then((json) => { if (json.success) setCommission(json.data) })
+ .then((json) => {
+ if (!json.success) return
+ const d = json.data ?? {}
+ setCommission({
+ totalPlatformCommission: Number(d.totalPlatformCommission ?? 0),
+ totalRegionalCommission: Number(d.totalRegionalCommission ?? 0),
+ totalTransactionVolume: Number(d.totalTransactionVolume ?? 0),
+ transactionCount: Number(d.transactionCount ?? 0),
+ recentTransactions: Array.isArray(d.recentTransactions) ? d.recentTransactions : [],
+ regionalAdmins: Array.isArray(d.regionalAdmins) ? d.regionalAdmins : [],
+ })
+ })
  .catch(() => {})
  .finally(() => setCommissionLoading(false))
  }, [])
@@ -277,7 +294,7 @@ const AdminDashboard = () => {
  <td className="py-3 px-4 text-sm text-gray-600">{admin.region}, {admin.country}</td>
  <td className="py-3 px-4 text-sm text-right">{admin.commissionRate}%</td>
  <td className="py-3 px-4 text-sm text-right font-medium text-yellow-600">
- Rs {admin.totalCommission.toLocaleString()}
+ Rs {(admin.totalCommission ?? 0).toLocaleString()}
  </td>
  </tr>
  ))}
@@ -314,7 +331,7 @@ const AdminDashboard = () => {
  {tx.serviceType || 'other'}
  </span>
  </td>
- <td className="py-3 px-4 text-sm text-right font-medium">Rs {tx.amount.toLocaleString()}</td>
+ <td className="py-3 px-4 text-sm text-right font-medium">Rs {(tx.amount ?? 0).toLocaleString()}</td>
  <td className="py-3 px-4 text-sm text-right text-green-600">
  Rs {(tx.platformCommission ?? 0).toLocaleString()}
  </td>
@@ -384,8 +401,8 @@ const AdminDashboard = () => {
  {categoryStats.map((cat, idx) => (
  <tr key={idx} className="border-b hover:bg-gray-50">
  <td className="p-3 font-medium">{cat.category}</td>
- <td className="p-3 text-center">{cat.count.toLocaleString()}</td>
- <td className="p-3 text-center text-green-600">{cat.active.toLocaleString()}</td>
+ <td className="p-3 text-center">{(cat.count ?? 0).toLocaleString()}</td>
+ <td className="p-3 text-center text-green-600">{(cat.active ?? 0).toLocaleString()}</td>
  <td className="p-3 text-center">
  <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">{cat.pending}</span>
  </td>

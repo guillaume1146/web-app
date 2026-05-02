@@ -80,29 +80,31 @@ function addMinutes(dateStr: string, mins: number): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapApiAppointment(apt: any): Appointment {
+ // Support both legacy Appointment (apt.doctor.user) and ServiceBooking (apt.providerName)
  const doc = apt.doctor
  const docUser = doc?.user
- const scheduledDate = new Date(apt.scheduledAt)
- const isUpcoming = apt.status === 'upcoming' || apt.status === 'scheduled'
+ const doctorName = docUser ? `Dr. ${docUser.firstName} ${docUser.lastName}` : (apt.providerName || 'Doctor')
+ const scheduledDate = apt.scheduledAt ? new Date(apt.scheduledAt) : new Date(apt.createdAt || Date.now())
+ const isUpcoming = apt.status === 'upcoming' || apt.status === 'scheduled' || apt.status === 'accepted' || apt.status === 'confirmed'
  const isCompleted = apt.status === 'completed'
 
  return {
  id: apt.id,
  doctor: {
- id: doc?.id || '',
- name: docUser ? `Dr. ${docUser.firstName} ${docUser.lastName}` : 'Unknown Doctor',
- specialty: Array.isArray(doc?.specialty) ? doc.specialty[0] : (apt.specialty || 'General'),
+ id: doc?.id || apt.providerUserId || '',
+ name: doctorName,
+ specialty: Array.isArray(doc?.specialty) ? doc.specialty[0] : (apt.specialty || apt.serviceName || 'General'),
  avatar: docUser?.profileImage || '👨‍⚕️',
  rating: 4.8,
  hospital: doc?.clinicAffiliation || '',
  },
  date: scheduledDate.toISOString().split('T')[0],
- time: formatTime(apt.scheduledAt),
- endTime: addMinutes(apt.scheduledAt, apt.duration || 30),
+ time: formatTime(apt.scheduledAt || apt.createdAt),
+ endTime: addMinutes(apt.scheduledAt || apt.createdAt, apt.duration || 30),
  type: apt.type === 'video' ? 'video' : 'in-person',
  status: isUpcoming ? 'upcoming' : (apt.status as Appointment['status']),
  location: apt.location || (apt.type === 'video' ? 'Virtual Consultation' : ''),
- reason: apt.reason || '',
+ reason: apt.reason || apt.serviceName || '',
  notes: apt.notes || '',
  prescription: false,
  followUpRequired: false,
@@ -123,10 +125,15 @@ export default function DoctorConsultationsPage() {
  const userId = getUserId()
  if (!userId) { setLoading(false); return }
  try {
- const res = await fetch(`/api/patients/${userId}/appointments?limit=50`)
+ const res = await fetch('/api/bookings/unified?role=patient', { credentials: 'include' })
  const data = await res.json()
- if (data.data) {
- setAppointments(data.data.map(mapApiAppointment))
+ if (data.success && data.data) {
+ // Filter for doctor-type bookings
+ const doctorBookings = data.data.filter((b: any) =>
+  b.bookingType === 'appointment' || b.type === 'doctor' ||
+  (b.bookingType === 'service_booking' && b.providerType === 'DOCTOR')
+ )
+ setAppointments(doctorBookings.map(mapApiAppointment))
  }
  } catch {
  // silent
@@ -255,6 +262,7 @@ export default function DoctorConsultationsPage() {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ bookingId: selectedAppointment.id, bookingType: 'doctor' }),
+ credentials: 'include',
  })
  setAppointments(prev =>
  prev.map(apt =>

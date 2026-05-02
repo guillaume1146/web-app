@@ -51,16 +51,20 @@ interface AvailableDoctor {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeAppointment(a: any): Appointment {
  const dt = a.scheduledAt ? new Date(a.scheduledAt) : null
+ // Support both legacy Appointment (a.doctor.user.firstName) and ServiceBooking (a.providerName)
+ const doctorName = a.doctor
+  ? `Dr. ${a.doctor.user?.firstName || ''} ${a.doctor.user?.lastName || ''}`.trim()
+  : a.providerName || 'Doctor'
  return {
  id: a.id,
  date: dt ? dt.toISOString().split('T')[0] : '',
  time: dt ? dt.toTimeString().slice(0, 5) : '',
  type: a.type === 'in_person' ? 'in-person' : a.type,
  status: a.status,
- doctorName: a.doctor ? `Dr. ${a.doctor.user.firstName} ${a.doctor.user.lastName}` : 'Unknown',
- doctorId: a.doctor?.id ?? '',
+ doctorName,
+ doctorId: a.doctor?.id ?? a.providerUserId ?? '',
  specialty: a.specialty || '',
- reason: a.reason || '',
+ reason: a.reason || a.serviceName || '',
  duration: a.duration || 30,
  location: a.location || undefined,
  roomId: a.roomId || undefined,
@@ -91,14 +95,20 @@ const DoctorConsultations: React.FC<Props> = ({ patientData, onVideoCall }) => {
  const [loadingServices, setLoadingServices] = useState(false)
  const [selectedServiceId, setSelectedServiceId] = useState('')
 
- // Fetch appointments for this patient
+ // Fetch appointments — unified bookings (ServiceBooking + legacy Appointment)
  const fetchAppointments = useCallback(async () => {
  try {
- const res = await fetch(`/api/patients/${patientData.id}/appointments`)
+ // Use unified endpoint which includes both ServiceBooking and legacy Appointment
+ const res = await fetch(`/api/bookings/unified?role=patient`, { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
- setAppointments(json.data.map(normalizeAppointment))
+ // Filter for doctor-type bookings (both legacy 'appointment' and new 'service_booking' with DOCTOR providerType)
+ const doctorBookings = json.data.filter((b: any) =>
+  b.bookingType === 'appointment' || b.type === 'doctor' ||
+  (b.bookingType === 'service_booking' && b.providerType === 'DOCTOR')
+ )
+ setAppointments(doctorBookings.map(normalizeAppointment))
  }
  }
  } catch (error) {
@@ -118,11 +128,21 @@ const DoctorConsultations: React.FC<Props> = ({ patientData, onVideoCall }) => {
  const fetchDoctors = async () => {
  setLoadingDoctors(true)
  try {
- const res = await fetch('/api/doctors/available')
+ const res = await fetch('/api/search/providers?type=DOCTOR')
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
- setAvailableDoctors(json.data)
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ setAvailableDoctors(json.data.map((d: any) => ({
+ id: d.id,
+ userId: d.id,
+ name: `${d.firstName} ${d.lastName}`,
+ profileImage: d.profileImage || null,
+ specialty: d.specialty || [],
+ consultationFee: d.consultationFee || null,
+ rating: d.rating || null,
+ location: d.address || null,
+ })))
  }
  }
  } catch (error) {
@@ -144,7 +164,7 @@ const DoctorConsultations: React.FC<Props> = ({ patientData, onVideoCall }) => {
  const fetchServices = async () => {
  setLoadingServices(true)
  try {
- const res = await fetch(`/api/doctors/${selectedDoctorId}/services`)
+ const res = await fetch(`/api/providers/${selectedDoctorId}/services`, { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
@@ -180,10 +200,12 @@ const DoctorConsultations: React.FC<Props> = ({ patientData, onVideoCall }) => {
  setIsSubmitting(true)
  setSubmitError('')
  try {
- const res = await fetch('/api/bookings/doctor', {
+ const res = await fetch('/api/bookings', {
  method: 'POST',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
+ providerType: 'DOCTOR',
  doctorId: selectedDoctorId,
  consultationType,
  scheduledDate,

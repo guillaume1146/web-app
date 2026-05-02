@@ -59,8 +59,10 @@ export default function InsurancePlansPage() {
  setError(null);
  const res = await fetch('/api/insurance/plans');
  if (!res.ok) throw new Error('Failed to fetch plans');
- const data = await res.json();
- setPlans(Array.isArray(data) ? data : data.plans ?? []);
+ const json = await res.json();
+ // Backend returns { success: true, data: [...] }
+ const plansList = json.data ?? json.plans ?? [];
+ setPlans(Array.isArray(plansList) ? plansList : []);
  } catch (err) {
  setError(err instanceof Error ? err.message : 'An error occurred');
  } finally {
@@ -120,9 +122,10 @@ export default function InsurancePlansPage() {
  try {
  if (editingPlan) {
  const res = await fetch(`/api/insurance/plans/${editingPlan.id}`, {
- method: 'PUT',
+ method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify(payload),
+ credentials: 'include',
  });
  if (!res.ok) throw new Error('Failed to update plan');
  } else {
@@ -130,6 +133,7 @@ export default function InsurancePlansPage() {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify(payload),
+ credentials: 'include',
  });
  if (!res.ok) throw new Error('Failed to create plan');
  }
@@ -145,7 +149,7 @@ export default function InsurancePlansPage() {
  const handleDelete = async (id: string) => {
  if (!confirm('Are you sure you want to delete this plan?')) return;
  try {
- const res = await fetch(`/api/insurance/plans/${id}`, { method: 'DELETE' });
+ const res = await fetch(`/api/insurance/plans/${id}`, { method: 'DELETE', credentials: 'include' });
  if (!res.ok) throw new Error('Failed to delete plan');
  fetchPlans();
  } catch (err) {
@@ -329,7 +333,14 @@ export default function InsurancePlansPage() {
  {/* Modal */}
  {modalOpen && (
  <div className="fixed inset-0 z-50 flex items-center justify-center">
- <div className="absolute inset-0 bg-black/50" onClick={closeModal}></div>
+ <div
+ className="absolute inset-0 bg-black/50"
+ role="button"
+ tabIndex={0}
+ aria-label="Close modal"
+ onClick={closeModal}
+ onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') closeModal() }}
+ ></div>
  <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
  <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl flex items-center justify-between">
  <h2 className="text-lg font-semibold text-gray-900">

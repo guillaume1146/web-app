@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { toast } from 'react-toastify'
 import { FaHeartbeat, FaTimes, FaCamera, FaLightbulb } from 'react-icons/fa'
 
 type ScanPhase = 'idle' | 'preparing' | 'scanning' | 'analyzing' | 'done'
@@ -106,7 +107,7 @@ export default function BloodPressureScanner() {
  }, 100)
  } catch {
  setPhase('idle')
- alert('Camera access required. Please allow camera permission and try again.')
+ toast.error('Camera access required. Please allow camera permission and try again.')
  }
  }
 

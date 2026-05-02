@@ -176,7 +176,7 @@ export default function DoctorConsultationBooking() {
  const fetchSchedule = useCallback(async () => {
  if (!doctorId || !appointmentDetails.date) return
  try {
- const res = await fetch(`/api/doctors/${doctorId}/schedule`)
+ const res = await fetch(`/api/providers/${doctorId}/schedule`, { credentials: 'include' })
  const data = await res.json()
  if (data.data?.length > 0) {
  const dayOfWeek = new Date(appointmentDetails.date).getDay()
@@ -223,10 +223,12 @@ export default function DoctorConsultationBooking() {
  const userId = getUserId()
  if (userId && doctorId) {
  const time24 = convertTo24h(appointmentDetails.time)
- await fetch('/api/bookings/doctor', {
+ await fetch('/api/bookings', {
  method: 'POST',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
+ providerType: 'DOCTOR',
  doctorId,
  consultationType: appointmentDetails.type,
  scheduledDate: appointmentDetails.date,

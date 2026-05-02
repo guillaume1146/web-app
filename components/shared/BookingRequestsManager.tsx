@@ -62,26 +62,35 @@ export default function BookingRequestsManager({ config }: { config: BookingRequ
  setMessage(null)
 
  try {
- const res = await fetch('/api/bookings/action', {
+ // Route through the workflow transition — notifies member automatically.
+ // Falls back to legacy /api/bookings/action for bookings without a workflow.
+ const wfRes = await fetch('/api/workflow/transition', {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify({
- bookingId,
- bookingType: config.bookingType,
- action,
- }),
+ body: JSON.stringify({ bookingId, bookingType: config.bookingType, action }),
+ credentials: 'include',
  })
+ const wfData = await wfRes.json()
 
- const data = await res.json()
- if (data.success) {
+ if (!wfData.success) {
+ const legacyRes = await fetch('/api/bookings/action', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({ bookingId, bookingType: config.bookingType, action }),
+ credentials: 'include',
+ })
+ const legacyData = await legacyRes.json()
+ if (!legacyData.success) {
+ setMessage({ type: 'error', text: legacyData.message || 'Action failed' })
+ return
+ }
+ }
+
  setBookings((prev) => prev.filter((b) => (b as { id: string }).id !== bookingId))
  setMessage({
  type: 'success',
- text: action === 'accept' ? 'Booking accepted successfully' : 'Booking declined successfully',
+ text: action === 'accept' ? 'Booking accepted — member notified' : 'Booking declined — member notified',
  })
- } else {
- setMessage({ type: 'error', text: data.message || 'Action failed' })
- }
  } catch {
  setMessage({ type: 'error', text: 'Something went wrong' })
  } finally {

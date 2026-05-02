@@ -37,8 +37,8 @@ export default function ConnectionRequestsList({ userId }: ConnectionRequestsLis
  const fetchData = async () => {
  try {
  const [reqRes, connRes] = await Promise.all([
- fetch(`/api/connections?userId=${userId}&type=received&status=pending`),
- fetch(`/api/connections?userId=${userId}&type=all&status=accepted`),
+ fetch(`/api/connections?userId=${userId}&type=received&status=pending`, { credentials: 'include' }),
+ fetch(`/api/connections?userId=${userId}&type=all&status=accepted`, { credentials: 'include' }),
  ])
  const reqData = await reqRes.json()
  const connData = await connRes.json()
@@ -60,6 +60,7 @@ export default function ConnectionRequestsList({ userId }: ConnectionRequestsLis
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ action: action === 'accepted' ? 'accept' : 'reject' }),
+ credentials: 'include',
  })
  const data = await res.json()
  if (data.success) {
@@ -181,7 +182,6 @@ export default function ConnectionRequestsList({ userId }: ConnectionRequestsLis
  )}
  <div className="flex-1 min-w-0">
  <p className="font-medium text-gray-900">
- {req.sender.userType === 'DOCTOR' ? 'Dr. ' : ''}
  {req.sender.firstName} {req.sender.lastName}
  </p>
  <div className="flex items-center gap-1.5">
@@ -240,7 +240,6 @@ export default function ConnectionRequestsList({ userId }: ConnectionRequestsLis
  )}
  <div className="flex-1 min-w-0">
  <p className="font-medium text-gray-900">
- {person.userType === 'DOCTOR' ? 'Dr. ' : ''}
  {person.firstName} {person.lastName}
  </p>
  <div className="flex items-center gap-1.5">

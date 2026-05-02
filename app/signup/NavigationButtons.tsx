@@ -10,13 +10,13 @@ interface NavigationButtonsProps {
  onSubmit: (e: FormEvent) => void;
 }
 
-export default function NavigationButtons({ 
- currentStep, 
- isSubmitting, 
- canProceed, 
- onPrevious, 
- onNext, 
- onSubmit 
+export default function NavigationButtons({
+ currentStep,
+ isSubmitting,
+ canProceed,
+ onPrevious,
+ onNext,
+ onSubmit
 }: NavigationButtonsProps) {
  return (
  <div className="flex justify-between mt-8 pt-6 border-t">
@@ -30,29 +30,29 @@ export default function NavigationButtons({
  </button>
  )}
 
- {currentStep < 5 ? (
+ {currentStep === 1 ? (
  <button
  onClick={onNext}
  disabled={!canProceed}
- className="flex items-center gap-2 text-white px-8 py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
+ className="flex items-center gap-2 bg-[#0C6780] hover:bg-[#0a5568] text-white px-8 py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed ml-auto transition-colors"
  >
  Continue
  <FaArrowRight />
  </button>
  ) : (
  <button
- onClick={onSubmit}
+ onClick={onNext}
  disabled={isSubmitting || !canProceed}
- className="flex items-center gap-2 text-white px-8 py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
+ className="flex items-center gap-2 bg-[#0C6780] hover:bg-[#0a5568] text-white px-8 py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed ml-auto transition-colors"
  >
  {isSubmitting ? (
  <>
  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
- Submitting...
+ Creating Account...
  </>
  ) : (
  <>
- Submit Registration
+ Create Account
  <FaCheck />
  </>
  )}

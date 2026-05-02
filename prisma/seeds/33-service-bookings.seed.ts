@@ -5,7 +5,7 @@ export async function seedServiceBookings(prisma: PrismaClient) {
 
   // Get ALL patients (not just 3)
   const patients = await prisma.user.findMany({
-    where: { userType: 'PATIENT' },
+    where: { userType: 'MEMBER' },
     select: { id: true, firstName: true, lastName: true },
     take: 10,
   })

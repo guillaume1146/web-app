@@ -4,7 +4,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useDashboardUser } from '@/hooks/useDashboardUser'
 import { DashboardLoadingState } from '@/components/dashboard'
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiPackage, FiAlertTriangle } from 'react-icons/fi'
-import { SHOP_CATEGORIES } from '@/lib/inventory/types'
+const SHOP_CATEGORIES = [
+  { key: 'medicines', label: 'Medicines' }, { key: 'supplements', label: 'Supplements' },
+  { key: 'equipment', label: 'Equipment' }, { key: 'personal_care', label: 'Personal Care' },
+  { key: 'eyewear', label: 'Eyewear' }, { key: 'dental', label: 'Dental Products' },
+  { key: 'nutrition', label: 'Nutrition Products' }, { key: 'other', label: 'Other' },
+]
 
 interface InventoryItem {
   id: string
@@ -45,7 +50,7 @@ export default function ProviderInventoryManager() {
 
   const fetchItems = useCallback(async () => {
     try {
-      const res = await fetch('/api/inventory')
+      const res = await fetch('/api/inventory', { credentials: 'include' })
       const data = await res.json()
       if (data.success) setItems(data.data)
     } catch { /* */ }
@@ -86,7 +91,7 @@ export default function ProviderInventoryManager() {
     try {
       const url = editId ? `/api/inventory/${editId}` : '/api/inventory'
       const method = editId ? 'PATCH' : 'POST'
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form), credentials: 'include' })
       const data = await res.json()
       if (data.success) {
         setMsg({ type: 'success', text: editId ? 'Item updated' : 'Item added' })
@@ -103,7 +108,7 @@ export default function ProviderInventoryManager() {
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete "${name}"?`)) return
     try {
-      const res = await fetch(`/api/inventory/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/inventory/${id}`, { method: 'DELETE', credentials: 'include' })
       const data = await res.json()
       if (data.success) {
         setItems(items.filter(i => i.id !== id))

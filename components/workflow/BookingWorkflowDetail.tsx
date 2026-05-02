@@ -1,12 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { FiArrowLeft, FiCalendar, FiUser, FiClock } from 'react-icons/fi'
 import Link from 'next/link'
+import { toast } from 'react-toastify'
+import { useSocket } from '@/hooks/useSocket'
 import WorkflowTimeline from './WorkflowTimeline'
 import WorkflowCurrentStep from './WorkflowCurrentStep'
 import WorkflowVideoCallBanner from './WorkflowVideoCallBanner'
 import WorkflowContentViewer from './WorkflowContentViewer'
+import SessionProgress from './SessionProgress'
+import type { SessionEntry } from './SessionProgress'
 
 interface BookingWorkflowDetailProps {
  bookingType: string
@@ -30,6 +34,16 @@ interface WorkflowState {
  isCancelled: boolean
  startedAt: string
  completedAt: string | null
+ allSteps?: Array<{ statusCode: string; label: string; category?: 'pending' | 'active' | 'success' | 'danger' | 'waiting' }>
+ currentStepCategory?: 'pending' | 'active' | 'success' | 'danger' | 'waiting'
+ metadata?: {
+   servicePrice?: number
+   currency?: string
+   sessionNumber?: number
+   maxSessions?: number
+   programId?: string
+   nextSessionAt?: string
+ } | null
 }
 
 interface StepLog {
@@ -51,11 +65,13 @@ export default function BookingWorkflowDetail({ bookingType, bookingId, userRole
  const [timeline, setTimeline] = useState<StepLog[]>([])
  const [loading, setLoading] = useState(true)
  const [error, setError] = useState<string | null>(null)
+ const { socket, connected } = useSocket()
+ const lastStatusRef = useRef<string | null>(null)
 
  const fetchData = useCallback(async () => {
  try {
  // Find workflow instance by booking
- const instanceRes = await fetch(`/api/workflow/instances?role=${userRole}&bookingType=${bookingType}`)
+ const instanceRes = await fetch(`/api/workflow/instances?role=${userRole}&bookingType=${bookingType}`, { credentials: 'include' })
  const instanceData = await instanceRes.json()
 
  if (!instanceData.success) {
@@ -76,8 +92,8 @@ export default function BookingWorkflowDetail({ bookingType, bookingId, userRole
 
  // Fetch state and timeline in parallel
  const [stateRes, timelineRes] = await Promise.all([
- fetch(`/api/workflow/instances/${instance.id}`),
- fetch(`/api/workflow/instances/${instance.id}/timeline`),
+ fetch(`/api/workflow/instances/${instance.id}`, { credentials: 'include' }),
+ fetch(`/api/workflow/instances/${instance.id}/timeline`, { credentials: 'include' }),
  ])
 
  const [stateData, timelineData] = await Promise.all([stateRes.json(), timelineRes.json()])
@@ -94,6 +110,51 @@ export default function BookingWorkflowDetail({ bookingType, bookingId, userRole
  useEffect(() => {
  fetchData()
  }, [fetchData])
+
+ // Real-time resync: listen for workflow-related notifications on the user's
+ // socket room and refetch. When the OTHER party drives a transition
+ // (patient cancels, provider accepts on another tab) we receive a
+ // `notification:new` on `user:{userId}` and can reconcile local state
+ // without a page reload. Status changes not driven by this tab also
+ // surface a toast so the badge never jumps silently.
+ useEffect(() => {
+ if (!socket || !connected) return
+
+ ;(async () => {
+  try {
+  const meRes = await fetch('/api/auth/me', { credentials: 'include' })
+  const meJson = await meRes.json()
+  // `/api/auth/me` returns `{ success, user: {...} }` — joining the
+  // `user:{userId}` room is what actually wires up real-time updates.
+  const uid = meJson?.user?.id ?? meJson?.data?.id
+  if (meJson?.success && uid) {
+   socket.emit('chat:join', { userId: uid })
+  }
+  } catch {
+  // non-fatal
+  }
+ })()
+
+ const onNotification = (notif: { relatedType?: string; relatedId?: string }) => {
+  if (!state) return
+  const isWorkflow = notif?.relatedType === 'workflow' || notif?.relatedType === 'booking'
+  const mentionsThisBooking =
+   notif?.relatedId === state.bookingId || notif?.relatedId === state.instanceId
+  if (isWorkflow && mentionsThisBooking) fetchData()
+ }
+
+ socket.on('notification:new', onNotification)
+ return () => { socket.off('notification:new', onNotification) }
+ }, [socket, connected, state, fetchData])
+
+ // `DashboardLayout` already toasts every incoming `notification:new`
+ // globally. Firing another toast here on state change would duplicate
+ // that, so we just silently track the last status for future use
+ // (optimistic-flip rollback + diff-based animations if needed).
+ useEffect(() => {
+ if (!state) return
+ lastStatusRef.current = state.currentStatus
+ }, [state])
 
  function handleTransition() {
  // Refresh data after a transition
@@ -125,8 +186,31 @@ export default function BookingWorkflowDetail({ bookingType, bookingId, userRole
  // Find the latest video call ID from timeline
  const latestVideoCallId = [...timeline].reverse().find(s => s.triggeredVideoCallId)?.triggeredVideoCallId
 
+ // Derive call mode from booking service mode — the engine fires video or audio
+ // rooms automatically based on this; no per-step flag needed.
+ const callMode: 'video' | 'audio' = state.serviceMode === 'video' ? 'video' : 'audio'
+
  // Collect content attachments from timeline
  const contentSteps = timeline.filter(s => s.contentType && s.contentData)
+
+ // Build session progress for recurrent programmes
+ const isRecurrent = state.serviceMode === 'recurrent'
+ const maxSessions = state.metadata?.maxSessions ?? 0
+ const currentSession = state.metadata?.sessionNumber ?? 0
+ const sessionEntries: SessionEntry[] = isRecurrent && maxSessions > 0
+  ? Array.from({ length: maxSessions }, (_, i) => {
+    const n = i + 1
+    const completedLog = timeline.filter(l =>
+     l.toStatus === 'session_scheduled' || l.toStatus === 'discharge_assessment' || l.toStatus === 'discharged'
+    )[i]
+    if (n < currentSession) return { sessionNumber: n, status: 'completed' as const, completedAt: completedLog?.createdAt }
+    if (n === currentSession) {
+     const inProgress = ['session_in_progress', 'session_notes_pending', 'therapy_session_active'].includes(state.currentStatus)
+     return { sessionNumber: n, status: inProgress ? 'in_progress' as const : 'scheduled' as const }
+    }
+    return { sessionNumber: n, status: 'pending' as const }
+   })
+  : []
 
  return (
  <div className="max-w-3xl mx-auto py-6 px-4 space-y-6">
@@ -147,14 +231,35 @@ export default function BookingWorkflowDetail({ bookingType, bookingId, userRole
  </div>
  </div>
 
- {/* Video Call Banner */}
- <WorkflowVideoCallBanner videoCallId={latestVideoCallId} currentStatus={state.currentStatus} />
+ {/* Video / Audio Call Banner */}
+ <WorkflowVideoCallBanner videoCallId={latestVideoCallId} currentStatus={state.currentStatus} callMode={callMode} isTerminal={state.isCompleted || state.isCancelled} />
+
+ {/* Session Progress — recurrent programmes (physio, mental health, nutrition…) */}
+ {isRecurrent && maxSessions > 0 && (
+  <SessionProgress
+   programName={state.templateName}
+   totalSessions={maxSessions}
+   sessions={sessionEntries}
+   nextSessionAt={state.metadata?.nextSessionAt}
+  />
+ )}
 
  {/* Current Step + Actions */}
  <WorkflowCurrentStep
  instanceId={state.instanceId}
  currentStatus={state.currentStatus}
  stepLabel={state.currentStepLabel}
+ stepFlags={state.currentStepFlags}
+ allSteps={state.allSteps}
+ currentStepCategory={state.currentStepCategory}
+ amountLabel={
+  state.metadata?.servicePrice
+  ? `${state.metadata.currency || 'Rs'} ${state.metadata.servicePrice}`
+  : undefined
+ }
+ serviceMode={state.serviceMode}
+ sessionNumber={state.metadata?.sessionNumber}
+ maxSessions={state.metadata?.maxSessions}
  actionsForPatient={state.actionsForPatient}
  actionsForProvider={state.actionsForProvider}
  userRole={userRole}
@@ -180,7 +285,19 @@ export default function BookingWorkflowDetail({ bookingType, bookingId, userRole
  {/* Timeline */}
  <div>
  <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Workflow History</h2>
- <WorkflowTimeline steps={timeline} currentStatus={state.currentStatus} />
+ <WorkflowTimeline
+ steps={timeline}
+ currentStatus={state.currentStatus}
+ categoryByStatus={
+  state.allSteps
+  ? Object.fromEntries(
+   state.allSteps
+   .filter(s => s.category)
+   .map(s => [s.statusCode, s.category!])
+  )
+  : undefined
+ }
+ />
  </div>
  </div>
  )

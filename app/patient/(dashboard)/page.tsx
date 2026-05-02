@@ -13,6 +13,8 @@ import {
 } from 'react-icons/fa'
 import { usePatientData } from './context'
 import WalletBalanceCard from '@/components/shared/WalletBalanceCard'
+import OnboardingChecklist from '@/components/shared/OnboardingChecklist'
+import ReferralPillarCard from '@/components/shared/ReferralPillarCard'
 
 interface MedicalRecord {
  id: string
@@ -34,9 +36,9 @@ export default function PatientOverviewPage() {
  const fetchOverviewData = async () => {
  try {
  const [appointmentsRes, prescriptionsRes, recordsRes] = await Promise.all([
- fetch(`/api/patients/${patientData.id}/appointments?status=upcoming`).catch(() => null),
- fetch(`/api/patients/${patientData.id}/prescriptions?active=true`).catch(() => null),
- fetch(`/api/patients/${patientData.id}/medical-records`).catch(() => null),
+ fetch('/api/bookings/unified?role=patient&status=upcoming', { credentials: 'include' }).catch(() => null),
+ fetch(`/api/patients/${patientData.id}/prescriptions?active=true`, { credentials: 'include' }).catch(() => null),
+ fetch(`/api/patients/${patientData.id}/medical-records`, { credentials: 'include' }).catch(() => null),
  ])
 
  const [appointments, prescriptions, records] = await Promise.all([
@@ -94,8 +96,14 @@ export default function PatientOverviewPage() {
  </div>
  </div>
 
+ {/* Activation checklist — hidden once all steps are done or the user dismisses */}
+ <OnboardingChecklist userId={patientData.id} />
+
  {/* Wallet Balance */}
  <WalletBalanceCard userId={patientData.id} />
+
+ {/* Refer + earn pillar — every member is a "money provider" via referrals */}
+ <ReferralPillarCard userId={patientData.id} />
 
  {/* Health Score Card */}
  <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 lg:p-8 shadow-lg border border-green-100">

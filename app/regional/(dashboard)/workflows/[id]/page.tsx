@@ -10,7 +10,7 @@ export default function EditWorkflowPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`/api/workflow/templates/${id}`)
+    fetch(`/api/workflow/templates/${id}`, { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
         if (data.success) setTemplate(data.data)
@@ -22,6 +22,23 @@ export default function EditWorkflowPage({ params }: { params: Promise<{ id: str
   if (loading) return <DashboardLoadingState />
   if (!template) return <div className="p-8 text-center text-gray-500">Template not found</div>
 
+  // Normalise steps defensively — old seeded templates can have missing
+  // action arrays / flags, which used to crash the builder with
+  // "Cannot read properties of undefined (reading 'map')".
+  const rawSteps = Array.isArray(template.steps) ? template.steps as any[] : []
+  const normalisedSteps = rawSteps.map((s, i) => ({
+    order: typeof s?.order === 'number' ? s.order : i + 1,
+    statusCode: s?.statusCode ?? `step_${i + 1}`,
+    label: s?.label ?? s?.statusCode ?? `Step ${i + 1}`,
+    description: s?.description ?? '',
+    actionsForPatient: Array.isArray(s?.actionsForPatient) ? s.actionsForPatient : [],
+    actionsForProvider: Array.isArray(s?.actionsForProvider) ? s.actionsForProvider : [],
+    flags: (s?.flags && typeof s.flags === 'object') ? s.flags : {},
+    notifyPatient: s?.notifyPatient ?? null,
+    notifyProvider: s?.notifyProvider ?? null,
+  }))
+  const rawTransitions = Array.isArray(template.transitions) ? template.transitions as any[] : []
+
   return (
     <WorkflowBuilder
       backHref="/regional/workflows"
@@ -32,8 +49,8 @@ export default function EditWorkflowPage({ params }: { params: Promise<{ id: str
         description: (template.description as string) || '',
         providerType: template.providerType as string,
         serviceMode: template.serviceMode as string,
-        steps: template.steps as never[],
-        transitions: template.transitions as never[],
+        steps: normalisedSteps as never[],
+        transitions: rawTransitions as never[],
       }}
     />
   )

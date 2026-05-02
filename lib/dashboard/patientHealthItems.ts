@@ -1,7 +1,7 @@
 import {
   FaHeartbeat, FaRobot, FaSearch, FaUserMd, FaUserNurse, FaBaby,
   FaFlask, FaAmbulance, FaCapsules, FaHandHoldingHeart, FaWalking,
-  FaTooth, FaEye, FaAppleAlt,
+  FaTooth, FaEye, FaAppleAlt, FaBuilding, FaShieldAlt, FaGift,
 } from 'react-icons/fa'
 import type { SidebarItem } from '@/components/dashboard/DashboardSidebar'
 
@@ -43,6 +43,7 @@ export function getSearchItems(base: string): SidebarItem[] {
     { id: 'search-lab', label: 'Find Lab Tests', icon: FaFlask, color: 'text-cyan-600', bgColor: 'bg-cyan-50', href: `/search/lab` },
     { id: 'search-emergency', label: 'Emergency Services', icon: FaAmbulance, color: 'text-red-600', bgColor: 'bg-red-50', href: `/search/emergency` },
     { id: 'search-medicines', label: 'Buy Medicines', icon: FaCapsules, color: 'text-green-600', bgColor: 'bg-green-50', href: `/search/medicines` },
+    { id: 'search-insurance', label: 'Find Insurance', icon: FaShieldAlt, color: 'text-indigo-600', bgColor: 'bg-indigo-50', href: `/search/insurance` },
   ]
 }
 
@@ -70,7 +71,7 @@ export function getSearchItemsFromRoles(
     })
   }
 
-  // Always add Health Shop at the end
+  // Always add Health Shop + Find Insurance at the end
   items.push({
     id: 'search-health-shop',
     label: 'Health Shop',
@@ -79,6 +80,49 @@ export function getSearchItemsFromRoles(
     bgColor: 'bg-green-50',
     href: `/search/health-shop`,
   })
+  items.push({
+    id: 'search-insurance',
+    label: 'Find Insurance',
+    icon: FaShieldAlt,
+    color: 'text-indigo-600',
+    bgColor: 'bg-indigo-50',
+    href: `/search/insurance-companies`,
+  })
 
   return items
+}
+
+/**
+ * "My Company" sidebar entry — any user may own/belong to one or more
+ * companies now that CORPORATE_ADMIN is a capability, not a role.
+ */
+export function getMyCompanyItem(base: string): SidebarItem {
+  return {
+    id: 'my-company',
+    label: 'My Company',
+    labelKey: 'nav.myCompany',
+    icon: FaBuilding,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50',
+    href: `${base}/my-company`,
+  }
+}
+
+/**
+ * "Invite friends" entry — every user has a referral code and earns
+ * wallet credit for every signup via their link. Capability, not role.
+ */
+export function getInviteFriendsItem(_base: string): SidebarItem {
+  // Top-level /invite page — shared across every dashboard. Backend
+  // auto-provisions a referral code on first visit, so the page works
+  // for any authenticated user regardless of role.
+  return {
+    id: 'invite',
+    label: 'Invite friends',
+    labelKey: 'nav.invite',
+    icon: FaGift,
+    color: 'text-pink-600',
+    bgColor: 'bg-pink-50',
+    href: `/invite`,
+  }
 }

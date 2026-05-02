@@ -9,6 +9,8 @@ export interface CurrentUser {
   email: string
   profileImage?: string | null
   userType: string
+  verified?: boolean
+  redirectPath?: string
 }
 
 const STORAGE_KEY = 'mediwyz_user'
@@ -59,6 +61,7 @@ export function useUser(): {
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem('mediwyz_token')
     localStorage.removeItem('mediwyz_userType')
+    localStorage.removeItem('mediwyz_redirectPath')
   }, [])
 
   return { user, loading, updateUser, clearUser }

@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { toast } from 'react-toastify'
 import { useDashboardUser } from '@/hooks/useDashboardUser'
 import { DashboardLoadingState } from '@/components/dashboard'
-import { FiSettings, FiChevronDown, FiChevronUp, FiCheckCircle, FiPlus, FiList, FiTrash2 } from 'react-icons/fi'
+import { FiSettings, FiChevronDown, FiChevronUp, FiCheckCircle, FiPlus, FiList, FiTrash2, FiBookOpen, FiSend, FiInbox } from 'react-icons/fi'
 import Link from 'next/link'
 
 interface WorkflowTemplate {
@@ -12,6 +13,7 @@ interface WorkflowTemplate {
   slug: string
   providerType: string
   serviceMode: string
+  paymentTiming?: string | null
   isDefault: boolean
   isActive: boolean
   createdByProviderId: string | null
@@ -32,7 +34,30 @@ const FLAG_LABELS: Record<string, string> = {
   triggers_stock_subtract: 'Stock Subtract', requires_prescription: 'Rx Required', requires_content: 'Content',
 }
 
-const MODE_LABELS: Record<string, string> = { office: 'Office', home: 'Home Visit', video: 'Video Call' }
+const MODE_LABELS: Record<string, string> = {
+  office: 'Office',
+  home: 'Home Visit',
+  video: 'Video Call',
+  delivery: 'Delivery',
+  emergency: 'Emergency',
+  recurrent: 'Programme',
+}
+
+const MODE_COLORS: Record<string, string> = {
+  office: 'bg-sky-100 text-sky-700',
+  home: 'bg-orange-100 text-orange-700',
+  video: 'bg-purple-100 text-purple-700',
+  delivery: 'bg-emerald-100 text-emerald-700',
+  emergency: 'bg-red-100 text-red-700',
+  recurrent: 'bg-indigo-100 text-indigo-700',
+}
+
+const PAYMENT_TIMING_LABELS: Record<string, string> = {
+  IMMEDIATE: 'Paid on order',
+  ON_ACCEPTANCE: 'Paid on accept',
+  ON_COMPLETION: 'Paid per session',
+  PAY_LATER: 'Invoiced later',
+}
 
 interface ProviderWorkflowsPageProps {
   userType: string
@@ -44,13 +69,18 @@ export default function ProviderWorkflowsPage({ userType, createHref }: Provider
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [pendingSuggestions, setPendingSuggestions] = useState(0)
 
   useEffect(() => {
-    fetch(`/api/workflow/templates?providerType=${userType}`)
+    fetch(`/api/workflow/templates?providerType=${userType}`, { credentials: 'include' })
       .then(r => r.json())
       .then(data => { if (data.success) setTemplates(data.data) })
       .catch(() => {})
       .finally(() => setLoading(false))
+    fetch('/api/workflow/suggestions?status=PENDING', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (data.success) setPendingSuggestions((data.data || []).length) })
+      .catch(() => {})
   }, [userType])
 
   if (!user) return <DashboardLoadingState />
@@ -58,15 +88,16 @@ export default function ProviderWorkflowsPage({ userType, createHref }: Provider
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete workflow "${name}"? This cannot be undone.`)) return
     try {
-      const res = await fetch(`/api/workflow/templates/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/workflow/templates/${id}`, { method: 'DELETE', credentials: 'include' })
       const data = await res.json()
       if (data.success) {
         setTemplates(prev => prev.filter(t => t.id !== id))
+        toast.success(`Workflow "${name}" deleted`)
       } else {
-        alert(data.message || 'Failed to delete')
+        toast.error(data.message || 'Failed to delete')
       }
     } catch {
-      alert('Failed to delete workflow')
+      toast.error('Failed to delete workflow')
     }
   }
 
@@ -82,10 +113,44 @@ export default function ProviderWorkflowsPage({ userType, createHref }: Provider
             Manage how bookings progress through status steps. {myTemplates.length} custom + {defaultTemplates.length} default templates.
           </p>
         </div>
-        <Link href={createHref} className="bg-brand-navy hover:bg-brand-teal text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition">
-          <FiPlus className="w-4 h-4" /> Create Custom
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={createHref.replace('/create', '/library')}
+            className="bg-white hover:bg-gray-50 border border-gray-200 text-brand-navy px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition"
+          >
+            <FiBookOpen className="w-4 h-4" /> Browse library
+          </Link>
+          <Link
+            href={createHref.replace('/create', '/my-suggestions')}
+            className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition"
+          >
+            <FiInbox className="w-4 h-4" /> My suggestions
+          </Link>
+          <Link
+            href={createHref.replace('/create', '/suggest')}
+            className="bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-900 px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition"
+          >
+            <FiSend className="w-4 h-4" /> Suggest to admin
+          </Link>
+          <Link href={createHref} className="bg-brand-navy hover:bg-brand-teal text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition">
+            <FiPlus className="w-4 h-4" /> Create workflow
+          </Link>
+        </div>
       </div>
+
+      {pendingSuggestions > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-amber-800">
+            You have <span className="font-semibold">{pendingSuggestions}</span> workflow suggestion{pendingSuggestions !== 1 ? 's' : ''} pending admin review.
+          </p>
+          <Link
+            href={createHref.replace('/create', '/my-suggestions')}
+            className="text-sm font-medium text-amber-800 underline underline-offset-2 hover:text-amber-900"
+          >
+            View status →
+          </Link>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-teal" /></div>
@@ -122,12 +187,20 @@ function TemplateCard({ tpl, expanded, onToggle, editable, onDelete }: { tpl: Wo
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <button onClick={onToggle} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition">
-        <div className="flex items-center gap-3">
-          <span className={`px-2 py-1 rounded text-xs font-medium ${
-            tpl.serviceMode === 'video' ? 'bg-purple-100 text-purple-700' :
-            tpl.serviceMode === 'home' ? 'bg-orange-100 text-orange-700' :
-            'bg-sky-100 text-sky-700'
-          }`}>{MODE_LABELS[tpl.serviceMode]}</span>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className={`px-2 py-1 rounded text-xs font-medium ${MODE_COLORS[tpl.serviceMode] ?? 'bg-sky-100 text-sky-700'}`}>
+            {MODE_LABELS[tpl.serviceMode] ?? tpl.serviceMode}
+          </span>
+          {tpl.paymentTiming && tpl.paymentTiming !== 'ON_ACCEPTANCE' && (
+            <span className="px-2 py-1 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+              {PAYMENT_TIMING_LABELS[tpl.paymentTiming] ?? tpl.paymentTiming}
+            </span>
+          )}
+          {tpl.serviceMode === 'recurrent' && (
+            <span className="px-2 py-1 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+              Programme
+            </span>
+          )}
           <span className="font-medium text-gray-900 text-sm">{tpl.name}</span>
           <span className="text-xs text-gray-400">{tpl.steps.length} steps</span>
           {editable && <span className="text-xs bg-brand-teal/10 text-brand-teal px-1.5 py-0.5 rounded">Custom</span>}

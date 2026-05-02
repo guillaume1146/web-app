@@ -27,6 +27,8 @@ interface DoctorInfo {
  location: string
  consultationFee: number
  videoConsultationFee: number
+ homeVisitAvailable?: boolean
+ telemedicineAvailable?: boolean
 }
 
 interface BookingResult {
@@ -55,7 +57,7 @@ export default function GenericBookDoctorPage({ params }: { params: Promise<{ id
  try {
  setLoading(true)
 
- const doctorsRes = await fetch('/api/search/doctors')
+ const doctorsRes = await fetch('/api/search/providers?type=DOCTOR')
  const doctorsData = await doctorsRes.json()
 
  if (doctorsData.success && doctorsData.data) {
@@ -70,7 +72,7 @@ export default function GenericBookDoctorPage({ params }: { params: Promise<{ id
  }
 
  try {
- const servicesRes = await fetch(`/api/doctor/services?userId=${id}`)
+ const servicesRes = await fetch(`/api/providers/${id}/services`, { credentials: 'include' })
  const servicesData = await servicesRes.json()
  if (servicesData.success && servicesData.data) {
  setServices(servicesData.data)
@@ -81,7 +83,7 @@ export default function GenericBookDoctorPage({ params }: { params: Promise<{ id
 
  const userId = getUserId()
  if (userId) {
- const walletRes = await fetch(`/api/users/${userId}/wallet`)
+ const walletRes = await fetch(`/api/users/${userId}/wallet`, { credentials: 'include' })
  const walletData = await walletRes.json()
  if (walletData.success && walletData.data) {
  setWalletBalance(walletData.data.balance)
@@ -102,10 +104,12 @@ export default function GenericBookDoctorPage({ params }: { params: Promise<{ id
  setSubmitData(data)
 
  try {
- const res = await fetch('/api/bookings/doctor', {
+ const res = await fetch('/api/bookings', {
  method: 'POST',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
+ providerType: 'DOCTOR',
  doctorId: id,
  consultationType: data.consultationType,
  scheduledDate: data.scheduledDate,
@@ -201,6 +205,10 @@ export default function GenericBookDoctorPage({ params }: { params: Promise<{ id
  showConsultationType={true}
  price={doctor.consultationFee}
  services={services}
+ providerCapabilities={{
+  homeVisitAvailable: doctor.homeVisitAvailable,
+  telemedicineAvailable: doctor.telemedicineAvailable,
+ }}
  onSubmit={handleSubmit}
  isSubmitting={isSubmitting}
  walletBalance={walletBalance}

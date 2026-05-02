@@ -7,13 +7,10 @@ import {
   FaAmbulance,
   FaShieldAlt,
   FaBaby,
-  FaUpload,
   FaCheck,
   FaFileAlt,
-  FaBuilding,
   FaGlobe,
   FaHandshake,
-  FaCrown
 } from 'react-icons/fa'
 import { UserType, Document } from './types'
 
@@ -240,7 +237,5 @@ export const documentRequirements: Record<string, Document[]> = {
 export const steps = [
   { number: 1, title: 'Account Type', icon: FaUser },
   { number: 2, title: 'Basic Info', icon: FaFileAlt },
-  { number: 3, title: 'Documents', icon: FaUpload },
-  { number: 4, title: 'Plan', icon: FaCrown },
-  { number: 5, title: 'Verification', icon: FaCheck }
+  { number: 3, title: 'Create Account', icon: FaCheck }
 ]

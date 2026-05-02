@@ -24,7 +24,7 @@ export function useCurrency(userId?: string): UseCurrencyResult {
     let cancelled = false
     async function fetchCurrency() {
       try {
-        const res = await fetch(`/api/users/${userId}/wallet`)
+        const res = await fetch(`/api/users/${userId}/wallet`, { credentials: 'include' })
         const json = await res.json()
         if (!cancelled && json.success && json.data?.currency) {
           setCurrency(json.data.currency)

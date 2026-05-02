@@ -84,6 +84,10 @@ const defaultPharmacy: Pharmacy = {
  certifications: [], avatar: "💊"
 }
 
+// Default delivery slot generator used as a fallback.
+// TODO: Eventually replace with pharmacist-specific delivery configuration fetched from
+// the API (e.g., GET /api/pharmacist/:id/delivery-slots) so each pharmacy can define
+// their own time windows, fees, and availability.
 function generateDeliverySlots(): DeliverySlot[] {
  const slots: DeliverySlot[] = []
  const today = new Date()
@@ -246,6 +250,7 @@ export default function CompletePharmacyOrderBooking() {
  if (userId && cartItems.length > 0) {
  await fetch('/api/orders', {
  method: 'POST',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
  patientUserId: userId,

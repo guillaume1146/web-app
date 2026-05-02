@@ -75,7 +75,7 @@ interface Review {
  date: string;
 }
 
-const serviceTypes: ServiceType[] = [
+const fallbackServiceTypes: ServiceType[] = [
  { id: "ST001", name: "Regular Childcare", description: "Daily childcare during working hours", icon: "👶", priceType: "daily" },
  { id: "ST002", name: "Night Nanny", description: "Overnight childcare support", icon: "🌙", priceType: "hourly" },
  { id: "ST003", name: "Weekend Care", description: "Weekend babysitting services", icon: "📅", priceType: "hourly" },
@@ -84,8 +84,28 @@ const serviceTypes: ServiceType[] = [
  { id: "ST006", name: "Special Needs Care", description: "Specialized care for children with special needs", icon: "💝", priceType: "hourly" },
 ]
 
+// Map service name keywords to icons
+function getServiceIcon(name: string): string {
+ const lower = name.toLowerCase()
+ if (lower.includes('night')) return '🌙'
+ if (lower.includes('weekend')) return '📅'
+ if (lower.includes('full-time') || lower.includes('full time') || lower.includes('live')) return '🏠'
+ if (lower.includes('emergency') || lower.includes('urgent')) return '🚨'
+ if (lower.includes('special need')) return '💝'
+ return '👶'
+}
+
+// Map service duration to price type
+function getPriceType(duration: number | null): "hourly" | "daily" | "monthly" {
+ if (!duration) return 'hourly'
+ if (duration >= 480) return 'monthly' // 8+ hours → monthly rate
+ if (duration >= 240) return 'daily'   // 4+ hours → daily rate
+ return 'hourly'
+}
+
 export default function NannyBookingPage() {
  const [nannies, setNannies] = useState<NannyProfile[]>([])
+ const [serviceTypes, setServiceTypes] = useState<ServiceType[]>(fallbackServiceTypes)
  const [selectedNanny, setSelectedNanny] = useState<NannyProfile | null>(null)
  const [selectedService, setSelectedService] = useState<ServiceType | null>(null)
  const [searchQuery, setSearchQuery] = useState("")
@@ -96,7 +116,7 @@ export default function NannyBookingPage() {
  // Fetch nannies from API
  const fetchNannies = useCallback(async () => {
  try {
- const res = await fetch('/api/search/nannies?q=')
+ const res = await fetch('/api/search/providers?type=NANNY')
  const data = await res.json()
  if (data.data) {
  // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -127,6 +147,38 @@ export default function NannyBookingPage() {
  }, [])
 
  useEffect(() => { fetchNannies() }, [fetchNannies])
+
+ // Fetch nanny service types from catalog API, fall back to hardcoded
+ useEffect(() => {
+ async function fetchServiceTypes() {
+ try {
+ const res = await fetch('/api/services/catalog?providerType=NANNY')
+ const data = await res.json()
+ if (data.success && Array.isArray(data.data)) {
+ const apiTypes: ServiceType[] = []
+ for (const group of data.data) {
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ for (const svc of group.services as any[]) {
+ apiTypes.push({
+ id: svc.id,
+ name: svc.serviceName,
+ description: svc.description || '',
+ icon: getServiceIcon(svc.serviceName),
+ priceType: getPriceType(svc.duration),
+ })
+ }
+ }
+ if (apiTypes.length > 0) {
+ setServiceTypes(apiTypes)
+ }
+ }
+ } catch {
+ // Keep fallback service types
+ }
+ }
+ fetchServiceTypes()
+ }, [])
+
  const [bookingDetails, setBookingDetails] = useState<BookingDetails>({
  nanny: null,
  serviceType: null,

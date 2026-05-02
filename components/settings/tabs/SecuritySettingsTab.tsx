@@ -39,6 +39,7 @@ const SecuritySettingsTab: React.FC = () => {
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ currentPassword, newPassword }),
+ credentials: 'include',
  })
 
  const data = await res.json()

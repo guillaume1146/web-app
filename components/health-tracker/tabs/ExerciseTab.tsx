@@ -50,7 +50,7 @@ export default function ExerciseTab() {
  try {
  setLoading(true)
  setError('')
- const res = await fetch(`/api/ai/health-tracker/exercise?date=${dateStr}`)
+ const res = await fetch(`/api/ai/health-tracker/exercise?date=${dateStr}`, { credentials: 'include' })
  if (!res.ok) throw new Error('Failed to load exercises')
  const json = await res.json()
  if (!json.success) throw new Error(json.message || 'Failed to load exercises')
@@ -73,7 +73,7 @@ export default function ExerciseTab() {
 
  const handleDelete = async (id: string) => {
  try {
- const res = await fetch(`/api/ai/health-tracker/exercise/${id}`, { method: 'DELETE' })
+ const res = await fetch(`/api/ai/health-tracker/exercise/${id}`, { method: 'DELETE', credentials: 'include' })
  if (!res.ok) throw new Error('Failed to delete')
  await fetchData()
  } catch {
@@ -97,6 +97,7 @@ export default function ExerciseTab() {
  notes: formNotes || undefined,
  date: dateStr,
  }),
+ credentials: 'include',
  })
  if (!res.ok) throw new Error('Failed to log exercise')
  setShowAddModal(false)

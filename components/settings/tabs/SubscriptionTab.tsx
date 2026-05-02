@@ -56,12 +56,17 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
  if (!userId) return
  setLoading(true)
  try {
- // Step 1: Get user info (region + type)
- const userRes = await fetch(`/api/users/${userId}`)
+ // Step 1: Get user info (region) + corporate capability check.
+ // Capability — not role — so any user who owns a company / has a
+ // corporate subscription sees corporate plans here.
+ const [userRes, capRes] = await Promise.all([
+ fetch(`/api/users/${userId}`, { credentials: 'include' }),
+ fetch('/api/corporate/capability', { credentials: 'include' }).catch(() => null),
+ ])
  const userJson = await userRes.json()
+ const capJson = capRes ? await capRes.json().catch(() => null) : null
  let countryParam = ''
- const userType = userJson.success ? userJson.data?.userType : ''
- const isCorpAdmin = userType === 'CORPORATE_ADMIN'
+ const isCorpAdmin = !!capJson?.data?.hasCapability
  setIsCorporateAdmin(isCorpAdmin)
 
  if (userJson.success && userJson.data?.regionId) {
@@ -74,7 +79,7 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
 
  // Step 2: Fetch subscription + individual plans (always)
  const [subRes, indRes] = await Promise.all([
- fetch(`/api/users/${userId}/subscription`),
+ fetch(`/api/users/${userId}/subscription`, { credentials: 'include' }),
  fetch(`/api/subscriptions?type=individual${countryParam}`),
  ])
  const subJson = await subRes.json()
@@ -113,6 +118,7 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ action: current?.hasSubscription ? 'change' : 'subscribe', planId }),
+ credentials: 'include',
  })
  const json = await res.json()
  if (json.success) {
@@ -136,6 +142,7 @@ const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ action: 'cancel' }),
+ credentials: 'include',
  })
  const json = await res.json()
  if (json.success) {

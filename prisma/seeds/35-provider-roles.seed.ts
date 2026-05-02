@@ -28,7 +28,7 @@ interface RoleDef {
 const ROLES: RoleDef[] = [
   // ─── Non-provider roles ────────────────────────────────────────────
   {
-    code: 'PATIENT',
+    code: 'MEMBER',
     label: 'Patients',
     singularLabel: 'Patient',
     slug: 'patients',

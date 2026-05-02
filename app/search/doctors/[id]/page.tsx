@@ -27,7 +27,7 @@ export default function DoctorDetailsPage() {
  const [isLoading, setIsLoading] = useState(true)
 
  useEffect(() => {
- fetch('/api/search/doctors')
+ fetch('/api/search/providers?type=DOCTOR')
  .then(res => res.json())
  .then(json => {
  if (json.success) {

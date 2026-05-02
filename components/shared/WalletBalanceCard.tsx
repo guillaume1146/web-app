@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { FaWallet, FaArrowDown, FaArrowUp, FaChevronDown, FaChevronUp, FaRedo } from 'react-icons/fa'
 import { getCurrencySymbol } from '@/lib/currency'
+import { toast } from 'react-toastify'
 import WalletTransactionHistory from './WalletTransactionHistory'
 import WalletTopUp from './WalletTopUp'
 
@@ -39,7 +40,7 @@ const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({ userId }) => {
  const fetchWallet = useCallback(async () => {
  try {
  setLoading(true)
- const res = await fetch(`/api/users/${userId}/wallet`)
+ const res = await fetch(`/api/users/${userId}/wallet`, { credentials: 'include' })
  const json = await res.json()
  if (json.success && json.data) {
  setWallet(json.data)
@@ -62,15 +63,16 @@ const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({ userId }) => {
  if (!confirm('Reset your trial balance to the initial credit amount?')) return
  try {
  setResetting(true)
- const res = await fetch(`/api/users/${userId}/wallet/reset`, { method: 'POST' })
+ const res = await fetch(`/api/users/${userId}/wallet/reset`, { method: 'POST', credentials: 'include' })
  const json = await res.json()
  if (json.success) {
  await fetchWallet()
+ toast.success('Trial balance reset successfully')
  } else {
- alert(json.message || 'Failed to reset trial')
+ toast.error(json.message || 'Failed to reset trial')
  }
  } catch {
- alert('Failed to reset trial')
+ toast.error('Failed to reset trial')
  } finally {
  setResetting(false)
  }
@@ -121,7 +123,7 @@ const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({ userId }) => {
  <div className="bg-brand-navy rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 text-white shadow-lg">
  <div className="flex items-center gap-2 mb-3 sm:mb-4">
  <FaWallet className="text-white/90 text-base sm:text-lg" />
- <h3 className="text-sm sm:text-base font-semibold text-white/90">Trial Balance</h3>
+ <h3 className="text-sm sm:text-base font-semibold text-white/90">Account Balance</h3>
  </div>
 
  <p className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">

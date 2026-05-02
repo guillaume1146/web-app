@@ -61,8 +61,8 @@ const HealthRecords: React.FC<Props> = ({ patientData }) => {
  const fetchRecords = useCallback(async () => {
  try {
  const [recordsRes, prescriptionsRes] = await Promise.all([
- fetch(`/api/patients/${patientData.id}/medical-records`).catch(() => null),
- fetch(`/api/patients/${patientData.id}/prescriptions?active=true`).catch(() => null),
+ fetch(`/api/patients/${patientData.id}/medical-records`, { credentials: 'include' }).catch(() => null),
+ fetch(`/api/patients/${patientData.id}/prescriptions?active=true`, { credentials: 'include' }).catch(() => null),
  ])
  const [recordsData, prescriptionsData] = await Promise.all([
  recordsRes?.ok ? recordsRes.json() : null,

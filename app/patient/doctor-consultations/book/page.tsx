@@ -81,7 +81,7 @@ function generateTimeSlots(): TimeSlot[] {
  return slots
 }
 
-const paymentMethods: PaymentMethod[] = [
+const defaultPaymentMethods: PaymentMethod[] = [
  {
  id: "mcb-juice",
  type: "mcb-juice",
@@ -90,33 +90,6 @@ const paymentMethods: PaymentMethod[] = [
  icon: "📱",
  available: true
  },
- {
- id: "corporate",
- type: "corporate",
- name: "Corporate Health Plan",
- description: "Use your company's health benefits",
- discount: 50,
- icon: "🏢",
- available: true
- },
- {
- id: "insurance",
- type: "insurance",
- name: "Insurance Coverage",
- description: "Apply insurance coverage (80% covered)",
- discount: 80,
- icon: "🛡️",
- available: true
- },
- {
- id: "subscription",
- type: "subscription",
- name: "Monthly Subscription",
- description: "Use your active healthcare subscription",
- discount: 100,
- icon: "💳",
- available: true
- }
 ]
 
 export default function DoctorConsultationBooking() {
@@ -133,10 +106,61 @@ export default function DoctorConsultationBooking() {
  reason: "",
  notes: ""
  })
+ const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(defaultPaymentMethods)
  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null)
  const [isProcessing, setIsProcessing] = useState(false)
  const [bookingConfirmed, setBookingConfirmed] = useState(false)
  const [ticketId, setTicketId] = useState("")
+
+ // Fetch user subscription to build dynamic payment methods
+ useEffect(() => {
+ async function fetchPaymentOptions() {
+ const userId = getUserId()
+ if (!userId) return
+ try {
+ const res = await fetch(`/api/users/${userId}/subscription`, { credentials: 'include' })
+ const data = await res.json()
+ const methods: PaymentMethod[] = [
+ ...defaultPaymentMethods,
+ ]
+ if (data.success && data.data?.hasSubscription) {
+ const plan = data.data.plan
+ const discounts = (plan?.discounts ?? {}) as Record<string, number>
+ const planType = plan?.type as string | undefined
+
+ // Add subscription payment option
+ const subDiscount = discounts.consultation ?? discounts.default ?? 15
+ methods.push({
+ id: "subscription",
+ type: "subscription",
+ name: plan?.name || "Healthcare Subscription",
+ description: `Use your active ${plan?.name || 'subscription'} plan`,
+ discount: subDiscount,
+ icon: "💳",
+ available: true,
+ })
+
+ // Add corporate option if plan is corporate-sponsored
+ if (planType === 'CORPORATE') {
+ const corpDiscount = discounts.consultation ?? discounts.default ?? 50
+ methods.push({
+ id: "corporate",
+ type: "corporate",
+ name: "Corporate Health Plan",
+ description: "Use your company's health benefits",
+ discount: corpDiscount,
+ icon: "🏢",
+ available: true,
+ })
+ }
+ }
+ setPaymentMethods(methods)
+ } catch {
+ // Keep default payment methods (MCB Juice only)
+ }
+ }
+ fetchPaymentOptions()
+ }, [])
 
  // Fetch doctor from API if doctorId is provided
  const fetchDoctor = useCallback(async () => {
@@ -175,7 +199,7 @@ export default function DoctorConsultationBooking() {
  const fetchSchedule = useCallback(async () => {
  if (!appointmentDetails.doctor.id || !appointmentDetails.date) return
  try {
- const res = await fetch(`/api/doctors/${appointmentDetails.doctor.id}/schedule`)
+ const res = await fetch(`/api/providers/${appointmentDetails.doctor.id}/schedule`, { credentials: 'include' })
  const data = await res.json()
  if (data.data?.length > 0) {
  const dayOfWeek = new Date(appointmentDetails.date).getDay()
@@ -222,10 +246,12 @@ export default function DoctorConsultationBooking() {
  const userId = getUserId()
  if (userId) {
  const time24 = convertTo24h(appointmentDetails.time)
- await fetch('/api/bookings/doctor', {
+ await fetch('/api/bookings', {
  method: 'POST',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
+ providerType: 'DOCTOR',
  doctorId: appointmentDetails.doctor.id,
  consultationType: appointmentDetails.type,
  scheduledDate: appointmentDetails.date,

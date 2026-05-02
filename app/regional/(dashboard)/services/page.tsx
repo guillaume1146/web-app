@@ -66,7 +66,7 @@ export default function RegionalServicesPage() {
   const [cachedWorkflows, setCachedWorkflows] = useState<unknown[]>([])
   useEffect(() => {
     if (!filterType) { setCachedWorkflows([]); return }
-    fetch(`/api/workflow/templates?providerType=${filterType}`)
+    fetch(`/api/workflow/templates?providerType=${filterType}`, { credentials: 'include' })
       .then(r => r.json())
       .then(data => { if (data.success) setCachedWorkflows(data.data) })
       .catch(() => {})

@@ -6,29 +6,43 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MediWyz — a digital health platform for Mauritius built with Next.js 15 (App Router), TypeScript, PostgreSQL (Prisma ORM), Socket.IO, and WebRTC. Connects patients with doctors, nurses, nannies, pharmacists, lab technicians, emergency workers, caregivers, physiotherapists, dentists, optometrists, and nutritionists via video consultations, appointment booking, prescription management, and a Health Shop. Supports 17 user types. Features a configurable workflow engine where providers and regional admins can create custom workflows with status-triggered actions (video calls, stock management) and auto-notifications.
 
+## Architecture: NestJS Backend + Next.js Frontend
+
+**NestJS is the ONLY backend.** Next.js is a pure frontend (SSR/SSG) that proxies all `/api/*` requests to NestJS via `next.config.ts` rewrites. `app/api/` has been removed — do NOT recreate route handlers (`route.ts`), Server Actions (`'use server'`), or import `@/lib/db` from any page/component/hook. The only legitimate Prisma consumers outside `backend/` are `prisma/seeds/*` and `prisma/scripts/*` (dev-time tooling, never bundled into the Next.js runtime).
+
+**Core Principle: Dynamic Roles.** Provider roles (Doctor, Nurse, Optician, etc.) are created dynamically by Regional Admins via CRUD on `ProviderRole`. NO hardcoded role names in business logic. Every user is also a patient.
+
 ## Common Commands
 
 ```bash
-# Development (runs custom server.js with Socket.IO + Next.js)
-npm run dev
+# Development — start BOTH servers
+cd backend && npm run start:dev   # NestJS on port 3001
+npm run dev                        # Next.js on port 3000 (proxies /api/* → NestJS)
 
-# Build (generates Prisma client, then builds Next.js)
-npm run build
+# Build
+npm run build                      # Next.js frontend build
+cd backend && npm run build        # NestJS backend build
 
 # Database
 npx prisma db push        # Push schema to DB
-npx prisma db seed         # Seed demo data (33 seed files)
+npx prisma db seed         # Seed demo data (44 seed files)
 npx prisma migrate dev     # Create migration
 npx prisma studio          # Visual DB browser
 
 # Docker
-docker compose up --build -d
-docker compose exec app npx prisma db push
-docker compose exec app npx prisma db seed
+docker compose up --build -d       # Starts: db + api (NestJS) + app (Next.js)
 
-# Linting / Type checking
-npx eslint .
-npx tsc --noEmit
+# Type checking
+cd backend && npx tsc --noEmit     # Backend type check
+npx tsc --noEmit                   # Frontend type check
+
+# Testing
+npm run test                       # Vitest unit tests
+npm run test:migration             # Playwright NestJS migration E2E
+npx playwright test                # Full E2E suite (127+ tests)
+
+# API Documentation
+# Swagger UI: http://localhost:3001/api/docs
 ```
 
 ## Architecture
@@ -235,7 +249,61 @@ InventoryOrderItem     → Line items with quantity and pricing
 /api/inventory/orders/[id] — PATCH order status
 /api/search/health-shop   — GET browse all providers' items
 /api/regional/workflow-templates — GET/POST regional workflow templates
+
+# ─── Recent additions ──────────────────────────────────────────────────
+/api/favorites              — GET saved providers for current user
+/api/favorites/:id/toggle   — POST toggle save/unsave
+/api/health-streak          — GET current streak + longest
+/api/health-streak/check-in — POST idempotent daily check-in
+/api/corporate/analytics    — GET owner-view analytics (members + claims + revenue)
+/api/corporate/companies/:id/transfer — POST transfer ownership by email
+/api/corporate/companies/:id          — DELETE company (members soft-removed)
+/api/corporate/insurance-companies    — GET public search of insurance companies
+/api/corporate/insurance/:id/join     — POST member joins + first-month debit
+/api/corporate/insurance/:id/contribute — POST pay this month's contribution
+/api/corporate/insurance/members      — GET owner view of member payment status
+/api/corporate/insurance/claims       — GET (?as=owner|member) / POST submit claim
+/api/corporate/insurance/claims/:id/approve — POST approve + credit member wallet
+/api/corporate/insurance/claims/:id/deny    — POST decline with optional reviewer note
+/api/users/:id/prescriptions/:id/pdf  — GET print-ready HTML (browser saves as PDF)
+/api/bookings/reschedule              — POST change scheduledDate / scheduledTime
+/api/workflow/templates/library       — GET starter templates library
+/api/workflow/templates/:id/clone     — POST clone a library template
+/api/ai/chat                          — GET list sessions, POST send message
+/api/ai/chat/:id                      — GET reopen session, DELETE session
 ```
+
+## Scheduled jobs
+
+`RemindersService.runReminderSweep()` runs every 30 min via @nestjs/schedule:
+- Emits T-24h reminder for bookings whose `scheduledAt` is 23h45–24h15 away
+- Emits T-1h reminder for bookings whose `scheduledAt` is 45–75 min away
+- Idempotent via `AppointmentReminder(bookingId, reminderType)` unique constraint
+
+## Capabilities (not roles)
+
+Do NOT check `userType === 'CORPORATE_ADMIN'` / `'INSURANCE_REP'` / `'REFERRAL_PARTNER'` in new code:
+- **Corporate admin** = `userHasCorporateCapability(userId)` — owns a `CorporateAdminProfile` OR has a corporate/enterprise subscription.
+- **Insurance owner** = `userHasInsuranceCapability(userId)` — owns one with `isInsuranceCompany: true`.
+- **Referral partner** = every authenticated user. Auto-provisioned `ReferralPartnerProfile` on first `/api/referral-partners/me` hit; earns wallet credit per successful signup via their code.
+- **Multi-company**: a single user can own multiple `CorporateAdminProfile` rows (@unique on userId was dropped).
+- Legacy enum values (CORPORATE_ADMIN / INSURANCE_REP / REFERRAL_PARTNER) still honoured for seeded users; UI hides them from signup via `/api/roles` filter.
+
+## PATIENT → MEMBER rename
+
+The default user type is **MEMBER**, not PATIENT:
+- Every user has clinical capabilities (`PatientProfile` auto-created on first booking). Identifying the default role as "patient" implied illness.
+- Industry practice (Oscar, Teladoc, One Medical, Maven Clinic): "members".
+- "Patient" remains valid **inside clinical contexts** — provider-facing chart, prescription notes, medical records. Those strings stay.
+- Migration was atomic via `ALTER TYPE "UserType" RENAME VALUE`. Cookie `'patient'` + URL prefix `/patient/*` kept for routing stability.
+
+## System vs dynamic user types
+
+Only TWO user types are hardcoded in code (`backend/src/shared/user-types.ts` → `SystemUserType`):
+- `MEMBER` (default for any signup)
+- `REGIONAL_ADMIN` (the role that manages other roles)
+
+All provider types (DOCTOR, NURSE, CAREGIVER, future AUDIOLOGIST, PSYCHOLOGIST, …) are **DB rows in `ProviderRole`**. Fetch via `/api/roles` or `RolesResolverService`. Never import them from `user-types.ts` in new code — the legacy `UserType` record there is kept only for grace-period compat with existing seeded data.
 
 ## Path Aliases
 

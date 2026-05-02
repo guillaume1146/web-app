@@ -67,7 +67,7 @@ export default function PatientTeleconsultationPage() {
  async function fetchConsultation() {
  try {
  // Get the current user first
- const meRes = await fetch("/api/auth/me")
+ const meRes = await fetch("/api/auth/me", { credentials: 'include' })
  if (!meRes.ok) {
  setLoadError("Unable to verify identity. Please log in again.")
  setConnectionStatus("disconnected")
@@ -82,7 +82,7 @@ export default function PatientTeleconsultationPage() {
  }
 
  // Fetch the patient's appointments to find this one
- const apptRes = await fetch(`/api/patients/${patientId}/appointments`)
+ const apptRes = await fetch('/api/bookings/unified?role=patient', { credentials: 'include' })
  if (!apptRes.ok) {
  setLoadError("Failed to load consultation data.")
  setConnectionStatus("disconnected")

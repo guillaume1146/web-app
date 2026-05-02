@@ -20,7 +20,7 @@ export interface ServiceField {
 
 export interface ServiceCatalogConfig {
  title: string
- apiBasePath: string // e.g. '/api/doctor/services'
+ apiBasePath: string // e.g. '/api/services/my-services'
  categoryOptions: { value: string; label: string }[]
  fields: ServiceField[]
  /** Accent color for buttons/badges (tailwind class prefix, e.g. 'teal', 'blue', 'red') */
@@ -63,7 +63,7 @@ export default function ServiceCatalogManager({ config }: { config: ServiceCatal
  // Fetch workflows once for all service cards
  useEffect(() => {
    if (!config.providerType) return
-   fetch(`/api/workflow/templates?providerType=${config.providerType}`)
+   fetch(`/api/workflow/templates?providerType=${config.providerType}`, { credentials: 'include' })
      .then(r => r.json())
      .then(data => { if (data.success) setCachedWorkflows(data.data) })
      .catch(() => {})
@@ -71,14 +71,23 @@ export default function ServiceCatalogManager({ config }: { config: ServiceCatal
 
  const fetchServices = useCallback(async () => {
  try {
- const res = await fetch(config.apiBasePath)
+ const res = await fetch(config.apiBasePath, { credentials: 'include' })
  if (!res.ok) throw new Error('Failed to fetch services')
  const data = await res.json()
  // Normalize: my-services API returns configId instead of id
- const items = (data.data || []).map((s: Record<string, unknown>) => ({
-   ...s,
-   id: s.id || s.configId || s.platformServiceId,
- }))
+ const items = (data.data || []).map((s: Record<string, unknown>) => {
+   const ps = s.platformService as Record<string, unknown> | undefined
+   return {
+     ...s,
+     id: s.id || s.configId || s.platformServiceId,
+     serviceName: (s.serviceName as string) || (ps?.serviceName as string) || 'Unnamed Service',
+     description: (s.description as string) || (ps?.description as string) || '',
+     category: (s.category as string) || (ps?.category as string) || 'General',
+     defaultPrice: s.defaultPrice ?? s.priceOverride ?? ps?.defaultPrice ?? 0,
+     duration: s.duration ?? ps?.duration ?? 30,
+     currency: (s.currency as string) || (ps?.currency as string) || 'MUR',
+   }
+ })
  setServices(items)
  } catch (err) {
  setError(err instanceof Error ? err.message : 'Failed to load services')

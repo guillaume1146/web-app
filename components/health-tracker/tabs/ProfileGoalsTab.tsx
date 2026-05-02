@@ -85,7 +85,7 @@ export default function ProfileGoalsTab() {
  try {
  setLoading(true)
  setError('')
- const res = await fetch('/api/ai/health-tracker/profile')
+ const res = await fetch('/api/ai/health-tracker/profile', { credentials: 'include' })
  if (!res.ok) throw new Error('Failed to load profile')
  const json = await res.json()
  if (!json.success) throw new Error(json.message || 'Failed to load profile')
@@ -120,6 +120,7 @@ export default function ProfileGoalsTab() {
  setSuccess('')
  const res = await fetch('/api/ai/health-tracker/profile', {
  method: 'PUT',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
  age,

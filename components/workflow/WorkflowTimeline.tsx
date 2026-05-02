@@ -1,6 +1,7 @@
 'use client'
 
 import { FiCheck, FiX, FiClock, FiPlay, FiVideo, FiPackage, FiFileText } from 'react-icons/fi'
+import { CATEGORY_DOT, categoryFromLegacyStatus, type StepCategory } from './stepCategoryStyles'
 
 interface StepLogEntry {
  id: string
@@ -18,16 +19,9 @@ interface StepLogEntry {
 interface WorkflowTimelineProps {
  steps: StepLogEntry[]
  currentStatus: string
-}
-
-const STATUS_COLORS: Record<string, string> = {
- completed: 'bg-green-500',
- resolved: 'bg-green-500',
- cancelled: 'bg-red-500',
- pending: 'bg-yellow-500',
- in_progress: 'bg-blue-500',
- in_call: 'bg-blue-500',
- in_consultation: 'bg-blue-500',
+ /** Status code → category lookup (from engine's allSteps). Optional;
+  *  timeline falls back to legacy derivation when absent. */
+ categoryByStatus?: Record<string, StepCategory>
 }
 
 function getStepIcon(step: StepLogEntry) {
@@ -40,12 +34,14 @@ function getStepIcon(step: StepLogEntry) {
  return <FiClock className="w-4 h-4" />
 }
 
-function getStepColor(step: StepLogEntry, isLast: boolean): string {
- if (isLast) return STATUS_COLORS[step.toStatus] || 'bg-blue-500'
- return 'bg-gray-400'
+function resolveCategory(
+ step: StepLogEntry,
+ categoryByStatus?: Record<string, StepCategory>,
+): StepCategory {
+ return categoryByStatus?.[step.toStatus] ?? categoryFromLegacyStatus(step.toStatus)
 }
 
-export default function WorkflowTimeline({ steps, currentStatus }: WorkflowTimelineProps) {
+export default function WorkflowTimeline({ steps, currentStatus, categoryByStatus }: WorkflowTimelineProps) {
  if (!steps || steps.length === 0) {
  return <p className="text-gray-500 text-sm">No workflow history yet.</p>
  }
@@ -56,7 +52,10 @@ export default function WorkflowTimeline({ steps, currentStatus }: WorkflowTimel
  {steps.map((step, idx) => {
  const isLast = idx === steps.length - 1
  const isCurrent = step.toStatus === currentStatus
- const color = isCurrent ? (STATUS_COLORS[step.toStatus] || 'bg-blue-500') : getStepColor(step, isLast)
+ // Current / latest step gets its real category colour. Earlier steps
+ // fade to grey so the eye lands on "where am I now?".
+ const category = resolveCategory(step, categoryByStatus)
+ const color = (isCurrent || isLast) ? CATEGORY_DOT[category] : 'bg-gray-400'
 
  return (
  <li key={step.id}>

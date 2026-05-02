@@ -69,29 +69,30 @@ export default function ProgressTab() {
  try {
  setLoading(true)
  setError('')
- const res = await fetch(`/api/ai/health-tracker/progress?period=${period}`)
+ const res = await fetch(`/api/ai/health-tracker/progress?period=${period}`, { credentials: 'include' })
  if (!res.ok) throw new Error('Failed to load progress')
  const json = await res.json()
  if (!json.success) throw new Error(json.message || 'Failed to load progress')
- const d = json.data
- // Map API days to component's WeeklyEntry shape
- const weeklyData: WeeklyEntry[] = d.days.map((day: { date: string; caloriesConsumed: number; caloriesBurned: number; waterMl: number; exerciseMinutes: number }) => ({
+ const d = json.data ?? {}
+ const safeDays: Array<{ date: string; caloriesConsumed: number; caloriesBurned: number; waterMl: number; exerciseMinutes: number }> = Array.isArray(d.days) ? d.days : []
+ const weeklyData: WeeklyEntry[] = safeDays.map((day) => ({
  day: new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }),
- calories: day.caloriesConsumed,
- exerciseMinutes: day.exerciseMinutes,
+ calories: day.caloriesConsumed ?? 0,
+ exerciseMinutes: day.exerciseMinutes ?? 0,
  }))
- // Today is the last entry in the days array
- const today = d.days[d.days.length - 1] || { caloriesConsumed: 0, caloriesBurned: 0, waterMl: 0 }
+ const today = safeDays[safeDays.length - 1] ?? { caloriesConsumed: 0, caloriesBurned: 0, waterMl: 0 }
+ const averages = d.averages ?? {}
+ const totals = d.totals ?? {}
  setData({
- todayCalories: today.caloriesConsumed,
- todayBurned: today.caloriesBurned,
- todayWater: today.waterMl,
- todayNetCalories: today.caloriesConsumed - today.caloriesBurned,
+ todayCalories: today.caloriesConsumed ?? 0,
+ todayBurned: today.caloriesBurned ?? 0,
+ todayWater: today.waterMl ?? 0,
+ todayNetCalories: (today.caloriesConsumed ?? 0) - (today.caloriesBurned ?? 0),
  weeklyData,
- weeklyAvgCalories: d.averages.calories,
- weeklyTotalBurned: d.totals.burned,
- weeklyNetCalories: d.totals.calories - d.totals.burned,
- weeklyAvgWater: d.averages.water,
+ weeklyAvgCalories: averages.calories ?? 0,
+ weeklyTotalBurned: totals.burned ?? 0,
+ weeklyNetCalories: (totals.calories ?? 0) - (totals.burned ?? 0),
+ weeklyAvgWater: averages.water ?? 0,
  })
  } catch (err) {
  setError(err instanceof Error ? err.message : 'Something went wrong')

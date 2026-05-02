@@ -5,7 +5,7 @@ describe('signToken', () => {
   it('generates a non-empty string token', () => {
     const payload: JwtPayload = {
       sub: '550e8400-e29b-41d4-a716-446655440000',
-      userType: 'PATIENT',
+      userType: 'MEMBER',
       email: 'patient@example.com',
     }
     const token = signToken(payload)
@@ -27,7 +27,7 @@ describe('signToken', () => {
   it('generates different tokens for different payloads', () => {
     const token1 = signToken({
       sub: '550e8400-e29b-41d4-a716-446655440001',
-      userType: 'PATIENT',
+      userType: 'MEMBER',
       email: 'patient1@example.com',
     })
     const token2 = signToken({
@@ -43,7 +43,7 @@ describe('verifyToken', () => {
   it('returns the payload for a valid token', () => {
     const payload: JwtPayload = {
       sub: '550e8400-e29b-41d4-a716-446655440000',
-      userType: 'PATIENT',
+      userType: 'MEMBER',
       email: 'patient@example.com',
     }
     const token = signToken(payload)
@@ -68,7 +68,7 @@ describe('verifyToken', () => {
   it('returns null for a tampered token', () => {
     const payload: JwtPayload = {
       sub: '550e8400-e29b-41d4-a716-446655440000',
-      userType: 'PATIENT',
+      userType: 'MEMBER',
       email: 'patient@example.com',
     }
     const token = signToken(payload)

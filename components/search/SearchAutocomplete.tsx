@@ -13,10 +13,11 @@ import {
  FaClinicMedical,
  FaTimes,
 } from 'react-icons/fa'
+import * as FaIcons from 'react-icons/fa'
 // Using <img> for user-uploaded profile images (SVG/dynamic content)
 import type { IconType } from 'react-icons'
 
-type SearchCategory = 'all' | 'doctors' | 'nurses' | 'nannies' | 'medicines' | 'emergency' | 'pharmacy' | 'lab'
+type SearchCategory = string
 
 interface CategoryTab {
  id: SearchCategory
@@ -33,16 +34,21 @@ interface AutocompleteResult {
  image?: string | null
 }
 
-const CATEGORIES: CategoryTab[] = [
- { id: 'all', label: 'All', icon: FaSearch },
- { id: 'doctors', label: 'Doctors', icon: FaUserMd },
- { id: 'nurses', label: 'Nurses', icon: FaUserNurse },
- { id: 'nannies', label: 'Nannies', icon: FaBaby },
- { id: 'medicines', label: 'Medicines', icon: FaPills },
- { id: 'pharmacy', label: 'Pharmacy', icon: FaClinicMedical },
- { id: 'emergency', label: 'Emergency', icon: FaAmbulance },
- { id: 'lab', label: 'Lab Tests', icon: FaFlask },
-]
+interface RoleFromApi {
+ code: string
+ label: string
+ slug: string
+ icon: string
+}
+
+// Static tabs that aren't provider roles — kept around the dynamic role list.
+const STATIC_LEAD_TAB: CategoryTab = { id: 'all', label: 'All', icon: FaSearch }
+const STATIC_TAIL_TAB: CategoryTab = { id: 'medicines', label: 'Medicines', icon: FaPills }
+
+function resolveRoleIcon(name: string | null | undefined): IconType {
+ if (!name) return FaUserMd
+ return (FaIcons as Record<string, IconType>)[name] || FaUserMd
+}
 
 const CATEGORY_ICONS: Record<string, IconType> = {
  doctors: FaUserMd,
@@ -76,9 +82,30 @@ export default function SearchAutocomplete({ variant = 'hero', placeholder }: Se
  const [isOpen, setIsOpen] = useState(false)
  const [loading, setLoading] = useState(false)
  const [highlightIndex, setHighlightIndex] = useState(-1)
+ const [categories, setCategories] = useState<CategoryTab[]>([STATIC_LEAD_TAB, STATIC_TAIL_TAB])
  const containerRef = useRef<HTMLDivElement>(null)
  const inputRef = useRef<HTMLInputElement>(null)
  const router = useRouter()
+
+ // Load provider roles from the DB so the filter chips always reflect the
+ // current ProviderRole table — Regional Admins can add roles and they show
+ // up here automatically with no code change.
+ useEffect(() => {
+  let cancelled = false
+  fetch('/api/roles?searchEnabled=true')
+   .then(r => r.json())
+   .then(json => {
+    if (cancelled || !json?.success || !Array.isArray(json.data)) return
+    const roleTabs: CategoryTab[] = (json.data as RoleFromApi[]).map(role => ({
+     id: role.slug,
+     label: role.label,
+     icon: resolveRoleIcon(role.icon),
+    }))
+    setCategories([STATIC_LEAD_TAB, ...roleTabs, STATIC_TAIL_TAB])
+   })
+   .catch(() => { /* fall back to static lead+tail tabs */ })
+  return () => { cancelled = true }
+ }, [])
 
  // Debounced search
  const fetchResults = useCallback(async (q: string, cat: SearchCategory) => {
@@ -157,10 +184,10 @@ export default function SearchAutocomplete({ variant = 'hero', placeholder }: Se
 
  return (
  <div ref={containerRef} className={`relative ${isHero ? 'w-full max-w-2xl mx-auto lg:mx-0' : 'w-full'}`}>
- {/* Category Tabs (hero variant only) */}
+ {/* Category Tabs (hero variant only) — populated from /api/roles?searchEnabled=true */}
  {isHero && (
  <div className="flex flex-wrap gap-1.5 mb-3 justify-center lg:justify-start">
- {CATEGORIES.map((cat) => {
+ {categories.map((cat) => {
  const Icon = cat.icon
  return (
  <button
@@ -205,7 +232,7 @@ export default function SearchAutocomplete({ variant = 'hero', placeholder }: Se
  onKeyDown={handleKeyDown}
  placeholder={placeholder || (category === 'all'
  ? 'Search doctors, medicines, nurses, pharmacies...'
- : `Search ${CATEGORIES.find(c => c.id === category)?.label.toLowerCase()}...`)}
+ : `Search ${categories.find(c => c.id === category)?.label.toLowerCase() ?? ''}...`)}
  className={
  isHero
  ? 'w-full px-4 py-2.5 sm:py-3 text-gray-700 outline-none rounded-l-xl text-sm sm:text-base bg-white/90 placeholder-gray-400'

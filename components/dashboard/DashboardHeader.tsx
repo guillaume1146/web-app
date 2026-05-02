@@ -172,7 +172,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  // Fetch user's subscription plan
  useEffect(() => {
  if (!userId) return
- fetch(`/api/users/${userId}/subscription`)
+ fetch(`/api/users/${userId}/subscription`, { credentials: 'include' })
  .then(r => r.json())
  .then(json => {
  if (json.success && json.data?.hasSubscription && json.data.plan) {
@@ -188,7 +188,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  if (!userId) return
  setLoadingNotifs(true)
  try {
- const res = await fetch(`/api/users/${userId}/notifications?limit=10`)
+ const res = await fetch(`/api/users/${userId}/notifications?limit=10`, { credentials: 'include' })
  const data = await res.json()
  if (data.data) {
  setNotifications(data.data)
@@ -215,6 +215,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({}),
+ credentials: 'include',
  })
  setNotifications(prev => prev.map(n => ({ ...n, readAt: new Date().toISOString() })))
  } catch {
@@ -238,7 +239,14 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  // Real-time notification listener
  useEffect(() => {
  const handler = (e: CustomEvent<NotificationItem>) => {
- setNotifications(prev => [e.detail, ...prev].slice(0, 10))
+  const incoming = e.detail
+  // Defensive dedupe: ignore the same id landing twice (guards against
+  // any duplicate-event leak so the dropdown list doesn't get duplicate
+  // React keys).
+  setNotifications(prev => {
+   if (incoming?.id && prev.some(n => n.id === incoming.id)) return prev
+   return [incoming, ...prev].slice(0, 10)
+  })
  }
  window.addEventListener('notification:new' as string, handler as EventListener)
  return () => window.removeEventListener('notification:new' as string, handler as EventListener)
@@ -251,7 +259,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  if (!userId) return
  const fetchUnreadCount = async () => {
  try {
- const res = await fetch(`/api/users/${userId}/notifications?unread=true&limit=1`)
+ const res = await fetch(`/api/users/${userId}/notifications?unread=true&limit=1`, { credentials: 'include' })
  const data = await res.json()
  if (data.meta?.unreadCount != null) {
  setAutoUnreadCount(data.meta.unreadCount)
@@ -272,7 +280,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  if (!userId || !networkHref) return
  const fetchPendingConnections = async () => {
  try {
- const res = await fetch(`/api/connections?userId=${userId}&type=received&status=pending`)
+ const res = await fetch(`/api/connections?userId=${userId}&type=received&status=pending`, { credentials: 'include' })
  const data = await res.json()
  if (data.success && Array.isArray(data.data)) {
  setPendingConnectionCount(data.data.length)

@@ -4,16 +4,12 @@ import { useState, FormEvent, ChangeEvent, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { userTypes, documentRequirements } from './constants'
-import { SignupFormData, Document } from './types'
+import { SignupFormData } from './types'
 import ProgressSteps from './ProgressSteps'
 import AccountTypeStep from './AccountTypeStep'
 import BasicInfoStep from './BasicInfoStep'
-import DocumentUploadStep from './DocumentUploadStep'
-import SubscriptionStep from './SubscriptionStep'
-import VerificationStep from './VerificationStep'
 import NavigationButtons from './NavigationButtons'
 import LegalModals from './LegalModals'
-import { useDocumentVerification } from './hooks/useDocumentVerification'
 import { captureReferralParams, getTrackingId, setTrackingId, clearReferralTracking } from '@/lib/referral-tracking'
 
 export default function RegistrationForm() {
@@ -24,7 +20,6 @@ export default function RegistrationForm() {
  const [isSubmitting, setIsSubmitting] = useState(false)
  const [submissionSuccess, setSubmissionSuccess] = useState(false)
  const [submissionError, setSubmissionError] = useState<string | null>(null)
- const [documents, setDocuments] = useState<Document[]>(documentRequirements.patient)
 
  // Modal states
  const [disclaimerOpen, setDisclaimerOpen] = useState(false)
@@ -54,9 +49,6 @@ export default function RegistrationForm() {
  agreeToPrivacy: false,
  agreeToDisclaimer: false
  })
-
- // Document OCR verification
- const { verificationResults, verifyDocument: verifyDoc, resetVerification } = useDocumentVerification(formData.fullName)
 
  // Listen for custom events to open modals
  useEffect(() => {
@@ -120,39 +112,6 @@ export default function RegistrationForm() {
  const handleUserTypeChange = (userTypeId: string) => {
  setSelectedUserType(userTypeId)
  setFormData(prev => ({ ...prev, userType: userTypeId }))
- setDocuments(documentRequirements[userTypeId] || [])
- }
-
- const handleFileUpload = (documentId: string, file: File) => {
- setDocuments(prev => prev.map(doc =>
- doc.id === documentId
- ? { ...doc, file, uploaded: true }
- : doc
- ))
- // Trigger OCR verification if user has entered their name
- if (formData.fullName.trim().length >= 2) {
- verifyDoc(documentId, file)
- }
- }
-
- const removeFile = (documentId: string) => {
- setDocuments(prev => prev.map(doc =>
- doc.id === documentId
- ? { ...doc, file: undefined, uploaded: false }
- : doc
- ))
- resetVerification(documentId)
- }
-
- const handleSkipDocument = (documentId: string, skipped: boolean) => {
- setDocuments(prev => prev.map(doc =>
- doc.id === documentId
- ? { ...doc, skipped, ...(skipped ? { file: undefined, uploaded: false } : {}) }
- : doc
- ))
- if (skipped) {
- resetVerification(documentId)
- }
  }
 
  const validateStep = (step: number): boolean => {
@@ -167,27 +126,10 @@ export default function RegistrationForm() {
 
  if (!baseValid) return false
 
- // Additional validation for specific user types
- if (formData.userType === 'corporate') {
- return !!(formData.companyName && formData.jobTitle && formData.companyAddress)
- }
-
- if (formData.userType === 'regional-admin') {
- return !!(formData.targetCountry && formData.businessPlan)
- }
+ // Agreement checkboxes must be checked
+ if (!formData.agreeToTerms || !formData.agreeToPrivacy || !formData.agreeToDisclaimer) return false
 
  return true
- case 3:
- const requiredDocs = documents.filter(doc => doc.required)
- return requiredDocs.every(doc => doc.uploaded || doc.skipped)
- case 4:
- // Plan selection is optional — always valid
- return true
- case 5:
- // For step 5, we just need the required documents uploaded or skipped
- // The checkboxes will be validated in handleSubmit
- const step5RequiredDocs = documents.filter(doc => doc.required)
- return step5RequiredDocs.every(doc => doc.uploaded || doc.skipped)
  default:
  return true
  }
@@ -195,7 +137,14 @@ export default function RegistrationForm() {
 
  const nextStep = () => {
  if (validateStep(currentStep)) {
- setCurrentStep(prev => Math.min(prev + 1, 5))
+ // On step 2, go to step 3 which auto-submits
+ if (currentStep === 2) {
+ setCurrentStep(3)
+ // Auto-submit on reaching step 3
+ handleSubmit(new Event('submit') as unknown as FormEvent)
+ return
+ }
+ setCurrentStep(prev => Math.min(prev + 1, 3))
  }
  }
 
@@ -210,40 +159,11 @@ export default function RegistrationForm() {
  setSubmissionError(null)
 
  try {
- // Build document verification summary
- const documentVerifications = Object.values(verificationResults).map(v => ({
- documentId: v.documentId,
- verified: v.status === 'verified',
- confidence: v.confidence,
- }))
-
- // Collect skipped document IDs
- const skippedDocuments = documents
- .filter(doc => doc.required && doc.skipped)
+ // Collect required document IDs for this user type (they will upload post-registration)
+ const requiredDocs = documentRequirements[formData.userType] || []
+ const skippedDocuments = requiredDocs
+ .filter(doc => doc.required)
  .map(doc => doc.id)
-
- // Upload document files and collect URLs for database storage
- const documentUrls: { name: string; type: string; url: string; size?: number }[] = []
- for (const doc of documents) {
- if (doc.file && doc.uploaded && !doc.skipped) {
- try {
- const fd = new FormData()
- fd.append('file', doc.file)
- const uploadRes = await fetch('/api/upload/registration', { method: 'POST', body: fd })
- const uploadResult = await uploadRes.json()
- if (uploadResult.success) {
- documentUrls.push({
- name: doc.name,
- type: doc.id,
- url: uploadResult.data.url,
- size: uploadResult.data.size,
- })
- }
- } catch {
- // Continue with other documents if one fails
- }
- }
- }
 
  const response = await fetch('/api/auth/register', {
  method: 'POST',
@@ -251,8 +171,8 @@ export default function RegistrationForm() {
  body: JSON.stringify({
  ...formData,
  profileImage: formData.profileImageUrl || undefined,
- documentUrls,
- documentVerifications,
+ documentUrls: [],
+ documentVerifications: [],
  skippedDocuments,
  trackingId: getTrackingId() || undefined,
  }),
@@ -267,18 +187,30 @@ export default function RegistrationForm() {
  // Clear referral tracking data
  clearReferralTracking()
 
+ // Persist user in localStorage so the app knows who is logged in
+ if (result.user) {
+   localStorage.setItem('mediwyz_user', JSON.stringify(result.user))
+ }
+
  // Set success state
  setSubmissionSuccess(true)
 
- // Wait a moment to show success, then redirect
- setTimeout(() => {
- router.push('/login?registration=success')
- }, 2000)
+ if (result.redirectPath) {
+   // Auto-logged in — go directly to dashboard
+   router.push(result.redirectPath)
+ } else {
+   // Pending account (admin approval required) — send to login
+   setTimeout(() => {
+     router.push('/login?registration=success')
+   }, 2000)
+ }
 
  } catch (error) {
  console.error('Registration error:', error)
  const message = error instanceof Error ? error.message : 'Registration failed. Please try again later or contact support.'
  setSubmissionError(message)
+ // Go back to step 2 so user can fix and retry
+ setCurrentStep(2)
  } finally {
  setIsSubmitting(false)
  }
@@ -293,7 +225,7 @@ export default function RegistrationForm() {
  {/* Header */}
  <div className="text-center mb-4 sm:mb-8">
  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">Join MediWyz</h1>
- <p className="text-gray-600 text-sm sm:text-base md:text-lg">Create your professional healthcare account</p>
+ <p className="text-gray-600 text-sm sm:text-base md:text-lg">Create your healthcare account in under a minute</p>
  </div>
 
  {/* Progress Steps */}
@@ -309,32 +241,23 @@ export default function RegistrationForm() {
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
  </svg>
  </div>
- <h2 className="text-3xl font-bold text-green-600 mb-4">Registration Submitted Successfully!</h2>
+ <h2 className="text-3xl font-bold text-green-600 mb-4">Account Created Successfully!</h2>
  <div className="max-w-md mx-auto">
  <p className="text-gray-600 mb-4">
- Your registration has been received and is being processed.
+ Your account has been created. You can log in immediately.
  </p>
- {documents.some(doc => doc.skipped) && (
+ {formData.userType !== 'patient' && (
  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
  <p className="text-amber-800 text-sm">
- You have deferred {documents.filter(doc => doc.skipped).length} document{documents.filter(doc => doc.skipped).length > 1 ? 's' : ''}.
- Please upload them from your account settings to complete your verification.
+ To unlock all features, please upload your required documents from your account settings after logging in.
  </p>
  </div>
  )}
  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
  <p className="text-blue-800 text-sm">
- {formData.userType === 'corporate' || formData.userType === 'regional-admin'
- ? 'Your account requires super administrator approval and will be reviewed within 2-5 business days.'
- : documents.some(doc => doc.skipped)
- ? 'Your account is pending until all required documents are provided and verified.'
- : 'Your account will be verified within 2-5 business days.'
- }
+ Taking you to your dashboard...
  </p>
  </div>
- <p className="text-gray-500 text-sm">
- You will receive a confirmation email shortly. Redirecting to login page...
- </p>
  <div className="mt-4">
  <div className="flex justify-center">
  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
@@ -349,13 +272,13 @@ export default function RegistrationForm() {
  <>
  {/* Step 1: Account Type Selection */}
  {currentStep === 1 && (
- <AccountTypeStep 
- selectedUserType={selectedUserType} 
- onUserTypeChange={handleUserTypeChange} 
+ <AccountTypeStep
+ selectedUserType={selectedUserType}
+ onUserTypeChange={handleUserTypeChange}
  />
  )}
 
- {/* Step 2: Basic Information */}
+ {/* Step 2: Basic Information + Agreement */}
  {currentStep === 2 && (
  <BasicInfoStep
  formData={formData}
@@ -369,38 +292,15 @@ export default function RegistrationForm() {
  />
  )}
 
- {/* Step 3: Document Upload */}
- {currentStep === 3 && (
- <DocumentUploadStep
- documents={documents}
- onFileUpload={handleFileUpload}
- onRemoveFile={removeFile}
- onSkipDocument={handleSkipDocument}
- verificationResults={verificationResults}
- />
- )}
-
- {/* Step 4: Plan Selection */}
- {currentStep === 4 && (
- <SubscriptionStep
- regionId={formData.regionId}
- userType={formData.userType}
- selectedPlanId={formData.selectedPlanId}
- selectedBusinessPlanId={formData.selectedBusinessPlanId}
- onSelectPlan={(id) => setFormData(prev => ({ ...prev, selectedPlanId: id }))}
- onSelectBusinessPlan={(id) => setFormData(prev => ({ ...prev, selectedBusinessPlanId: id }))}
- />
- )}
-
- {/* Step 5: Verification */}
- {currentStep === 5 && (
- <VerificationStep
- formData={formData}
- selectedType={selectedType}
- documents={documents}
- verificationResults={verificationResults}
- onFormChange={handleChange}
- />
+ {/* Step 3: Creating Account (auto-submit in progress) */}
+ {currentStep === 3 && !submissionError && (
+ <div className="text-center py-12">
+ <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+ <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+ </div>
+ <h2 className="text-2xl font-bold text-gray-900 mb-2">Creating Your Account...</h2>
+ <p className="text-gray-600">Please wait while we set up your account.</p>
+ </div>
  )}
 
  {/* Inline submission error */}
@@ -424,7 +324,8 @@ export default function RegistrationForm() {
  </div>
  )}
 
- {/* Navigation Buttons */}
+ {/* Navigation Buttons (only show on steps 1-2) */}
+ {currentStep <= 2 && (
  <NavigationButtons
  currentStep={currentStep}
  isSubmitting={isSubmitting}
@@ -433,6 +334,7 @@ export default function RegistrationForm() {
  onNext={nextStep}
  onSubmit={handleSubmit}
  />
+ )}
  </>
  )}
  </div>

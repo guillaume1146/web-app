@@ -58,7 +58,7 @@ export default function AvailabilitySettingsTab({ userId }: AvailabilitySettings
  const fetchAvailability = useCallback(async () => {
  try {
  setLoading(true)
- const res = await fetch(`/api/users/${userId}/availability`)
+ const res = await fetch(`/api/users/${userId}/availability`, { credentials: 'include' })
  const data = await res.json()
 
  if (data.success && data.data) {
@@ -188,6 +188,7 @@ export default function AvailabilitySettingsTab({ userId }: AvailabilitySettings
  method: 'PUT',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ slots }),
+ credentials: 'include',
  })
 
  const data = await res.json()

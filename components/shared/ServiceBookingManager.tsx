@@ -499,7 +499,7 @@ export function doctorBookingConfig(): ServiceBookingConfig {
  return {
  title: 'Appointments',
  subtitle: 'Manage your patient appointments',
- fetchPath: '/api/doctors/{userId}/appointments',
+ fetchPath: '/api/providers/{userId}/appointments',
  actionPath: '/api/bookings/doctor/{bookingId}',
  bookingType: 'doctor',
  accentColor: 'blue',
@@ -530,7 +530,7 @@ export function nurseBookingConfig(): ServiceBookingConfig {
  return {
  title: 'Nurse Bookings',
  subtitle: 'Manage your patient bookings',
- fetchPath: '/api/nurses/{userId}/booking-requests',
+ fetchPath: '/api/providers/{userId}/booking-requests',
  actionPath: '/api/bookings/nurse/{bookingId}',
  bookingType: 'nurse',
  accentColor: 'teal',
@@ -553,7 +553,7 @@ export function nannyBookingConfig(): ServiceBookingConfig {
  return {
  title: 'Childcare Bookings',
  subtitle: 'Manage your childcare bookings',
- fetchPath: '/api/nannies/{userId}/booking-requests',
+ fetchPath: '/api/providers/{userId}/booking-requests',
  actionPath: '/api/bookings/nanny/{bookingId}',
  bookingType: 'nanny',
  accentColor: 'purple',
@@ -578,7 +578,7 @@ export function labTestBookingConfig(): ServiceBookingConfig {
  return {
  title: 'Lab Test Bookings',
  subtitle: 'Manage lab test requests',
- fetchPath: '/api/lab-techs/{userId}/booking-requests',
+ fetchPath: '/api/providers/{userId}/booking-requests',
  actionPath: '/api/bookings/lab-test/{bookingId}',
  bookingType: 'lab_test',
  accentColor: 'cyan',
@@ -603,7 +603,7 @@ export function emergencyBookingConfig(): ServiceBookingConfig {
  return {
  title: 'Emergency Bookings',
  subtitle: 'Manage emergency service requests',
- fetchPath: '/api/responders/{userId}/calls',
+ fetchPath: '/api/providers/{userId}/calls',
  actionPath: '/api/bookings/emergency/{bookingId}',
  bookingType: 'emergency',
  accentColor: 'red',

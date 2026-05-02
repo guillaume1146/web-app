@@ -44,7 +44,7 @@ export default function GenericBookNursePage({ params }: { params: Promise<{ id:
  try {
  setLoading(true)
 
- const nursesRes = await fetch('/api/search/nurses')
+ const nursesRes = await fetch('/api/search/providers?type=NURSE')
  const nursesData = await nursesRes.json()
 
  if (nursesData.success && nursesData.data) {
@@ -60,7 +60,7 @@ export default function GenericBookNursePage({ params }: { params: Promise<{ id:
 
  const userId = getUserId()
  if (userId) {
- const walletRes = await fetch(`/api/users/${userId}/wallet`)
+ const walletRes = await fetch(`/api/users/${userId}/wallet`, { credentials: 'include' })
  const walletData = await walletRes.json()
  if (walletData.success && walletData.data) {
  setWalletBalance(walletData.data.balance)
@@ -81,10 +81,12 @@ export default function GenericBookNursePage({ params }: { params: Promise<{ id:
  setSubmitData(data)
 
  try {
- const res = await fetch('/api/bookings/nurse', {
+ const res = await fetch('/api/bookings', {
+ credentials: 'include',
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
+ providerType: 'NURSE',
  nurseId: id,
  consultationType: data.consultationType,
  scheduledDate: data.scheduledDate,

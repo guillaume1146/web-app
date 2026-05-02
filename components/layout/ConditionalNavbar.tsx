@@ -13,7 +13,8 @@ const DASHBOARD_PREFIXES = [
  // Dynamic provider route
  '/provider/',
  // Clean URL dashboard routes (no role prefix)
- '/feed', '/practice', '/inventory', '/services', '/workflows',
+ // NOTE: '/feed' intentionally omitted — public page, guests need the marketing navbar
+ '/practice', '/inventory', '/services', '/workflows',
  '/billing', '/video', '/messages', '/ai-assistant', '/my-health',
  '/profile', '/network', '/booking-requests', '/bookings/',
  '/my-consultations', '/my-nurse-services', '/my-childcare',
@@ -23,12 +24,21 @@ const DASHBOARD_PREFIXES = [
 ]
 
 export default function ConditionalNavbar() {
- const pathname = usePathname()
+ const pathname = usePathname() || ''
  const { user } = useUser()
+
+ // 1. Any authenticated user is always inside the dashboard — show the
+ //    role-specific header from `DashboardLayout`, never the marketing
+ //    Navbar. Previously path-based detection alone could miss routes
+ //    (e.g. if a prefix list drifts), causing double headers. Auth state
+ //    is the canonical signal.
+ if (user) return null
+
+ // 2. For anonymous visitors, hide on known dashboard-ish paths (login,
+ //    signup do NOT want the marketing nav either).
  const isDashboard = DASHBOARD_PREFIXES.some((p) => pathname.startsWith(p))
  || DASHBOARD_PREFIXES.some((p) => pathname === p.slice(0, -1))
 
- // Search pages always show navbar (they're public, no sidebar)
  if (isDashboard) return null
  return <Navbar />
 }

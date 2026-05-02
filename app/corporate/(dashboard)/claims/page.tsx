@@ -28,7 +28,7 @@ export default function CorporateClaimsPage() {
 
  const fetchClaims = async () => {
  try {
- const res = await fetch(`/api/corporate/${userId}/claims`)
+ const res = await fetch(`/api/corporate/${userId}/claims`, { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success) setClaims(json.data || [])

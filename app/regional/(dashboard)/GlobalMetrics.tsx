@@ -22,7 +22,7 @@ export default function GlobalMetrics({ timeRange, region }: { timeRange: string
  const fetchMetrics = async () => {
  setLoading(true)
  try {
- const res = await fetch('/api/admin/metrics')
+ const res = await fetch('/api/admin/metrics', { credentials: 'include' })
  if (!res.ok) throw new Error('Failed to fetch')
  const json = await res.json()
  if (!json.success) throw new Error(json.message)

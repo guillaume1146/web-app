@@ -5,7 +5,7 @@ export async function seedDocumentsAndEnrichment(prisma: PrismaClient) {
 
   // ── Documents ──────────────────────────────────────────────────────────
   const patients = await prisma.user.findMany({
-    where: { userType: 'PATIENT' },
+    where: { userType: 'MEMBER' },
     select: { id: true, firstName: true },
     take: 5,
   })
@@ -61,7 +61,7 @@ export async function seedDocumentsAndEnrichment(prisma: PrismaClient) {
   // ── More wallet transactions for admin revenue metrics ──────────────────
   // Add transactions for additional patients to give richer revenue data
   const allPatients = await prisma.user.findMany({
-    where: { userType: 'PATIENT' },
+    where: { userType: 'MEMBER' },
     select: { id: true, wallet: { select: { id: true, balance: true } } },
     take: 5,
     skip: 1, // Skip first patient (already has transactions)

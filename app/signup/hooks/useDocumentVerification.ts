@@ -38,6 +38,7 @@ export function useDocumentVerification(fullName: string) {
         const response = await fetch('/api/documents/verify', {
           method: 'POST',
           body: formData,
+          credentials: 'include',
         })
 
         const result = await response.json()

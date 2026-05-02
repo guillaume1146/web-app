@@ -192,46 +192,57 @@ export default function EmergencyPage() {
  const fetchServices = useCallback(async () => {
  try {
  setIsLoading(true)
- const res = await fetch('/api/search/emergency')
+ const res = await fetch('/api/search/providers?type=EMERGENCY_WORKER')
  if (!res.ok) throw new Error('Failed to fetch emergency services')
  const json = await res.json()
- interface ApiEmergencyService {
+ // Generic provider shape (same across all roles): { id, name, firstName, lastName,
+ // profileImage, address, phone, verified, certifications, vehicleType, responseZone,
+ // emtLevel, specializations, rating, bio }
+ interface ProviderResponse {
  id: string
- worker?: { name?: string; phone?: string; certifications?: string[]; vehicleType?: string; verified?: boolean; profileImage?: string }
- serviceName?: string
- serviceType?: string
- responseTime?: string
- available24h?: boolean
- coverageArea?: string
- contactNumber?: string
+ name?: string
+ firstName?: string
+ lastName?: string
+ profileImage?: string | null
+ address?: string | null
+ phone?: string | null
+ verified?: boolean
+ certifications?: string[]
+ vehicleType?: string | null
+ responseZone?: string | null
+ emtLevel?: string | null
  specializations?: string[]
- description?: string
+ rating?: number
+ bio?: string
  }
- const mapped = ((json.data || json) as ApiEmergencyService[]).map((s: ApiEmergencyService) => ({
+ const mapped = ((json.data || []) as ProviderResponse[]).map((s) => {
+ const displayName = s.name || `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim() || 'Emergency Service'
+ return {
  id: s.id,
- name: s.worker?.name || s.serviceName || 'Emergency Service',
- type: s.serviceType || 'Emergency Service',
- category: s.serviceType || 'Medical Emergency',
- responseTime: s.responseTime || 'N/A',
- availability: s.available24h ? '24/7' : 'Limited Hours',
- rating: 4.7,
- reviews: Math.floor(Math.random() * 400) + 50,
- location: s.coverageArea || 'Mauritius',
- coverage: s.coverageArea || 'Local Area',
- phone: s.contactNumber || '114',
- alternatePhone: s.worker?.phone || '',
+ name: displayName,
+ type: s.emtLevel || 'Emergency Service',
+ category: s.emtLevel || 'Medical Emergency',
+ responseTime: s.responseZone || 'N/A',
+ availability: '24/7',
+ rating: s.rating || 0,
+ reviews: 0,
+ location: s.address || s.responseZone || 'Mauritius',
+ coverage: s.responseZone || 'Local Area',
+ phone: s.phone || '114',
+ alternatePhone: '',
  email: '',
- services: s.specializations || [],
+ services: s.specializations || s.certifications || [],
  equipment: [],
- certifications: s.worker?.certifications || [],
- vehicleTypes: s.worker?.vehicleType ? [s.worker.vehicleType] : [],
+ certifications: s.certifications || [],
+ vehicleTypes: s.vehicleType ? [s.vehicleType] : [],
  languages: ['English', 'French', 'Creole'],
  gpsTracking: true,
- verified: s.worker?.verified || false,
- governmentApproved: s.worker?.verified || false,
- bio: s.description || '',
- avatar: s.worker?.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(s.serviceName || 'ES')}&backgroundColor=3b82f6`
- }))
+ verified: !!s.verified,
+ governmentApproved: !!s.verified,
+ bio: s.bio || '',
+ avatar: s.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(displayName)}&backgroundColor=3b82f6`,
+ }
+ })
  setAllServices(mapped)
  setSearchResults(mapped)
  } catch (err) {

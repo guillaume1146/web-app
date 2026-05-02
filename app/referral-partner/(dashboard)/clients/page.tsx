@@ -25,7 +25,7 @@ export default function ClientsPage() {
 
  const fetchClients = async () => {
  try {
- const res = await fetch(`/api/referral-partners/${userId}/dashboard`)
+ const res = await fetch(`/api/referral-partners/${userId}/dashboard`, { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data.clients) {

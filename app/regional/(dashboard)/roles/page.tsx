@@ -101,7 +101,7 @@ export default function RolesManagementPage() {
 
   const fetchRoles = useCallback(async () => {
     try {
-      const res = await fetch('/api/regional/roles')
+      const res = await fetch('/api/regional/roles', { credentials: 'include' })
       const json = await res.json()
       if (json.success) setRoles(json.data)
     } catch { /* ignore */ }
@@ -164,6 +164,7 @@ export default function RolesManagementPage() {
       if (editingId) {
         const res = await fetch(`/api/regional/roles/${editingId}`, {
           method: 'PATCH',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             label: form.label,
@@ -183,6 +184,7 @@ export default function RolesManagementPage() {
       } else {
         const res = await fetch('/api/regional/roles', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(form),
         })
@@ -200,7 +202,7 @@ export default function RolesManagementPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Deactivate this role?')) return
-    await fetch(`/api/regional/roles/${id}`, { method: 'DELETE' })
+    await fetch(`/api/regional/roles/${id}`, { method: 'DELETE', credentials: 'include' })
     fetchRoles()
   }
 

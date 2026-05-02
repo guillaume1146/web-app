@@ -36,7 +36,7 @@ export async function seedWallets(prisma: PrismaClient) {
 
   // Add sample transactions for first patient and first doctor
   const patient = await prisma.user.findFirst({
-    where: { userType: 'PATIENT' },
+    where: { userType: 'MEMBER' },
     select: { id: true, wallet: { select: { id: true, balance: true } } },
     orderBy: { createdAt: 'asc' },
   })

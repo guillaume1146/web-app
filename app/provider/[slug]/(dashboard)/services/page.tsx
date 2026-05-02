@@ -1,6 +1,7 @@
 'use client'
 
 import { useParams } from 'next/navigation'
+import { useDashboardUser } from '@/hooks/useDashboardUser'
 import ServiceCatalogManager from '@/components/shared/ServiceCatalogManager'
 import type { ServiceCatalogConfig } from '@/components/shared/ServiceCatalogManager'
 
@@ -16,12 +17,14 @@ const CATEGORIES = [
 export default function DynamicServicesPage() {
   const params = useParams()
   const slug = params.slug as string
+  const user = useDashboardUser()
 
   const config: ServiceCatalogConfig = {
     title: 'My Services',
     apiBasePath: '/api/services/my-services',
     createApiPath: '/api/services/custom',
     categoryOptions: CATEGORIES,
+    providerType: user?.userType?.toUpperCase(),
     workflowCreateHref: `/provider/${slug}/workflows/create`,
     fields: [
       { key: 'serviceName', label: 'Service Name', type: 'text', required: true, placeholder: 'e.g. Initial Consultation' },

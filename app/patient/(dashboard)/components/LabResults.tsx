@@ -88,16 +88,16 @@ const LabResults: React.FC<Props> = ({ patientData }) => {
  const fetchLabTechs = async () => {
  setLoadingLabTechs(true)
  try {
- const res = await fetch('/api/lab-techs/available')
+ const res = await fetch('/api/search/providers?type=LAB_TECHNICIAN')
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
  // eslint-disable-next-line @typescript-eslint/no-explicit-any
  setAvailableLabTechs(json.data.map((lt: any) => ({
  id: lt.id,
- userId: lt.userId,
- name: lt.name,
- subtitle: `${lt.testCount} tests available`,
+ userId: lt.id,
+ name: `${lt.firstName} ${lt.lastName}`,
+ subtitle: `${lt.testCount || 0} tests available`,
  tags: lt.specializations?.slice(0, 3) || [],
  })))
  }
@@ -120,7 +120,7 @@ const LabResults: React.FC<Props> = ({ patientData }) => {
  const fetchTests = async () => {
  setLoadingTests(true)
  try {
- const res = await fetch(`/api/lab-techs/${selectedLabTechId}/tests`)
+ const res = await fetch(`/api/providers/${selectedLabTechId}/tests`, { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
@@ -152,7 +152,7 @@ const LabResults: React.FC<Props> = ({ patientData }) => {
  // Fetch lab test bookings for this patient
  const fetchBookings = useCallback(async () => {
  try {
- const res = await fetch(`/api/patients/${patientData.id}/bookings`)
+ const res = await fetch('/api/bookings/unified?role=patient', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
@@ -224,10 +224,12 @@ const LabResults: React.FC<Props> = ({ patientData }) => {
  const sampleTypes = selectedTests.map(id => availableTests.find(t => t.id === id)?.sampleType).filter(Boolean).join(', ')
 
  try {
- const res = await fetch('/api/bookings/lab-test', {
+ const res = await fetch('/api/bookings', {
  method: 'POST',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
+ providerType: 'LAB_TECHNICIAN',
  labTechId: selectedLabTechId,
  testName: testNames,
  scheduledDate,

@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useDashboardUser } from '@/hooks/useDashboardUser'
 import { DashboardLoadingState } from '@/components/dashboard'
-import { FiSettings, FiChevronDown, FiChevronUp, FiCheckCircle, FiList, FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi'
+import { FiSettings, FiChevronDown, FiChevronUp, FiCheckCircle, FiList, FiPlus, FiEdit2, FiTrash2, FiBookOpen, FiX, FiCopy } from 'react-icons/fi'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import WorkflowStepper from '@/components/workflow/WorkflowStepper'
 
 interface WorkflowTemplate {
   id: string
@@ -44,12 +46,66 @@ const MODE_LABELS: Record<string, string> = {
   video: 'Video Call',
 }
 
+interface TemplateStats {
+  today: number
+  week: number
+  total: number
+  completed: number
+  dropOffRate: number
+}
+
+interface LibraryTemplate {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  providerType: string
+  serviceMode: string
+  category: string | null
+  steps: unknown[]
+}
+
 export default function RegionalWorkflowsPage() {
   const user = useDashboardUser()
+  const router = useRouter()
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([])
+  const [stats, setStats] = useState<Record<string, TemplateStats>>({})
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filterType, setFilterType] = useState<string>('')
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [library, setLibrary] = useState<LibraryTemplate[]>([])
+  const [libraryFilter, setLibraryFilter] = useState('')
+  const [cloningId, setCloningId] = useState<string | null>(null)
+
+  async function openLibrary() {
+    setLibraryOpen(true)
+    if (library.length > 0) return
+    try {
+      const res = await fetch('/api/workflow/templates/library', { credentials: 'include' })
+      const json = await res.json()
+      if (json.success) setLibrary(json.data || [])
+    } catch {
+      // Silent — modal shows empty state.
+    }
+  }
+
+  async function cloneTemplate(tpl: LibraryTemplate) {
+    setCloningId(tpl.id)
+    try {
+      const res = await fetch(`/api/workflow/templates/${tpl.id}/clone`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: `${tpl.name} (copy)` }),
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.message || 'Clone failed')
+      setLibraryOpen(false)
+      router.push(`/regional/workflows/${json.data.id}`)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Clone failed')
+    } finally { setCloningId(null) }
+  }
 
   useEffect(() => {
     fetchTemplates()
@@ -57,9 +113,14 @@ export default function RegionalWorkflowsPage() {
 
   async function fetchTemplates() {
     try {
-      const res = await fetch('/api/workflow/templates')
-      const data = await res.json()
-      if (data.success) setTemplates(data.data)
+      const [tplRes, statsRes] = await Promise.all([
+        fetch('/api/workflow/templates', { credentials: 'include' }),
+        fetch('/api/workflow/templates/stats', { credentials: 'include' }),
+      ])
+      const tplJson = await tplRes.json()
+      if (tplJson.success) setTemplates(tplJson.data)
+      const statsJson = await statsRes.json().catch(() => ({ success: false }))
+      if (statsJson.success) setStats(statsJson.data || {})
     } catch {
       console.error('Failed to fetch templates')
     } finally {
@@ -70,7 +131,7 @@ export default function RegionalWorkflowsPage() {
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete workflow "${name}"? This cannot be undone.`)) return
     try {
-      const res = await fetch(`/api/workflow/templates/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/workflow/templates/${id}`, { method: 'DELETE', credentials: 'include' })
       const data = await res.json()
       if (data.success) {
         setTemplates(templates.filter(t => t.id !== id))
@@ -104,9 +165,35 @@ export default function RegionalWorkflowsPage() {
             Manage status workflows for all provider types. {templates.length} templates configured.
           </p>
         </div>
-        <Link href="/regional/workflows/create" className="bg-brand-navy hover:bg-brand-teal text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition">
-          <FiPlus className="w-4 h-4" /> Create Workflow
-        </Link>
+        <div className="flex gap-2 flex-wrap">
+          <Link
+            href="/regional/workflows/suggestions"
+            className="bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-900 px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition"
+          >
+            <FiList className="w-4 h-4" /> Workflow suggestions
+          </Link>
+          <Link
+            href="/regional/workflows/role-requests"
+            className="bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-900 px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition"
+          >
+            <FiCheckCircle className="w-4 h-4" /> Role requests
+          </Link>
+          <Link
+            href="/regional/workflows/library"
+            className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-900 px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition"
+          >
+            <FiBookOpen className="w-4 h-4" /> Browse library
+          </Link>
+          <button
+            onClick={openLibrary}
+            className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-900 px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition"
+          >
+            <FiBookOpen className="w-4 h-4" /> Start from template
+          </button>
+          <Link href="/regional/workflows/create" className="bg-brand-navy hover:bg-brand-teal text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition">
+            <FiPlus className="w-4 h-4" /> Create workflow
+          </Link>
+        </div>
       </div>
 
       {/* Filter */}
@@ -146,7 +233,7 @@ export default function RegionalWorkflowsPage() {
                       onClick={() => setExpandedId(expandedId === tpl.id ? null : tpl.id)}
                       className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition cursor-pointer"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
                           tpl.serviceMode === 'video' ? 'bg-purple-100 text-purple-700' :
                           tpl.serviceMode === 'home' ? 'bg-orange-100 text-orange-700' :
@@ -156,6 +243,39 @@ export default function RegionalWorkflowsPage() {
                         </span>
                         <span className="font-medium text-gray-900 text-sm">{tpl.name}</span>
                         <span className="text-xs text-gray-400">{tpl.steps.length} steps</span>
+                        {/* Usage metrics pulled from /api/workflow/templates/stats */}
+                        {(() => {
+                          const s = stats[tpl.id]
+                          if (!s || s.total === 0) return (
+                            <span className="text-[10px] text-gray-400 italic">no runs yet</span>
+                          )
+                          const dropColor =
+                            s.dropOffRate >= 40 ? 'text-red-600' :
+                            s.dropOffRate >= 20 ? 'text-amber-600' : 'text-emerald-600'
+                          return (
+                            <span className="flex items-center gap-2 text-[11px] text-gray-600">
+                              <span className="inline-flex items-center gap-0.5">
+                                <span className="font-semibold">{s.today}</span>
+                                <span className="text-gray-400">today</span>
+                              </span>
+                              <span className="text-gray-300">·</span>
+                              <span className="inline-flex items-center gap-0.5">
+                                <span className="font-semibold">{s.week}</span>
+                                <span className="text-gray-400">7d</span>
+                              </span>
+                              <span className="text-gray-300">·</span>
+                              <span className="inline-flex items-center gap-0.5">
+                                <span className="font-semibold">{s.total}</span>
+                                <span className="text-gray-400">total</span>
+                              </span>
+                              <span className="text-gray-300">·</span>
+                              <span className={`inline-flex items-center gap-0.5 ${dropColor}`} title="Cancelled ÷ total">
+                                <span className="font-semibold">{s.dropOffRate}%</span>
+                                <span>drop-off</span>
+                              </span>
+                            </span>
+                          )
+                        })()}
                       </div>
                       <div className="flex items-center gap-2">
                         {!tpl.isDefault && (
@@ -178,6 +298,22 @@ export default function RegionalWorkflowsPage() {
                         )}
                         {expandedId === tpl.id ? <FiChevronUp /> : <FiChevronDown />}
                       </div>
+                    </div>
+
+                    {/* Always-visible stepper preview — admins can see each
+                        template's shape at a glance without expanding. */}
+                    <div className="px-4 pb-3 -mt-1">
+                      <WorkflowStepper
+                        steps={tpl.steps.map(s => ({
+                          order: s.order,
+                          statusCode: s.statusCode,
+                          label: s.label,
+                          flags: s.flags as Record<string, unknown>,
+                          actionsForPatient: s.actionsForPatient,
+                          actionsForProvider: s.actionsForProvider,
+                        }))}
+                        variant="compact"
+                      />
                     </div>
 
                     {/* Expanded: show steps */}
@@ -251,6 +387,73 @@ export default function RegionalWorkflowsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ─── Library picker modal ─────────────────────────────────────── */}
+      {libraryOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setLibraryOpen(false)}>
+          <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Start from a template</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Pick a vetted starter — we&apos;ll clone it into edit mode so you can customise the steps, actions and notifications.</p>
+              </div>
+              <button onClick={() => setLibraryOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500">
+                <FiX />
+              </button>
+            </div>
+
+            <div className="px-5 py-3 border-b border-gray-100">
+              <input
+                value={libraryFilter}
+                onChange={(e) => setLibraryFilter(e.target.value)}
+                placeholder="Search by name, category, provider type…"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#0C6780] focus:border-transparent outline-none"
+              />
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {library.length === 0 ? (
+                <div className="py-8 text-center text-sm text-gray-500">Loading library…</div>
+              ) : (
+                <div className="space-y-2">
+                  {library
+                    .filter((t) => {
+                      const q = libraryFilter.trim().toLowerCase()
+                      if (!q) return true
+                      return [t.name, t.category ?? '', t.providerType, t.serviceMode, t.description ?? '']
+                        .some((v) => (v ?? '').toLowerCase().includes(q))
+                    })
+                    .map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => cloneTemplate(t)}
+                        disabled={cloningId === t.id}
+                        className="w-full text-left bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl p-3 transition-colors disabled:opacity-60"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                              <span className="font-semibold text-gray-900 text-sm">{t.name}</span>
+                              {t.category && <span className="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full">{t.category}</span>}
+                              <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{t.providerType.replace(/_/g, ' ')}</span>
+                              <span className="text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">{t.serviceMode}</span>
+                              <span className="text-[10px] text-gray-400">{t.steps.length} steps</span>
+                            </div>
+                            {t.description && <p className="text-xs text-gray-600 line-clamp-2">{t.description}</p>}
+                          </div>
+                          <FiCopy className={`text-gray-400 flex-shrink-0 mt-1 ${cloningId === t.id ? 'animate-pulse' : ''}`} />
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-gray-100 text-[11px] text-gray-500">
+              Cloning keeps the steps, actions, flags, and notifications. You can rename, edit, or delete anything before publishing.
+            </div>
+          </div>
         </div>
       )}
     </div>

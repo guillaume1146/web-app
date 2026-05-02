@@ -210,7 +210,7 @@ export default function InsurancePage() {
  const fetchPlans = useCallback(async () => {
  try {
  setIsLoading(true)
- const res = await fetch('/api/search/insurance')
+ const res = await fetch('/api/search/providers?type=INSURANCE_REP')
  if (!res.ok) throw new Error('Failed to fetch insurance plans')
  const data = await res.json()
  interface ApiInsurancePlan {

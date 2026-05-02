@@ -81,19 +81,30 @@ export default function RegionalAdminDashboard() {
  const [metricsLoading, setMetricsLoading] = useState(true)
  const [commissionLoading, setCommissionLoading] = useState(true)
 
- const regions = [
+ const [regions, setRegions] = useState([
  { code: 'all', name: 'All Regions', flag: '\u{1F30D}' },
- { code: 'MU', name: 'Mauritius', flag: '\u{1F1F2}\u{1F1FA}' },
- { code: 'KE', name: 'Kenya', flag: '\u{1F1F0}\u{1F1EA}' },
- { code: 'MG', name: 'Madagascar', flag: '\u{1F1F2}\u{1F1EC}' },
- { code: 'ZA', name: 'South Africa', flag: '\u{1F1FF}\u{1F1E6}' },
- { code: 'NG', name: 'Nigeria', flag: '\u{1F1F3}\u{1F1EC}' },
- ]
+ ])
+
+ useEffect(() => {
+ fetch('/api/regions')
+  .then(r => r.json())
+  .then(json => {
+   if (json.success && Array.isArray(json.data)) {
+    const mapped = json.data.map((r: { id: string; countryCode: string; name: string; flagEmoji?: string }) => ({
+     code: r.countryCode || r.id,
+     name: r.name,
+     flag: r.flagEmoji || '\u{1F3F3}',
+    }))
+    setRegions([{ code: 'all', name: 'All Regions', flag: '\u{1F30D}' }, ...mapped])
+   }
+  })
+  .catch(() => {})
+ }, [])
 
  useEffect(() => {
  const fetchAlerts = async () => {
  try {
- const res = await fetch('/api/admin/alerts')
+ const res = await fetch('/api/admin/alerts', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && Array.isArray(json.data)) setCriticalAlerts(json.data)
@@ -109,7 +120,7 @@ export default function RegionalAdminDashboard() {
  useEffect(() => {
  const fetchMetrics = async () => {
  try {
- const res = await fetch('/api/admin/metrics')
+ const res = await fetch('/api/admin/metrics', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success) setMetrics(json.data)

@@ -80,7 +80,7 @@ export default function SleepTab() {
  try {
  setLoading(true)
  setError('')
- const res = await fetch(`/api/ai/health-tracker/sleep?date=${dateStr}`)
+ const res = await fetch(`/api/ai/health-tracker/sleep?date=${dateStr}`, { credentials: 'include' })
  if (!res.ok) throw new Error('Failed to load sleep data')
  const json = await res.json()
  if (!json.success) throw new Error(json.message || 'Failed to load sleep data')
@@ -102,7 +102,7 @@ export default function SleepTab() {
 
  const handleDelete = async (id: string) => {
  try {
- const res = await fetch(`/api/ai/health-tracker/sleep/${id}`, { method: 'DELETE' })
+ const res = await fetch(`/api/ai/health-tracker/sleep/${id}`, { method: 'DELETE', credentials: 'include' })
  if (!res.ok) throw new Error('Failed to delete')
  await fetchData()
  } catch {
@@ -148,6 +148,7 @@ export default function SleepTab() {
  notes: formNotes || undefined,
  date: dateStr,
  }),
+ credentials: 'include',
  })
  if (!res.ok) throw new Error('Failed to log sleep')
  setShowAddModal(false)

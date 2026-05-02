@@ -111,8 +111,8 @@ const countries: CountryConfig[] = [
 // User type assignments per country (10 users each):
 // Index 0,1 = PATIENT, 2,3 = DOCTOR, 4 = NURSE, 5 = NANNY, 6 = PHARMACIST, 7 = LAB_TECHNICIAN, 8 = EMERGENCY_WORKER, 9 = INSURANCE_REP
 const typeAssignments: { type: UserType; idPrefix: string; profileKey: string }[] = [
-  { type: UserType.PATIENT, idPrefix: 'PAT', profileKey: 'patientProfile' },
-  { type: UserType.PATIENT, idPrefix: 'PAT', profileKey: 'patientProfile' },
+  { type: UserType.MEMBER, idPrefix: 'PAT', profileKey: 'patientProfile' },
+  { type: UserType.MEMBER, idPrefix: 'PAT', profileKey: 'patientProfile' },
   { type: UserType.DOCTOR, idPrefix: 'DOC', profileKey: 'doctorProfile' },
   { type: UserType.DOCTOR, idPrefix: 'DOC', profileKey: 'doctorProfile' },
   { type: UserType.NURSE, idPrefix: 'NUR', profileKey: 'nurseProfile' },
@@ -125,7 +125,7 @@ const typeAssignments: { type: UserType; idPrefix: string; profileKey: string }[
 
 function buildProfile(userType: UserType, profileId: string, country: CountryConfig) {
   switch (userType) {
-    case UserType.PATIENT:
+    case UserType.MEMBER:
       return {
         patientProfile: {
           create: {

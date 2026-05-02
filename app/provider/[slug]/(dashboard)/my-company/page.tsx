@@ -6,6 +6,9 @@ import {
   FaBuilding, FaUsers, FaIdCard, FaIndustry, FaPlus,
   FaCheckCircle, FaClock, FaEnvelope, FaSearch, FaUserPlus,
 } from 'react-icons/fa'
+import InsuranceMembersTable from '@/components/corporate/InsuranceMembersTable'
+import CompanyAnalytics from '@/components/corporate/CompanyAnalytics'
+import CompanyDangerZone from '@/components/corporate/CompanyDangerZone'
 
 interface Company {
   id: string
@@ -17,10 +20,9 @@ interface Company {
 
 interface Employee {
   id: string
+  userId: string
   status: string
-  department: string | null
-  joinedAt: string
-  user: { id: string; firstName: string; lastName: string; email: string; userType: string }
+  user: { firstName: string; lastName: string; email: string }
 }
 
 interface Plan {
@@ -49,6 +51,8 @@ export default function MyCompanyPage() {
     registrationNumber: '',
     industry: '',
     employeeCount: 0,
+    isInsuranceCompany: false,
+    monthlyContribution: 500,
   })
 
   const userId = getUserId()
@@ -56,16 +60,18 @@ export default function MyCompanyPage() {
   const fetchCompany = useCallback(async () => {
     if (!userId) return
     try {
-      // Check if user has a company
+      // Check if user has a company via corporate dashboard
       const res = await fetch(`/api/corporate/${userId}/dashboard`, { credentials: 'include' })
       if (res.ok) {
         const json = await res.json()
+        // Backend returns: { company, stats, wallet, billingMethods, recentTransactions, notifications }
         if (json.success && json.data?.company) {
           setCompany(json.data.company)
-          // Fetch employees
+          // Fetch employees/members
           const empRes = await fetch(`/api/corporate/${userId}/members`, { credentials: 'include' })
           if (empRes.ok) {
             const empJson = await empRes.json()
+            // Backend returns: { id, userId, status, user: { firstName, lastName, email } }
             if (empJson.success) setEmployees(empJson.data || [])
           }
         }
@@ -79,7 +85,19 @@ export default function MyCompanyPage() {
 
   const fetchPlans = useCallback(async () => {
     try {
-      const res = await fetch('/api/subscriptions?type=corporate')
+      // Look up the current user's region so we only show plans priced in
+      // their currency. Without this filter, every region's plans appear
+      // (MUR + KES + XOF + RWF + MGA — creates the duplicate-plan illusion).
+      let countryCode: string | null = null
+      try {
+        const meRes = await fetch('/api/auth/me', { credentials: 'include' })
+        const meJson = await meRes.json()
+        countryCode = meJson?.user?.regionCode ?? null
+      } catch { /* fall through — show plans anyway */ }
+
+      const qs = new URLSearchParams({ type: 'corporate' })
+      if (countryCode) qs.set('countryCode', countryCode)
+      const res = await fetch(`/api/subscriptions?${qs.toString()}`)
       if (res.ok) {
         const json = await res.json()
         if (json.success) setPlans(json.data || [])
@@ -106,7 +124,11 @@ export default function MyCompanyPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          // Only send monthlyContribution when it's actually an insurance company.
+          monthlyContribution: form.isInsuranceCompany ? form.monthlyContribution : undefined,
+        }),
       })
       const json = await res.json()
       if (json.success) {
@@ -160,7 +182,7 @@ export default function MyCompanyPage() {
     )
   }
 
-  // ─── No company yet: show creation form ─────────────────────────
+  // No company yet: show creation form
   if (!company) {
     return (
       <div className="p-6 max-w-2xl mx-auto">
@@ -241,7 +263,44 @@ export default function MyCompanyPage() {
             </div>
           </div>
 
-          {plans.length > 0 && (
+          {/* ─── Insurance-company toggle ─────────────────────────────── */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.isInsuranceCompany}
+                onChange={(e) => setForm((f) => ({ ...f, isInsuranceCompany: e.target.checked }))}
+                className="mt-1 w-4 h-4 text-[#0C6780] rounded border-gray-300 focus:ring-[#0C6780]"
+              />
+              <div>
+                <div className="text-sm font-semibold text-gray-900">This is an insurance company</div>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Tick this if your company sells health insurance plans. Members will pay a monthly contribution,
+                  file claims through MediWyz, and receive reimbursements to their Account Balance. You&apos;ll get
+                  access to <strong>Analytics</strong>, <strong>Pre-authorizations</strong>, and claim review tools.
+                </p>
+              </div>
+            </label>
+            {form.isInsuranceCompany && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Monthly contribution per member
+                </label>
+                <input
+                  type="number" min={0}
+                  value={form.monthlyContribution}
+                  onChange={(e) => setForm((f) => ({ ...f, monthlyContribution: parseFloat(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0C6780] focus:border-transparent outline-none"
+                  placeholder="500"
+                />
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Amount debited from each member&apos;s Account Balance every month. You can adjust later.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {plans.length > 0 && !form.isInsuranceCompany && (
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-3">Available Corporate Plans</h3>
               <div className="grid gap-3">
@@ -280,7 +339,7 @@ export default function MyCompanyPage() {
     )
   }
 
-  // ─── Company exists: show management dashboard ──────────────────
+  // Company exists: show management dashboard
   const activeEmployees = employees.filter(e => e.status === 'active')
   const pendingEmployees = employees.filter(e => e.status === 'pending')
 
@@ -356,6 +415,13 @@ export default function MyCompanyPage() {
         </div>
       </div>
 
+      <CompanyAnalytics />
+
+      {/* Insurance members table — rendered only when this company is flagged as insurance. */}
+      <div className="mb-8">
+        <InsuranceMembersTable />
+      </div>
+
       {/* Employee list */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
         <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -388,6 +454,14 @@ export default function MyCompanyPage() {
           </div>
         )}
       </div>
+
+      {company && (
+        <CompanyDangerZone
+          companyId={company.id}
+          companyName={company.companyName}
+          onChanged={fetchCompany}
+        />
+      )}
     </div>
   )
 }

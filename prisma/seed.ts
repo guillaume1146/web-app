@@ -40,6 +40,14 @@ import { seedInventoryOrders, seedNotificationTemplates, seedNotifications } fro
 import { seedRichBookingsAndWorkflows } from './seeds/39-rich-bookings-workflows.seed'
 import { seedExpandedSpecialties, seedExpandedProviders, seedExpandedInventory } from './seeds/40-expanded-data.seed'
 import { seedCompanyActivity } from './seeds/41-company-activity.seed'
+import { seedExpandedProvidersInventory } from './seeds/42-expanded-providers-inventory.seed'
+import { seedPatientBookingHistory } from './seeds/43-patient-booking-history.seed'
+import { seedExpandedWorkflowsServices } from './seeds/44-expanded-workflows-services.seed'
+import { seedRoleProfileFields } from './seeds/45-role-profile-fields.seed'
+import { seedWorkflowStepDurations } from './seeds/46-workflow-step-durations.seed'
+import { seedInsuranceFavoritesStreaks } from './seeds/47-insurance-favorites-streaks.seed'
+import { seedWorkflowStepLibrary } from './seeds/49-workflow-step-library.seed'
+import { seedWorkflowDomainTemplates } from './seeds/50-workflow-domain-templates.seed'
 
 const prisma = new PrismaClient()
 
@@ -53,6 +61,7 @@ async function main() {
   await prisma.workflowNotificationTemplate.deleteMany()
   await prisma.workflowInstance.deleteMany()
   await prisma.workflowTemplate.deleteMany()
+  await prisma.workflowStepType.deleteMany()
 
   // 0. Provider Inventory tables
   await prisma.inventoryOrderItem.deleteMany()
@@ -238,6 +247,14 @@ async function main() {
   await seedExpandedProviders(prisma)
   await seedExpandedInventory(prisma)
   await seedCompanyActivity(prisma)
+  await seedExpandedProvidersInventory(prisma)
+  await seedPatientBookingHistory(prisma)
+  await seedExpandedWorkflowsServices(prisma)
+  await seedRoleProfileFields(prisma)
+  await seedWorkflowStepDurations(prisma)
+  await seedInsuranceFavoritesStreaks(prisma)
+  await seedWorkflowStepLibrary(prisma)
+  await seedWorkflowDomainTemplates(prisma)
 
   // ── Final step: ensure ALL users have subscriptions ──────────────
   console.log('  Ensuring all users have subscriptions...')

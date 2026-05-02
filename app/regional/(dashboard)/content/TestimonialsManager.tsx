@@ -66,12 +66,14 @@ export default function TestimonialsManager({ testimonials, onRefresh }: Testimo
  method: 'PUT',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify(formData),
+ credentials: 'include',
  })
  } else {
  await fetch('/api/cms/testimonials', {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify(formData),
+ credentials: 'include',
  })
  }
  closeForm()
@@ -89,6 +91,7 @@ export default function TestimonialsManager({ testimonials, onRefresh }: Testimo
  method: 'PUT',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ isActive: !t.isActive }),
+ credentials: 'include',
  })
  onRefresh()
  } catch (err) {
@@ -99,7 +102,7 @@ export default function TestimonialsManager({ testimonials, onRefresh }: Testimo
  const handleDelete = async (id: string) => {
  if (!confirm('Are you sure you want to delete this testimonial?')) return
  try {
- await fetch(`/api/cms/testimonials/${id}`, { method: 'DELETE' })
+ await fetch(`/api/cms/testimonials/${id}`, { method: 'DELETE', credentials: 'include' })
  onRefresh()
  } catch (err) {
  console.error('Failed to delete testimonial:', err)

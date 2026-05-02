@@ -122,7 +122,7 @@ export default function SubscriptionsManagementPage() {
  return sl.serviceName
  })
 
- const res = await fetch('/api/ai/generate-features', {
+ const res = await fetch('/api/ai/generate-features', { credentials: 'include',
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
@@ -152,7 +152,7 @@ export default function SubscriptionsManagementPage() {
  const fetchPlans = useCallback(async () => {
  try {
  setLoading(true)
- const res = await fetch('/api/regional/subscriptions')
+ const res = await fetch('/api/regional/subscriptions', { credentials: 'include' })
  const json = await res.json()
  if (json.success) {
  setPlans(json.data)
@@ -266,6 +266,7 @@ export default function SubscriptionsManagementPage() {
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ isActive: !plan.isActive }),
+ credentials: 'include',
  })
  const json = await res.json()
  if (json.success) fetchPlans()

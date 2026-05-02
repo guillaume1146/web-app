@@ -29,10 +29,11 @@ export default function GenericBookEmergencyPage() {
  setSubmitData(data)
 
  try {
- const res = await fetch('/api/bookings/emergency', {
+ const res = await fetch('/api/bookings', {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
+ providerType: 'EMERGENCY_WORKER',
  emergencyType: data.emergencyType,
  location: data.location,
  contactNumber: data.contactNumber,
@@ -41,6 +42,7 @@ export default function GenericBookEmergencyPage() {
  notes: data.notes,
  priority: data.priority,
  }),
+ credentials: 'include',
  })
 
  const result = await res.json()

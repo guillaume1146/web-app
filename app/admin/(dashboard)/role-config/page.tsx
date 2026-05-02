@@ -3,12 +3,7 @@
 import { useState, useEffect } from 'react'
 import { FaToggleOn, FaToggleOff, FaSave, FaSpinner } from 'react-icons/fa'
 
-const USER_TYPES = [
- 'PATIENT', 'DOCTOR', 'NURSE', 'NANNY', 'PHARMACIST',
- 'LAB_TECHNICIAN', 'EMERGENCY_WORKER', 'INSURANCE_REP',
- 'CORPORATE_ADMIN', 'REFERRAL_PARTNER', 'REGIONAL_ADMIN',
-]
-
+// Features list — kept static as these are code-level sidebar routes, not DB entities
 const ALL_FEATURES = [
  'feed', 'overview', 'profile', 'consultations', 'bookings',
  'prescriptions', 'health-records', 'ai-assistant', 'nurse-services',
@@ -23,19 +18,29 @@ const ALL_FEATURES = [
 ]
 
 export default function RoleConfigPage() {
+ const [userTypes, setUserTypes] = useState<string[]>([])
  const [configs, setConfigs] = useState<Record<string, Record<string, boolean>>>({})
  const [loading, setLoading] = useState(true)
  const [saving, setSaving] = useState(false)
  const [message, setMessage] = useState('')
 
  useEffect(() => {
- fetch('/api/admin/role-config')
- .then(r => r.json())
- .then(json => {
- if (json.success) setConfigs(json.data)
- })
- .catch(() => {})
- .finally(() => setLoading(false))
+ // Fetch user types dynamically from ProviderRole + known non-provider types
+ Promise.all([
+  fetch('/api/roles?all=true').then(r => r.json()),
+  fetch('/api/admin/role-config', { credentials: 'include' }).then(r => r.json()),
+ ])
+  .then(([rolesJson, configJson]) => {
+   if (rolesJson.success && Array.isArray(rolesJson.data)) {
+    const roleCodes = rolesJson.data.map((r: { code: string }) => r.code)
+    // Include PATIENT and CORPORATE_ADMIN which may not be in ProviderRole
+    const allTypes = [...new Set(['MEMBER', ...roleCodes, 'CORPORATE_ADMIN'])]
+    setUserTypes(allTypes)
+   }
+   if (configJson.success) setConfigs(configJson.data)
+  })
+  .catch(() => {})
+  .finally(() => setLoading(false))
  }, [])
 
  const toggleFeature = (userType: string, feature: string) => {
@@ -57,7 +62,7 @@ export default function RoleConfigPage() {
  setMessage('')
  try {
  const configArray: { userType: string; featureKey: string; enabled: boolean }[] = []
- for (const userType of USER_TYPES) {
+ for (const userType of userTypes) {
  if (!configs[userType]) continue
  for (const [featureKey, enabled] of Object.entries(configs[userType])) {
  configArray.push({ userType, featureKey, enabled })
@@ -65,9 +70,10 @@ export default function RoleConfigPage() {
  }
 
  const res = await fetch('/api/admin/role-config', {
- method: 'PUT',
+ method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ configs: configArray }),
+ credentials: 'include',
  })
 
  if (res.ok) {
@@ -118,7 +124,7 @@ export default function RoleConfigPage() {
  <thead>
  <tr className="bg-gray-50 border-b">
  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 sticky left-0 bg-gray-50 z-10">Feature</th>
- {USER_TYPES.map(ut => (
+ {userTypes.map(ut => (
  <th key={ut} className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap">
  {ut.replace('_', ' ')}
  </th>
@@ -131,7 +137,7 @@ export default function RoleConfigPage() {
  <td className="px-4 py-2 text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
  {feature}
  </td>
- {USER_TYPES.map(ut => {
+ {userTypes.map(ut => {
  const enabled = isEnabled(ut, feature)
  return (
  <td key={ut} className="px-3 py-2 text-center">

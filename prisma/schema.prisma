@@ -10,7 +10,7 @@ datasource db {
 // ─── User Type Enum ──────────────────────────────────────────────────────────
 
 enum UserType {
-  PATIENT
+  MEMBER // default for any authenticated non-provider — "member of MediWyz", not "sick patient"
   DOCTOR
   NURSE
   NANNY
@@ -31,50 +31,58 @@ enum UserType {
 // ─── Provider Role Configuration (DB-driven, manageable by regional admin) ──
 
 model ProviderRole {
-  id              String   @id @default(uuid())
-  code            String   @unique // UPPER_CASE: "DOCTOR", "AUDIOLOGIST", etc.
-  label           String   // Plural display: "Doctors", "Audiologists"
-  singularLabel   String   // Singular: "Doctor", "Audiologist"
-  slug            String   @unique // URL slug: "doctors", "audiologists"
-  icon            String   @default("FaUserMd") // React icon name
-  color           String   @default("#0C6780") // Brand color hex
-  cardImage       String?  // Optional card/logo image URL
-  description     String?  // Role description for signup page
+  id            String  @id @default(uuid())
+  code          String  @unique // UPPER_CASE: "DOCTOR", "AUDIOLOGIST", etc.
+  label         String // Plural display: "Doctors", "Audiologists"
+  singularLabel String // Singular: "Doctor", "Audiologist"
+  slug          String  @unique // URL slug: "doctors", "audiologists"
+  icon          String  @default("FaUserMd") // React icon name
+  color         String  @default("#0C6780") // Brand color hex
+  cardImage     String? // Optional card/logo image URL
+  description   String? // Role description for signup page
 
   // Feature toggles
-  searchEnabled   Boolean  @default(true) // Show in patient search sidebar
-  bookingEnabled  Boolean  @default(true) // Patients can book this role
-  inventoryEnabled Boolean @default(true) // Can manage inventory / Health Shop
-  isProvider      Boolean  @default(true) // true=provider, false=non-provider (patient, admin)
-  isActive        Boolean  @default(true)
-  displayOrder    Int      @default(100)  // Sort order in sidebar/search
+  searchEnabled       Boolean @default(true) // Show in patient search sidebar
+  bookingEnabled      Boolean @default(true) // Patients can book this role
+  inventoryEnabled    Boolean @default(true) // Can manage inventory / Health Shop
+  isProvider          Boolean @default(true) // true=provider, false=non-provider (patient, admin)
+  isActive            Boolean @default(true)
+  displayOrder        Int     @default(100) // Sort order in sidebar/search
+  defaultBookingFee   Float   @default(0) // Default consultation fee (DB-driven, no hardcoded map)
+  skipWalletCheck     Boolean @default(false) // true = no wallet balance required (e.g., emergency services)
+  requiredContentType String? // Auto-require content on completion (e.g., "lab_result", "dental_chart", "meal_plan")
 
   // Ownership
-  regionCode      String?  // null = global, "MU" = Mauritius-only
+  regionCode       String? // null = global, "MU" = Mauritius-only
   createdByAdminId String? // null = system default
 
   // Registration: URL prefix + cookie value for auth
-  urlPrefix       String?  // "/doctor", "/audiologist" (used for routing)
-  cookieValue     String?  // "doctor", "audiologist" (stored in auth cookie)
+  urlPrefix   String? // "/doctor", "/audiologist" (used for routing)
+  cookieValue String? // "doctor", "audiologist" (stored in auth cookie)
+
+  // Profile form schema — DB-driven so new roles created via regional-admin
+  // CRUD don't require any code change. Each entry:
+  //   { key, label, type: 'text'|'number'|'tags'|'select'|'readonly', options?, suffix?, profileField? }
+  profileFields Json? // null → no role-specific fields
 
   // Relations
   verificationDocs RoleVerificationDoc[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([isActive, isProvider])
   @@index([regionCode])
 }
 
 model RoleVerificationDoc {
-  id              String   @id @default(uuid())
-  roleId          String
-  role            ProviderRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  documentName    String   // "Medical License", "Pharmacy License", "ID Card"
-  description     String?  // Help text: "Upload a valid medical license issued by..."
-  isRequired      Boolean  @default(true)
-  displayOrder    Int      @default(0)
+  id           String       @id @default(uuid())
+  roleId       String
+  role         ProviderRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  documentName String // "Medical License", "Pharmacy License", "ID Card"
+  description  String? // Help text: "Upload a valid medical license issued by..."
+  isRequired   Boolean      @default(true)
+  displayOrder Int          @default(0)
 
   @@index([roleId])
 }
@@ -136,6 +144,24 @@ enum SubscriptionStatus {
   active
   cancelled
   expired
+  past_due
+}
+
+/// Wallet ledger entry direction. `credit` = money in (positive delta on
+/// wallet.balance), `debit` = money out. Hardcoded into a Prisma enum so a
+/// stray uppercase variant can't silently break admin analytics again.
+enum WalletTxType {
+  credit
+  debit
+}
+
+/// Treasury ledger entry kind — fixed vocabulary that money-flow analytics
+/// and the reconciliation job key off of.
+enum TreasuryTxType {
+  contribution
+  platform_fee
+  claim_payout
+  direct_billing
 }
 
 enum CorporateEmployeeStatus {
@@ -170,6 +196,8 @@ model User {
   email          String    @unique
   password       String
   profileImage   String?
+  coverImage     String?
+  bio            String?    // Short self-description, shown on /profile/[id]
   phone          String
   userType       UserType
   dateOfBirth    DateTime?
@@ -180,8 +208,17 @@ model User {
   referredByCode String? // Referral code used at signup
   regionId       String?
   region         Region?   @relation(fields: [regionId], references: [id])
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+
+  // Password reset (single-use token, 1h expiry)
+  passwordResetToken   String?   @unique
+  passwordResetExpires DateTime?
+
+  // Security question for in-app password reset (no email provider needed)
+  securityQuestion   String? // plain-text prompt
+  securityAnswerHash String? // bcrypt hash of the (lowercased, trimmed) answer
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // 1:1 optional profile relations (only one will be non-null per user)
   patientProfile         PatientProfile?
@@ -192,14 +229,14 @@ model User {
   labTechProfile         LabTechProfile?
   emergencyWorkerProfile EmergencyWorkerProfile?
   insuranceRepProfile    InsuranceRepProfile?
-  corporateAdminProfile  CorporateAdminProfile?
+  corporateAdminProfile  CorporateAdminProfile[]
   referralPartnerProfile ReferralPartnerProfile?
-  regionalAdminProfile      RegionalAdminProfile?
-  caregiverProfile          CaregiverProfile?
-  physiotherapistProfile    PhysiotherapistProfile?
-  dentistProfile            DentistProfile?
-  optometristProfile        OptometristProfile?
-  nutritionistProfile       NutritionistProfile?
+  regionalAdminProfile   RegionalAdminProfile?
+  caregiverProfile       CaregiverProfile?
+  physiotherapistProfile PhysiotherapistProfile?
+  dentistProfile         DentistProfile?
+  optometristProfile     OptometristProfile?
+  nutritionistProfile    NutritionistProfile?
 
   // Cross-cutting relations (generic for all user types)
   videoCallSessions    VideoCallSession[]
@@ -212,7 +249,7 @@ model User {
   providerAvailability ProviderAvailability[]
 
   // Social / posts relations
-  posts        Post[]  @relation("PostAuthor")
+  posts        Post[]        @relation("PostAuthor")
   postComments PostComment[] @relation("CommentAuthor")
   postLikes    PostLike[]    @relation("PostLiker")
 
@@ -244,6 +281,15 @@ model User {
   subscription         UserSubscription?
   corporateEmployments CorporateEmployee[] @relation("EmployeeUser")
   corporateEnrollments CorporateEmployee[] @relation("CorporateAdminUser")
+
+  // Saved providers + insurance claim submissions + health streak
+  favorites            ProviderFavorite[]         @relation("UserFavorites")
+  favoritedBy          ProviderFavorite[]         @relation("ProviderFavoritedBy")
+  claimSubmissions     InsuranceClaimSubmission[] @relation("MemberClaims")
+  healthStreak         HealthStreak?
+  insurancePolicies    InsurancePolicy[]          @relation("MemberPolicies")
+  memberPreAuths       PreAuthorization[]         @relation("MemberPreAuths")
+  providerPreAuths     PreAuthorization[]         @relation("ProviderPreAuths")
 
   @@index([email])
   @@index([userType])
@@ -436,27 +482,47 @@ model InsuranceRepProfile {
   @@index([userId])
 }
 
+// Represents a company owned by any user (not just CORPORATE_ADMIN).
+// Historically named "CorporateAdminProfile" — kept for backward compat.
 model CorporateAdminProfile {
   id                 String  @id @default(uuid())
-  userId             String  @unique
+  // NOTE: userId is no longer @unique — a single user can own multiple
+  // companies. The service layer protects against invariants (e.g. an
+  // insurance owner can also run a regular corporate plan).
+  userId             String
   user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   companyName        String
   registrationNumber String?
   employeeCount      Int?
   industry           String?
-  posts              Post[]
+
+  // Insurance-company flag — when true, members pay a monthly contribution.
+  isInsuranceCompany  Boolean @default(false)
+  monthlyContribution Float? // fixed per-company amount (MUR), insurance only
+  coverageDescription String?
+
+  // Subscription plan applied to all members of this company.
+  subscriptionPlanId String?
+
+  posts            Post[]
+  claimSubmissions InsuranceClaimSubmission[]
+  treasury         InsuranceCompanyTreasury?
+  plans            InsurancePlan[]
+  preAuthorizations PreAuthorization[]        @relation("CompanyPreAuths")
 
   @@index([userId])
+  @@index([isInsuranceCompany])
 }
 
 model ReferralPartnerProfile {
-  id             String @id @default(uuid())
-  userId         String @unique
-  user           User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  businessType   String
-  commissionRate Float  @default(0)
-  referralCode   String @unique
-  totalReferrals Int    @default(0)
+  id                    String @id @default(uuid())
+  userId                String @unique
+  user                  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessType          String
+  commissionRate        Float  @default(0)
+  referralCode          String @unique
+  totalReferrals        Int    @default(0)
+  totalCommissionEarned Float  @default(0)
 
   @@index([userId])
 }
@@ -547,7 +613,7 @@ model ProviderSpecialty {
   providerType UserType
   name         String
   description  String?
-  icon         String?  // Emoji or icon name (e.g. "❤️", "🧠", "🦴")
+  icon         String? // Emoji or icon name (e.g. "❤️", "🧠", "🦴")
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
@@ -558,22 +624,22 @@ model ProviderSpecialty {
 // ─── Health Programs ────────────────────────────────────────────────────────
 
 model HealthProgram {
-  id                String    @id @default(uuid())
-  name              String
-  description       String
-  providerType      UserType
-  specialty         String?
-  durationWeeks     Int
-  startDate         DateTime?
-  endDate           DateTime?
-  price             Float
-  currency          String    @default("MUR")
-  maxParticipants   Int?
-  countryCode       String?
-  isActive          Boolean   @default(true)
-  createdByUserId   String
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id              String    @id @default(uuid())
+  name            String
+  description     String
+  providerType    UserType
+  specialty       String?
+  durationWeeks   Int
+  startDate       DateTime?
+  endDate         DateTime?
+  price           Float
+  currency        String    @default("MUR")
+  maxParticipants Int?
+  countryCode     String?
+  isActive        Boolean   @default(true)
+  createdByUserId String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   sessions    ProgramSession[]
   providers   ProgramProvider[]
@@ -893,6 +959,7 @@ model VideoRoom {
   creatorId       String // User who created the room
   status          String   @default("active") // active, ended
   maxParticipants Int      @default(2)
+  mode            String   @default("video") // video | audio — audio-only skips the camera track
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -968,10 +1035,15 @@ model Conversation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Soft-delete: rows with deletedAt set are hidden from normal queries.
+  // Admin hard-delete path stays available via raw Prisma.
+  deletedAt DateTime?
+
   participants ConversationParticipant[]
   messages     Message[]
 
   @@index([type])
+  @@index([deletedAt])
 }
 
 model ConversationParticipant {
@@ -1098,8 +1170,15 @@ model Document {
   size       Int?
   uploadedAt DateTime @default(now())
 
+  // Admin verification workflow
+  verificationStatus String?   @default("pending") // pending, approved, rejected
+  reviewedById       String? // Admin user id who reviewed
+  reviewedAt         DateTime?
+  rejectionReason    String?
+
   @@index([userId])
   @@index([type])
+  @@index([verificationStatus])
 }
 
 model MedicineOrder {
@@ -1135,11 +1214,31 @@ model MedicineOrderItem {
   @@index([pharmacyMedicineId])
 }
 
+// ─── Admin action audit log ────────────────────────────────────────────────
+// Every admin mutation goes here: account status changes, role-config edits,
+// required-document config edits, document approvals/rejections, commission
+// config edits. The adminId is always the authenticated user who performed
+// the action; targetType + targetId identify the row that changed.
+model AdminActionLog {
+  id         String   @id @default(uuid())
+  adminId    String
+  action     String // e.g. "account.suspend", "document.approve", "role.create"
+  targetType String // e.g. "User", "Document", "ProviderRole"
+  targetId   String?
+  details    Json? // before/after snapshot, reason, etc.
+  createdAt  DateTime @default(now())
+
+  @@index([adminId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
 model Notification {
   id            String    @id @default(uuid())
   userId        String
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type          String // appointment, prescription, lab_result, message, system
+  type          String // appointment, prescription, lab_result, message, system, workflow, insurance
   title         String
   message       String
   referenceId   String?
@@ -1147,10 +1246,19 @@ model Notification {
   readAt        DateTime?
   createdAt     DateTime  @default(now())
 
+  // Structured payload — drives contextual CTAs on the notification card.
+  // Shape: { stepCode?, bookingId?, providerName?, actions?: [{label, href}] }
+  payload Json?
+
+  // Grouping — notifications sharing a groupKey on the same day collapse
+  // into one card: "Your lab test moved 3 steps today".
+  groupKey String?
+
   @@index([userId])
   @@index([readAt])
   @@index([createdAt])
   @@index([userId, readAt])
+  @@index([userId, groupKey, createdAt])
 }
 
 // ─── Doctor Supporting Models ───────────────────────────────────────────────
@@ -1430,7 +1538,7 @@ model WalletTransaction {
   id                 String     @id @default(uuid())
   walletId           String
   wallet             UserWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  type               String // credit, debit
+  type               WalletTxType
   amount             Float
   description        String
   serviceType        String? // consultation, medicine, lab_test, emergency, subscription
@@ -1451,54 +1559,80 @@ model WalletTransaction {
   @@index([serviceType])
 }
 
+// ─── Invoices ────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id             String   @id @default(uuid())
+  invoiceNumber  String   @unique
+  patientUserId  String
+  providerUserId String
+  bookingId      String?
+  orderId        String?
+  type           String // 'booking_payment' | 'health_shop_order' | 'subscription'
+  amount         Float
+  platformFee    Float    @default(0)
+  providerAmount Float    @default(0)
+  currency       String   @default("MUR")
+  status         String   @default("paid") // paid, refunded, partial_refund
+  description    String
+  items          Json? // line items detail
+  createdAt      DateTime @default(now())
+
+  @@index([patientUserId])
+  @@index([providerUserId])
+  @@index([bookingId])
+}
+
 // ─── Posts (Social Feed — any verified user can post) ────────────────────────
 
 model Post {
-  id          String        @id @default(uuid())
+  id          String                 @id @default(uuid())
   authorId    String
-  author      User          @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  author      User                   @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   companyId   String?
   company     CorporateAdminProfile? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   content     String
   category    String?
   tags        String[]
   imageUrl    String?
-  likeCount   Int           @default(0)
-  isPublished Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  likeCount   Int                    @default(0)
+  isPublished Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  deletedAt   DateTime? // soft-delete
   comments    PostComment[]
   likes       PostLike[]
 
-  @@map("DoctorPost")
   @@index([authorId])
   @@index([companyId])
   @@index([createdAt])
   @@index([category])
   @@index([isPublished, createdAt])
+  @@index([deletedAt])
+  @@map("DoctorPost")
 }
 
 model PostComment {
-  id        String     @id @default(uuid())
+  id        String   @id @default(uuid())
   postId    String
-  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   authorId  String
-  author    User       @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  author    User     @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   content   String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([postId])
   @@index([authorId])
 }
 
 model PostLike {
-  id        String     @id @default(uuid())
+  id        String   @id @default(uuid())
   postId    String
-  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId    String
-  user      User       @relation("PostLiker", fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime   @default(now())
+  user      User     @relation("PostLiker", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 
   @@unique([postId, userId])
   @@index([postId])
@@ -1553,28 +1687,37 @@ model EmergencyBooking {
 // ─── Generic Service Booking (for new roles: caregiver, physio, dentist, etc.) ─
 
 model ServiceBooking {
-  id             String   @id @default(uuid())
-  patientId      String
-  providerUserId String
-  providerType   UserType // CAREGIVER, PHYSIOTHERAPIST, DENTIST, OPTOMETRIST, NUTRITIONIST
-  providerName   String?
-  scheduledAt    DateTime
-  duration       Int      @default(30)
-  type           String   @default("in_person") // in_person, home_visit, video
-  status         String   @default("pending") // pending, accepted, in_progress, completed, cancelled
-  reason         String?
-  notes          String?
-  serviceName    String?
-  servicePrice   Float?
-  specialty      String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                 String    @id @default(uuid())
+  patientId          String
+  providerUserId     String
+  providerType       UserType // Any provider type (dynamic — not limited to specific roles)
+  providerName       String?
+  scheduledAt        DateTime
+  duration           Int       @default(30)
+  type               String    @default("in_person") // in_person, home_visit, video
+  status             String    @default("pending") // pending, accepted, in_progress, completed, cancelled
+  reason             String?
+  notes              String?
+  serviceName        String?
+  servicePrice       Float?
+  specialty          String?
+  location           String?
+  roomId             String?
+  priority           String?   @default("normal")
+  cancellationReason String?
+  cancelledBy        String?
+  cancelledAt        DateTime?
+  metadata           Json? // Role-specific data (e.g., children[], sampleType, testName, emergencyType)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime? // soft-delete
 
   @@index([patientId])
   @@index([providerUserId])
   @@index([providerType])
   @@index([scheduledAt])
   @@index([status])
+  @@index([deletedAt])
 }
 
 // ─── Provider Availability ──────────────────────────────────────────────────
@@ -1594,6 +1737,23 @@ model ProviderAvailability {
   @@unique([userId, dayOfWeek, startTime])
   @@index([userId])
   @@index([dayOfWeek])
+}
+
+// ─── Booked Slots (auto-blocked on acceptance, released on cancellation) ────
+
+model BookedSlot {
+  id             String   @id @default(uuid())
+  providerUserId String
+  bookingId      String
+  date           DateTime // The date of the booking
+  startTime      String // "10:00"
+  endTime        String // "10:30"
+  status         String   @default("booked") // booked, cancelled, completed
+  createdAt      DateTime @default(now())
+
+  @@unique([providerUserId, date, startTime])
+  @@index([providerUserId, date])
+  @@index([bookingId])
 }
 
 // ─── AI Chat Models ──────────────────────────────────────────────────────────
@@ -1636,6 +1796,59 @@ model AiPatientInsight {
   @@index([userId, date])
   @@index([userId, category])
   @@index([createdAt])
+}
+
+/// Admin-editable clinical knowledge base consumed by the AI assistant.
+/// Replaces the hardcoded condition→diet mapping that used to live inside
+/// `AiService.buildConditionDietaryNotes`. Regional admins can CRUD these
+/// rows via the admin UI; `AiService` caches the table in memory and
+/// refreshes on edit (or after a 5-min TTL).
+///
+/// `conditionKey` is the canonical lowercase name ('diabetes', 'hypertension')
+/// and `aliases` are additional tokens that should also match user-declared
+/// conditions ('diabetic', 'high blood pressure', etc.).
+model ClinicalKnowledge {
+  id              String   @id @default(uuid())
+  conditionKey    String   @unique
+  /// Additional case-insensitive tokens that also trigger this guidance.
+  aliases         String[]
+  /// One-line dietary/wellness guidance injected into the AI system prompt.
+  dietaryGuidance String
+  /// Bucket for admin-UI grouping: 'nutrition' | 'exercise' | 'mental-health' | 'medication' | 'other'.
+  category        String   @default("nutrition")
+  /// Free-form references (studies, guidelines) for auditability. Not shown to users.
+  sources         String[]
+  active          Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+
+  @@index([active])
+  @@index([category])
+}
+
+/// Per-call cost + latency + safety telemetry for the AI assistant.
+/// Powers the admin cost dashboard and the weekly drift-detection cron.
+/// Never read by the user-facing chat — write-only from the service layer.
+model AiCallLog {
+  id                String   @id @default(cuid())
+  userId            String
+  surface           String   // 'chat' | 'ocr' | 'insights' | 'tracker_context' | 'emergency-gate'
+  model             String   // e.g. 'llama-3.1-8b-instant'
+  promptTokens      Int      @default(0)
+  completionTokens  Int      @default(0)
+  durationMs        Int      @default(0)
+  promptVersion     String?
+  /// When the emergency gate matched, which category fired.
+  emergencyCategory String?
+  /// Comma-separated allergens the post-filter caught in the response.
+  allergyMatched    String?
+  /// Error code (e.g. 'http_429', 'timeout') when the call failed.
+  error             String?
+  createdAt         DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([surface, createdAt])
+  @@index([error])
 }
 
 // ─── Health Tracker Models ──────────────────────────────────────────────────
@@ -1862,6 +2075,256 @@ model RequiredDocumentConfig {
 
 // ─── User Preferences ──────────────────────────────────────────────────────
 
+// ─── Insurance financial plumbing (Health Credit flow) ─────────────────
+// Everything denominated in "health credit" (same unit as UserWallet.balance).
+// When real-money topup is added later, cash flows INTO PlatformTreasury and
+// each user's wallet is just an internal ledger backed by that real balance.
+
+/// Pool holding contributions for one insurance company. Claims pay out
+/// of this pool, NOT the owner's personal wallet.
+model InsuranceCompanyTreasury {
+  id               String   @id @default(uuid())
+  companyProfileId String   @unique
+  company          CorporateAdminProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
+  balance          Float    @default(0)
+  currency         String   @default("MUR")
+  totalInflow      Float    @default(0)
+  totalOutflow     Float    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  transactions     TreasuryTransaction[]
+
+  @@index([companyProfileId])
+}
+
+model TreasuryTransaction {
+  id            String   @id @default(uuid())
+  treasuryId    String
+  treasury      InsuranceCompanyTreasury @relation(fields: [treasuryId], references: [id], onDelete: Cascade)
+  type          TreasuryTxType
+  amount        Float    // always positive; `type` disambiguates direction
+  memberId      String?
+  claimId       String?
+  description   String
+  balanceBefore Float
+  balanceAfter  Float
+  createdAt     DateTime @default(now())
+
+  @@index([treasuryId, createdAt])
+  @@index([claimId])
+}
+
+/// Singleton — MediWyz platform treasury. Receives platform fees on every
+/// insurance contribution; later receives top-ups from real-money payment
+/// providers (MCB Juice, card). One row, forever.
+model PlatformTreasury {
+  id        String   @id @default(uuid())
+  balance   Float    @default(0)
+  currency  String   @default("MUR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Insurance plan / policy structure ─────────────────────────────────
+
+/// One company can offer multiple plans (Basic, Family, Gold) with different
+/// ceilings, deductibles, co-pay rates. Members enrol in a plan via policy.
+model InsurancePlan {
+  id                  String   @id @default(uuid())
+  companyProfileId    String
+  company             CorporateAdminProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
+  name                String   // "Basic", "Family", "Gold"
+  description         String?
+  monthlyContribution Float
+  annualCeiling       Float    // max total payout per year per member
+  deductible          Float    @default(0)   // annual amount member pays first
+  coPayPercent        Float    @default(20)  // member's share of each claim
+  waitingPeriodDays   Int      @default(30)
+  /// JSON: { "consultation": 2000, "hospitalization": 50000, "dental": 3000 }
+  categoryLimits      Json?
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  policies            InsurancePolicy[]
+
+  @@index([companyProfileId])
+  @@index([isActive])
+}
+
+/// An enrolled member's policy. Tracks year-to-date usage for limit rules.
+model InsurancePolicy {
+  id             String   @id @default(uuid())
+  memberId       String
+  member         User     @relation("MemberPolicies", fields: [memberId], references: [id], onDelete: Cascade)
+  planId         String
+  plan           InsurancePlan @relation(fields: [planId], references: [id])
+  startDate      DateTime @default(now())
+  renewsAt       DateTime
+  status         String   @default("active") // active | lapsed | cancelled
+  ytdClaimsPaid  Float    @default(0)
+  ytdResetAt     DateTime @default(now())
+  deductibleUsed Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  beneficiaries  PolicyBeneficiary[]
+  renewals       PolicyRenewalLog[]
+
+  @@index([memberId])
+  @@index([planId])
+  @@index([status])
+  @@index([renewsAt])
+}
+
+/// Idempotency ledger for insurance-policy monthly renewals. Mirrors the
+/// `SubscriptionRenewalLog` pattern: unique (policyId, period) means a
+/// double-fired cron (e.g. two nodes in a clustered deploy) tries to INSERT
+/// and the second call gets a P2002 — guaranteeing no double-charge.
+model PolicyRenewalLog {
+  id        String          @id @default(uuid())
+  policyId  String
+  policy    InsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  period    String          // "YYYY-MM"
+  amount    Float
+  chargedAt DateTime        @default(now())
+
+  @@unique([policyId, period])
+  @@index([policyId])
+}
+
+model PolicyBeneficiary {
+  id           String   @id @default(uuid())
+  policyId     String
+  policy       InsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  name         String
+  relationship String // spouse | child | parent | other
+  dateOfBirth  DateTime?
+  createdAt    DateTime @default(now())
+
+  @@index([policyId])
+}
+
+/// Audit trail for every claim decision — which rules fired, what each computed.
+/// Reuses the WorkflowStepLog pattern.
+model ClaimDecisionLog {
+  id           String   @id @default(uuid())
+  claimId      String
+  decision     String   // approved | denied | pending_review
+  payoutAmount Float    @default(0)
+  /// Array of { rule, result, message } describing what each rule did
+  rulesApplied Json
+  reason       String?
+  decidedBy    String
+  createdAt    DateTime @default(now())
+
+  @@index([claimId])
+  @@index([createdAt])
+}
+
+/// Pre-authorization for tiers payant (direct billing). A provider asks the
+/// insurance company to pre-approve coverage BEFORE delivering a service.
+/// If approved, the insurer reserves an amount in the treasury; when the
+/// provider marks the authorization `used`, funds flow treasury → provider
+/// wallet without the patient touching money.
+model PreAuthorization {
+  id                String   @id @default(uuid())
+  memberId          String
+  member            User     @relation("MemberPreAuths", fields: [memberId], references: [id], onDelete: Cascade)
+  providerId        String
+  provider          User     @relation("ProviderPreAuths", fields: [providerId], references: [id], onDelete: Cascade)
+  companyProfileId  String
+  company           CorporateAdminProfile @relation("CompanyPreAuths", fields: [companyProfileId], references: [id], onDelete: Cascade)
+
+  serviceCode       String?  // optional PlatformService reference
+  category          String?  // consultation | dental | hospitalization ...
+  description       String
+  requestedAmount   Float
+  approvedAmount    Float?
+  memberPaysAmount  Float?
+
+  status            String   @default("pending") // pending | approved | denied | used | expired | cancelled
+  expiresAt         DateTime
+  rulesApplied      Json?
+  denialReason      String?
+
+  usedAt            DateTime?
+  claimId           String?  // FK to the resulting paid claim
+
+  reviewedAt        DateTime?
+  reviewedBy        String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([providerId])
+  @@index([companyProfileId, status])
+  @@index([status, expiresAt])
+}
+
+// ─── Saved providers (favorites) ───────────────────────────────────────
+model ProviderFavorite {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
+  providerId String
+  provider   User     @relation("ProviderFavoritedBy", fields: [providerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, providerId])
+  @@index([userId])
+  @@index([providerId])
+}
+
+// ─── Insurance claim submissions (member → owner workflow) ─────────────
+model InsuranceClaimSubmission {
+  id            String   @id @default(uuid())
+  memberId      String
+  member        User     @relation("MemberClaims", fields: [memberId], references: [id], onDelete: Cascade)
+  companyProfileId String
+  company       CorporateAdminProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
+  description   String
+  amount        Float    // requested reimbursement amount (MUR)
+  currency      String   @default("MUR")
+  receiptUrl    String?
+  status        String   @default("pending") // pending, approved, denied, paid
+  reviewerNote  String?
+  reviewedAt    DateTime?
+  reviewedBy    String?
+  paidAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([companyProfileId])
+  @@index([status])
+  @@index([companyProfileId, status])
+}
+
+// ─── Health tracker streaks ────────────────────────────────────────────
+model HealthStreak {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentStreak   Int      @default(0)
+  longestStreak   Int      @default(0)
+  lastCheckInDate String?  // YYYY-MM-DD
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ─── Appointment reminder log (idempotency for cron) ───────────────────
+model AppointmentReminder {
+  id          String   @id @default(uuid())
+  bookingId   String
+  bookingType String
+  reminderType String  // 't_minus_24h' | 't_minus_1h'
+  sentAt      DateTime @default(now())
+
+  @@unique([bookingId, reminderType])
+  @@index([bookingId])
+}
+
 model UserPreference {
   id                   String   @id @default(uuid())
   userId               String   @unique
@@ -1883,18 +2346,23 @@ model UserPreference {
 // ─── Referral Click Tracking ─────────────────────────────────────────────────
 
 model ReferralClick {
-  id              String    @id @default(uuid())
-  referralCode    String
-  utmSource       String? // facebook, instagram, linkedin, twitter, whatsapp, email, website, tiktok, youtube
-  utmMedium       String? // social, messaging, direct, email
-  utmCampaign     String? // campaign identifier
-  location        String? // geographic location
-  landingPage     String? // which page they landed on
-  convertedUserId String? // null until signup, then linked to User.id
-  convertedAt     DateTime?
-  createdAt       DateTime  @default(now())
+  id                String    @id @default(uuid())
+  referralCode      String
+  referralPartnerId String? // links to ReferralPartnerProfile.id
+  source            String? // alias for utmSource (used by tracking service)
+  medium            String? // alias for utmMedium (used by tracking service)
+  converted         Boolean   @default(false)
+  utmSource         String? // facebook, instagram, linkedin, twitter, whatsapp, email, website, tiktok, youtube
+  utmMedium         String? // social, messaging, direct, email
+  utmCampaign       String? // campaign identifier
+  location          String? // geographic location
+  landingPage       String? // which page they landed on
+  convertedUserId   String? // null until signup, then linked to User.id
+  convertedAt       DateTime?
+  createdAt         DateTime  @default(now())
 
   @@index([referralCode])
+  @@index([referralPartnerId])
   @@index([utmSource])
   @@index([createdAt])
   @@index([convertedUserId])
@@ -1922,22 +2390,22 @@ model UserConnection {
 // ─── Subscription Models ──────────────────────────────────────────────────────
 
 model SubscriptionPlan {
-  id                           String               @id @default(uuid())
-  name                         String
-  slug                         String               @unique
-  type                         SubscriptionPlanType
-  price                        Float
-  currency                     String               @default("MUR")
-  countryCode                  String?              // null = global, "MU" = region-specific
-  targetAudience               String?              // "students & young adults", "families", etc.
-  quotas                       Json                 @default("[]") // Array of { role: string, specialty?: string, limit: number }
-  discounts                    Json?                // { "DOCTOR:Cardiology": 20, "lab": 15, "pharmacy": 10, "volume_50": 5 }
-  paidServices                 Json?                // services NOT included, with default prices
-  features                     Json                 // Array of feature strings
-  isActive                     Boolean              @default(true)
-  createdByAdminId             String?              // regional admin who created/manages this
-  createdAt                    DateTime             @default(now())
-  updatedAt                    DateTime             @updatedAt
+  id               String               @id @default(uuid())
+  name             String
+  slug             String               @unique
+  type             SubscriptionPlanType
+  price            Float
+  currency         String               @default("MUR")
+  countryCode      String? // null = global, "MU" = region-specific
+  targetAudience   String? // "students & young adults", "families", etc.
+  quotas           Json                 @default("[]") // Array of { role: string, specialty?: string, limit: number }
+  discounts        Json? // { "DOCTOR:Cardiology": 20, "lab": 15, "pharmacy": 10, "volume_50": 5 }
+  paidServices     Json? // services NOT included, with default prices
+  features         Json // Array of feature strings
+  isActive         Boolean              @default(true)
+  createdByAdminId String? // regional admin who created/manages this
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   subscriptions UserSubscription[]
   planServices  SubscriptionPlanService[]
@@ -1963,11 +2431,27 @@ model UserSubscription {
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
-  usage SubscriptionUsage[]
+  usage    SubscriptionUsage[]
+  renewals SubscriptionRenewalLog[]
 
   @@index([planId])
   @@index([status])
   @@index([corporateAdminId])
+}
+
+/// Idempotency ledger for individual-subscription monthly renewals. The cron
+/// inserts one row per (subscriptionId, period) — unique constraint makes a
+/// double-fire a no-op instead of a double-charge.
+model SubscriptionRenewalLog {
+  id             String           @id @default(uuid())
+  subscriptionId String
+  subscription   UserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  period         String           // "YYYY-MM"
+  amount         Float
+  chargedAt      DateTime         @default(now())
+
+  @@unique([subscriptionId, period])
+  @@index([subscriptionId])
 }
 
 model SubscriptionUsage {
@@ -1975,7 +2459,7 @@ model SubscriptionUsage {
   subscriptionId String
   subscription   UserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   month          String // "2026-03"
-  usageData      Json   @default("{}") // { "DOCTOR:General Practice": 1, "NURSE": 0 }
+  usageData      Json             @default("{}") // { "DOCTOR:General Practice": 1, "NURSE": 0 }
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
@@ -1995,34 +2479,41 @@ model CorporateEmployee {
   approvedAt       DateTime?
   removedAt        DateTime?
 
+  // Insurance contribution tracking — null if company is not an insurance co.
+  // Stores ISO "YYYY-MM" of the last paid period + timestamp of last payment.
+  lastContributionMonth String?
+  lastContributionAt    DateTime?
+
   @@unique([corporateAdminId, userId])
   @@index([corporateAdminId])
   @@index([userId])
   @@index([status])
+  @@index([lastContributionMonth])
 }
 
 // ─── Platform Service Catalog (unified service definitions) ─────────────────
 
 model PlatformService {
-  id                  String    @id @default(uuid())
-  providerType        UserType  // DOCTOR, NURSE, NANNY, PHARMACIST, LAB_TECHNICIAN, EMERGENCY_WORKER
+  id                  String   @id @default(uuid())
+  providerType        UserType // DOCTOR, NURSE, NANNY, PHARMACIST, LAB_TECHNICIAN, EMERGENCY_WORKER
   serviceName         String
-  category            String    // Consultation, Screening, Wound Care, etc.
+  category            String // Consultation, Screening, Wound Care, etc.
   description         String
-  defaultPrice        Float     @default(0)
-  currency            String    @default("MUR")
-  duration            Int?      // minutes
-  isDefault           Boolean   @default(true)  // true = auto-assigned to new providers on registration
-  countryCode         String?   // null = all regions, "MU" = region-specific
-  createdByProviderId String?   // null = platform default; set = provider-created custom service
-  isActive            Boolean   @default(true)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  defaultPrice        Float    @default(0)
+  currency            String   @default("MUR")
+  duration            Int? // minutes
+  isDefault           Boolean  @default(true) // true = auto-assigned to new providers on registration
+  countryCode         String? // null = all regions, "MU" = region-specific
+  createdByProviderId String? // null = platform default; set = provider-created custom service
+  requiredContentType String? // Auto-require content on booking completion (e.g., "lab_result", "dental_chart", "meal_plan")
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  providerConfigs    ProviderServiceConfig[]
-  planServices       SubscriptionPlanService[]
-  groupItems         ServiceGroupItem[]
-  workflowTemplates  WorkflowTemplate[]
+  providerConfigs   ProviderServiceConfig[]
+  planServices      SubscriptionPlanService[]
+  groupItems        ServiceGroupItem[]
+  workflowTemplates WorkflowTemplate[]
 
   @@index([providerType])
   @@index([providerType, serviceName])
@@ -2037,8 +2528,8 @@ model ProviderServiceConfig {
   id                String          @id @default(uuid())
   platformServiceId String
   platformService   PlatformService @relation(fields: [platformServiceId], references: [id], onDelete: Cascade)
-  providerUserId    String          // User ID of the provider
-  priceOverride     Float?          // null = use admin/default price; set = provider's custom price
+  providerUserId    String // User ID of the provider
+  priceOverride     Float? // null = use admin/default price; set = provider's custom price
   isActive          Boolean         @default(true)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
@@ -2087,13 +2578,13 @@ model SubscriptionPlanService {
   id                String           @id @default(uuid())
   planId            String
   plan              SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  platformServiceId String?          // direct service link
+  platformServiceId String? // direct service link
   platformService   PlatformService? @relation(fields: [platformServiceId], references: [id], onDelete: Cascade)
-  serviceGroupId    String?          // OR a service group link
+  serviceGroupId    String? // OR a service group link
   serviceGroup      ServiceGroup?    @relation(fields: [serviceGroupId], references: [id], onDelete: Cascade)
   isFree            Boolean          @default(false) // true = included free in plan
   discountPercent   Int              @default(0) // % discount off provider's market price (0-100)
-  adminPrice        Float?           // admin-set fixed price (overrides discount); null = use default
+  adminPrice        Float? // admin-set fixed price (overrides discount); null = use default
   monthlyLimit      Int              @default(0) // -1 = unlimited, 0 = pay-per-use, N = N per month
 
   @@index([planId])
@@ -2105,26 +2596,70 @@ model SubscriptionPlanService {
 // WORKFLOW ENGINE
 // ═══════════════════════════════════════════════════════════════════════════════
 
+enum PaymentTiming {
+  IMMEDIATE      // Charge at booking creation
+  ON_ACCEPTANCE  // Charge when provider accepts
+  ON_COMPLETION  // Charge when booking completes
+  PAY_LATER      // No automatic charge (manual billing)
+}
+
+enum WorkflowSuggestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ─── Workflow Step Type Library (pre-built step atoms with default flags) ─────
+
+model WorkflowStepType {
+  code        String  @id // VIDEO_CALL_READY, CONFIRMED, etc.
+  label       String  // "Video Call Ready"
+  description String? // plain language explanation
+  category    String  // consultation, home_visit, lab, delivery, emergency, generic
+
+  // Default flags that the engine applies when this stepType is used
+  defaultFlags           Json @default("{}") // { triggers_video_call, requires_content, … }
+  defaultActionsProvider Json @default("[]") // default button definitions for provider
+  defaultActionsPatient  Json @default("[]") // default button definitions for patient
+
+  isTerminal     Boolean @default(false) // completed / cancelled terminal states
+  isCancellation Boolean @default(false) // specifically a cancellation step
+  sortOrder      Int     @default(100) // display order in pickers
+
+  createdAt DateTime @default(now())
+}
+
 // ─── Workflow Template (defines steps, transitions, notifications per service+mode) ─
 
 model WorkflowTemplate {
-  id                  String   @id @default(uuid())
-  name                String   // "Doctor Consultation - Office"
-  slug                String   @unique // "doctor-consultation-office"
-  description         String?
-  providerType        String   // DOCTOR, NURSE, DENTIST, etc.
-  serviceMode         String   // office, home, video
-  isDefault           Boolean  @default(false) // system seed = true
-  isActive            Boolean  @default(true)
+  id           String  @id @default(uuid())
+  name         String // "Doctor Consultation - Office"
+  slug         String  @unique // "doctor-consultation-office"
+  description  String?
+  providerType String // DOCTOR, NURSE, DENTIST, etc.
+  serviceMode  String // office, home, video
+  isDefault    Boolean @default(false) // system seed = true
+  isActive     Boolean @default(true)
+  isLibrary    Boolean @default(false) // true = appears in the "Start from template" picker for admins
+  isBundle     Boolean @default(false) // true = complete pre-built template ready to use
+  category     String? // loose grouping: 'Consultation', 'Home Visit', 'Lab', 'Delivery', 'Emergency'
+
+  paymentTiming PaymentTiming @default(ON_ACCEPTANCE)
+
+  // Provider suggestion flow
+  suggestedByProviderId String?
+  suggestionStatus      WorkflowSuggestionStatus?
+  suggestionNote        String? // reviewer note on approval/rejection
+  suggestedAt           DateTime?
 
   // Ownership — null = system default
-  createdByProviderId String?  // provider custom workflow
-  createdByAdminId    String?  // regional admin default
-  regionCode          String?  // null = global, "MU" = Mauritius only
+  createdByProviderId String? // provider custom workflow
+  createdByAdminId    String? // regional admin default
+  regionCode          String? // null = global, "MU" = Mauritius only
 
   // Link to service catalog
-  platformServiceId   String?
-  platformService     PlatformService? @relation(fields: [platformServiceId], references: [id], onDelete: SetNull)
+  platformServiceId String?
+  platformService   PlatformService? @relation(fields: [platformServiceId], references: [id], onDelete: SetNull)
 
   // Steps definition (ordered JSON array)
   // Each: { order, statusCode, label, description,
@@ -2135,55 +2670,95 @@ model WorkflowTemplate {
   //                  requires_content? },
   //         notifyPatient?: { title, message },
   //         notifyProvider?: { title, message } }
-  steps               Json
+  steps Json
 
   // Allowed transitions (JSON array)
   // Each: { from, to, action, allowedRoles: ["patient"|"provider"|"system"],
   //         conditions?: { requiresPayment?, requiresPrescription? } }
-  transitions         Json
+  transitions Json
 
-  instances           WorkflowInstance[]
+  // SLA & operational metadata
+  expectedDurationHours Int?    // expected hours to complete end-to-end
+  slaNote               String? // human note about SLA expectations / guarantees
+
+  // Cross-region sharing (admin can mark a template shareable so other regions can clone it)
+  isShared Boolean @default(false)
+
+  // Snapshot history: array of { snapshotAt, changedBy, steps, transitions }
+  stepsHistory Json @default("[]")
+
+  // ─── Service-level systematic configuration ────────────────────────────────
+  // A free-form JSON object so new workflow behaviours can be added by writing
+  // a new Strategy class — no DB column or migration needed.
+  //
+  // Recognised shape (see WorkflowServiceConfig in types.ts):
+  //   {
+  //     "preflight": {
+  //       "requires": ["db:prescription", "input:lab_result", "input:dental_chart"]
+  //       // "db:<type>" → check existing DB record;  "input:<type>" → require in transition input
+  //     },
+  //     "onComplete": {
+  //       "actions": ["subtract_stock"]
+  //       // list of action keys handled by registered StepFlagHandler executors
+  //     }
+  //   }
+  //
+  // All three lifecycle hooks fire regardless of step position:
+  //   preflight.requires  → blocks any accept/confirm/approve if not satisfied
+  //   onComplete.actions  → auto-executes when the workflow reaches a terminal success state
+  serviceConfig Json @default("{}")
+
+  instances             WorkflowInstance[]
   notificationTemplates WorkflowNotificationTemplate[]
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([providerType, serviceMode])
   @@index([platformServiceId])
   @@index([createdByProviderId])
   @@index([createdByAdminId])
   @@index([isDefault])
+  @@index([isShared])
 }
 
 // ─── Workflow Instance (tracks one booking's progress through a template) ────
 
 model WorkflowInstance {
-  id              String   @id @default(uuid())
-  templateId      String
-  template        WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  id         String           @id @default(uuid())
+  templateId String
+  template   WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
   // Polymorphic booking reference
-  bookingId       String
-  bookingType     String   // appointment, nurse_booking, childcare_booking, lab_test_booking, emergency_booking, service_booking
+  bookingId   String
+  bookingType String // appointment, nurse_booking, childcare_booking, lab_test_booking, emergency_booking, service_booking
 
-  currentStatus   String   // current step statusCode
-  previousStatus  String?
+  currentStatus  String // current step statusCode
+  previousStatus String?
 
-  patientUserId   String
-  providerUserId  String
+  patientUserId  String
+  providerUserId String
 
-  serviceMode     String   // office, home, video
+  serviceMode String // office, home, video
 
-  startedAt       DateTime @default(now())
-  completedAt     DateTime?
-  cancelledAt     DateTime?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  cancelledAt DateTime?
 
-  metadata        Json?    // extra data per instance
+  metadata Json? // extra data per instance
 
-  steps           WorkflowStepLog[]
+  /// Snapshot of the template at instance creation. Guards against a
+  /// regional admin editing the template mid-flight: the engine reads
+  /// steps / transitions / notifications from this snapshot when present,
+  /// falling back to the live `template` relation for old instances that
+  /// pre-date the snapshot field. Populated by
+  /// `WorkflowEngine.attachWorkflow()`.
+  templateSnapshot Json?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  steps WorkflowStepLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([bookingId, bookingType])
   @@index([patientUserId])
@@ -2195,32 +2770,32 @@ model WorkflowInstance {
 // ─── Workflow Step Log (audit trail: every status change recorded) ───────────
 
 model WorkflowStepLog {
-  id              String   @id @default(uuid())
-  instanceId      String
-  instance        WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  id         String           @id @default(uuid())
+  instanceId String
+  instance   WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
-  fromStatus      String?  // null for first step
-  toStatus        String
-  action          String   // "accept", "start_care", "complete", etc.
-  actionByUserId  String
-  actionByRole    String   // "patient", "provider", "system"
+  fromStatus     String? // null for first step
+  toStatus       String
+  action         String // "accept", "start_care", "complete", etc.
+  actionByUserId String
+  actionByRole   String // "patient", "provider", "system"
 
   // Display
-  label           String   // "Consultation en cours"
-  message         String?  // detailed message
+  label   String // "Consultation en cours"
+  message String? // detailed message
 
   // Content attachment (prescription, lab results, care notes, etc.)
-  contentType     String?  // "prescription", "lab_result", "care_notes", "report", "dental_chart", "eye_prescription", "meal_plan", "exercise_plan"
-  contentData     Json?    // { medications: [...] } or { findings: "...", values: [...] }
+  contentType String? // "prescription", "lab_result", "care_notes", "report", "dental_chart", "eye_prescription", "meal_plan", "exercise_plan"
+  contentData Json? // { medications: [...] } or { findings: "...", values: [...] }
 
   // Triggered actions results
-  triggeredVideoCallId  String?  // if video call was created
-  triggeredStockActions Json?    // [{ itemId, qty, action: "check"|"subtract" }]
+  triggeredVideoCallId  String? // if video call was created
+  triggeredStockActions Json? // [{ itemId, qty, action: "check"|"subtract" }]
 
   // Notification tracking
-  notificationId  String?  // Notification.id that was created
+  notificationId String? // Notification.id that was created
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([instanceId])
   @@index([toStatus])
@@ -2230,22 +2805,22 @@ model WorkflowStepLog {
 // ─── Workflow Notification Template (custom notification messages per step) ──
 
 model WorkflowNotificationTemplate {
-  id                   String   @id @default(uuid())
-  workflowTemplateId   String
-  workflowTemplate     WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
+  id                 String           @id @default(uuid())
+  workflowTemplateId String
+  workflowTemplate   WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
 
-  statusCode           String   // which step this notification is for
-  targetRole           String   // "patient" or "provider"
-  title                String   // supports {{variables}} like {{patientName}}, {{providerName}}
-  message              String   // supports {{variables}}
-  notificationType     String   @default("workflow") // notification type code
+  statusCode       String // which step this notification is for
+  targetRole       String // "patient" or "provider"
+  title            String // supports {{variables}} like {{patientName}}, {{providerName}}
+  message          String // supports {{variables}}
+  notificationType String @default("workflow") // notification type code
 
   // Ownership (null = system default)
-  createdByProviderId  String?
-  createdByAdminId     String?
+  createdByProviderId String?
+  createdByAdminId    String?
 
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([workflowTemplateId, statusCode, targetRole, createdByProviderId])
   @@index([workflowTemplateId])
@@ -2258,46 +2833,46 @@ model WorkflowNotificationTemplate {
 // ─── Provider Inventory Item (any provider, not just pharmacist) ─────────────
 
 model ProviderInventoryItem {
-  id                   String   @id @default(uuid())
-  providerUserId       String   // any provider's User.id
-  providerType         String   // PHARMACIST, OPTOMETRIST, DENTIST, NANNY, etc.
+  id             String @id @default(uuid())
+  providerUserId String // any provider's User.id
+  providerType   String // PHARMACIST, OPTOMETRIST, DENTIST, NANNY, etc.
 
   // Product info
-  name                 String
-  genericName          String?  // for medicines
-  category             String   // "medication", "equipment", "accessory", "supply", "eyewear", etc.
-  description          String?
-  imageUrl             String?
+  name        String
+  genericName String? // for medicines
+  category    String // "medication", "equipment", "accessory", "supply", "eyewear", etc.
+  description String?
+  imageUrl    String?
 
   // Measurement
-  unitOfMeasure        String   @default("unit") // unit, box, bottle, pair, ml, mg, kg
-  strength             String?  // "500mg" for medicines
-  dosageForm           String?  // tablet, capsule, syrup, etc. (medicines only)
+  unitOfMeasure String  @default("unit") // unit, box, bottle, pair, ml, mg, kg
+  strength      String? // "500mg" for medicines
+  dosageForm    String? // tablet, capsule, syrup, etc. (medicines only)
 
   // Pricing
-  price                Float
-  currency             String   @default("MUR")
-  discountPercent      Float?   // optional discount
+  price           Float
+  currency        String @default("MUR")
+  discountPercent Float? // optional discount
 
   // Stock
-  quantity             Int      @default(0)
-  minStockAlert        Int      @default(5) // alert when stock <= this
-  inStock              Boolean  @default(true)
+  quantity      Int     @default(0)
+  minStockAlert Int     @default(5) // alert when stock <= this
+  inStock       Boolean @default(true)
 
   // Flags
-  requiresPrescription Boolean  @default(false) // medicines needing Rx
-  isActive             Boolean  @default(true)
-  isFeatured           Boolean  @default(false) // show in Health Shop highlights
+  requiresPrescription Boolean @default(false) // medicines needing Rx
+  isActive             Boolean @default(true)
+  isFeatured           Boolean @default(false) // show in Health Shop highlights
 
   // Medicine-specific (nullable for non-medicines)
-  sideEffects          String[] @default([])
-  expiryDate           DateTime?
+  sideEffects String[]  @default([])
+  expiryDate  DateTime?
 
   // Relations
-  orderItems           InventoryOrderItem[]
+  orderItems InventoryOrderItem[]
 
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([providerUserId])
   @@index([providerType, category])
@@ -2309,35 +2884,35 @@ model ProviderInventoryItem {
 // ─── Inventory Order (patient orders from any provider's inventory) ──────────
 
 model InventoryOrder {
-  id                   String   @id @default(uuid())
-  patientUserId        String
-  providerUserId       String
-  providerType         String
+  id             String @id @default(uuid())
+  patientUserId  String
+  providerUserId String
+  providerType   String
 
-  status               String   @default("pending") // pending, confirmed, preparing, ready_for_pickup, ready_for_delivery, delivery_in_progress, delivered, picked_up, completed, cancelled
+  status String @default("pending") // pending, confirmed, preparing, ready_for_pickup, ready_for_delivery, delivery_in_progress, delivered, picked_up, completed, cancelled
 
-  totalAmount          Float
-  currency             String   @default("MUR")
-  deliveryType         String?  // pickup, delivery
-  deliveryAddress      String?
-  deliveryFee          Float    @default(0)
+  totalAmount     Float
+  currency        String  @default("MUR")
+  deliveryType    String? // pickup, delivery
+  deliveryAddress String?
+  deliveryFee     Float   @default(0)
 
   // Prescription
-  prescriptionRequired Boolean  @default(false)
-  prescriptionId       String?  // reference to uploaded prescription
+  prescriptionRequired Boolean @default(false)
+  prescriptionId       String? // reference to uploaded prescription
 
   // Workflow
-  workflowInstanceId   String?  // linked workflow for order tracking
+  workflowInstanceId String? // linked workflow for order tracking
 
-  items                InventoryOrderItem[]
+  items InventoryOrderItem[]
 
-  orderedAt            DateTime @default(now())
-  confirmedAt          DateTime?
-  deliveredAt          DateTime?
-  cancelledAt          DateTime?
+  orderedAt   DateTime  @default(now())
+  confirmedAt DateTime?
+  deliveredAt DateTime?
+  cancelledAt DateTime?
 
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([patientUserId])
   @@index([providerUserId])
@@ -2347,17 +2922,17 @@ model InventoryOrder {
 // ─── Inventory Order Item (line items with quantity and pricing) ─────────────
 
 model InventoryOrderItem {
-  id                   String   @id @default(uuid())
-  orderId              String
-  order                InventoryOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  inventoryItemId      String
-  inventoryItem        ProviderInventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  id              String                @id @default(uuid())
+  orderId         String
+  order           InventoryOrder        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   ProviderInventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  quantity             Int
-  unitPrice            Float
-  totalPrice           Float
+  quantity   Int
+  unitPrice  Float
+  totalPrice Float
 
-  createdAt            DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([orderId])
   @@index([inventoryItemId])

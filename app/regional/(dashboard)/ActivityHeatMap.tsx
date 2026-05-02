@@ -32,7 +32,7 @@ export default function ActivityHeatmap() {
  useEffect(() => {
  const fetchActivity = async () => {
  try {
- const res = await fetch('/api/admin/regional-activity')
+ const res = await fetch('/api/admin/regional-activity', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && Array.isArray(json.data)) {

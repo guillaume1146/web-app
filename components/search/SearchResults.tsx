@@ -7,7 +7,38 @@ import {
  FaChevronLeft, FaChevronRight, FaUserMd, FaUserNurse,
  FaBaby, FaPills,
 } from 'react-icons/fa'
-import type { UnifiedSearchResult } from '@/app/api/search/route'
+// UnifiedSearchResult moved out of the legacy /api/search route during the NestJS migration.
+// Defaults make the consumer code safe even when the backend omits a field.
+export interface UnifiedSearchResult {
+  id: string
+  type: string
+  name: string
+  specialty: string[]
+  rating: number
+  reviewCount: number
+  reviews?: number
+  city: string
+  location?: string
+  consultationFee: number
+  hourlyRate?: number
+  fee?: number
+  imageUrl?: string
+  profileImage?: string
+  experience?: number
+  verified?: boolean
+  available?: boolean
+  nextAvailable: string
+  videoEnabled?: boolean
+  emergencyAvailable?: boolean
+  homeService?: boolean
+  languages: string[]
+  consultationTypes: string[]
+  videoConsultationFee?: number
+  detailHref?: string
+  bio?: string
+  url: string
+  searchEnabled?: boolean
+}
 
 // ---- Loading Skeleton ----
 
@@ -205,7 +236,7 @@ function ResultCard({ result }: { result: UnifiedSearchResult }) {
  )}
  </div>
  <Link
- href={result.detailHref}
+ href={result.detailHref || result.url || '#'}
  className="px-4 py-2.5 bg-blue-600 text-white text-xs rounded-lg font-medium hover:bg-blue-700 transition-colors whitespace-nowrap text-center"
  >
  {result.type === 'medicine' ? 'View' : 'View Profile'}

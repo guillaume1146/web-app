@@ -52,7 +52,7 @@ const BotHealthAssistant: React.FC<Props> = ({ userName, healthScore }) => {
  // Fetch user name if not provided
  useEffect(() => {
  if (!userName) {
- fetch('/api/auth/me')
+ fetch('/api/auth/me', { credentials: 'include' })
  .then(r => r.json())
  .then(data => {
  if (data.user?.firstName) setDisplayName(data.user.firstName)
@@ -77,7 +77,7 @@ const BotHealthAssistant: React.FC<Props> = ({ userName, healthScore }) => {
  const loadSessions = async () => {
  setIsLoadingSessions(true)
  try {
- const res = await fetch('/api/ai/chat')
+ const res = await fetch('/api/ai/chat', { credentials: 'include' })
  const data = await res.json()
  if (data.success) {
  setSessions(data.data)
@@ -91,7 +91,7 @@ const BotHealthAssistant: React.FC<Props> = ({ userName, healthScore }) => {
 
  const loadSessionMessages = async (sessionId: string) => {
  try {
- const res = await fetch(`/api/ai/chat/${sessionId}`)
+ const res = await fetch(`/api/ai/chat/${sessionId}`, { credentials: 'include' })
  const data = await res.json()
  if (data.success) {
  setMessages(data.data.messages)
@@ -114,7 +114,7 @@ const BotHealthAssistant: React.FC<Props> = ({ userName, healthScore }) => {
  const deleteSession = async (sessionId: string, e: React.MouseEvent) => {
  e.stopPropagation()
  try {
- const res = await fetch(`/api/ai/chat/${sessionId}`, { method: 'DELETE' })
+ const res = await fetch(`/api/ai/chat/${sessionId}`, { method: 'DELETE', credentials: 'include' })
  const data = await res.json()
  if (data.success) {
  setSessions(prev => prev.filter(s => s.id !== sessionId))
@@ -151,6 +151,7 @@ const BotHealthAssistant: React.FC<Props> = ({ userName, healthScore }) => {
  try {
  const res = await fetch('/api/ai/chat', {
  method: 'POST',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
  message: trimmed,
@@ -469,7 +470,7 @@ const BotHealthAssistant: React.FC<Props> = ({ userName, healthScore }) => {
  }
 
  return (
- <div className="flex h-[calc(100vh-8rem)] bg-gray-50 rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+ <div className="h-full flex bg-gray-50 border border-gray-100 overflow-hidden">
  {/* Mobile Sidebar Overlay */}
  {isSidebarOpen && (
  <div
@@ -482,7 +483,7 @@ const BotHealthAssistant: React.FC<Props> = ({ userName, healthScore }) => {
  <div
  className={`${
  isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
- } lg:translate-x-0 fixed lg:relative z-50 lg:z-0 w-72 h-full bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out`}
+ } lg:translate-x-0 fixed lg:relative z-50 lg:z-0 w-72 h-screen lg:h-full bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out`}
  >
  {/* Sidebar Header */}
  <div className="p-4 border-b border-gray-200">
@@ -551,7 +552,7 @@ const BotHealthAssistant: React.FC<Props> = ({ userName, healthScore }) => {
  </div>
 
  {/* Main Chat Area */}
- <div className="flex-1 flex flex-col min-w-0">
+ <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
  {/* Chat Header */}
  <div className="bg-brand-navy text-white px-4 py-3 flex items-center justify-between">
  <div className="flex items-center space-x-3">

@@ -27,6 +27,7 @@ import HealthwyzLogo from '@/components/ui/HealthwyzLogo'
 import SearchAutocomplete from '@/components/search/SearchAutocomplete'
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher'
 import { useCapacitor } from '@/hooks/useCapacitor'
+import { getProfilePath } from '@/lib/navigation/profilePath'
 import * as FaIcons from 'react-icons/fa'
 
 type ServiceItem = { href: string; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; color: string }
@@ -157,7 +158,7 @@ const Navbar: React.FC = () => {
  if (match) {
  const cookieVal = decodeURIComponent(match.trim().split('=')[1] ?? '')
  const slug = cookieToSlug[cookieVal] || 'patient'
- setProfileHref(`/${slug}/profile`)
+ setProfileHref(getProfilePath(cookieVal))
  setUserSlug(slug)
  }
  }, [])
@@ -196,12 +197,12 @@ const Navbar: React.FC = () => {
  Skip to main content
  </a>
  <div className="container mx-auto px-3 sm:px-4 lg:px-6">
- <div className="flex justify-between items-center h-16 lg:h-20">
+ <div className="flex justify-between items-center h-12 lg:h-14">
  {/* Logo */}
  <Link href="/" className="flex items-center space-x-2 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal rounded-md">
  <HealthwyzLogo
- width={isMobile ? 180 : 220}
- height={isMobile ? 52 : 64}
+ width={isMobile ? 120 : 150}
+ height={isMobile ? 34 : 40}
  />
  </Link>
 

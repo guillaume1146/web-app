@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import { useUser } from '@/hooks/useUser'
 import DashboardHeader from './DashboardHeader'
 import DashboardSidebar, { type SidebarItem } from './DashboardSidebar'
+import VerificationBanner from './VerificationBanner'
 
 interface DashboardLayoutProps {
  children: React.ReactNode
@@ -20,6 +21,8 @@ interface DashboardLayoutProps {
  networkHref?: string
  onLogout: () => void
  sidebarFooter?: React.ReactNode
+ /** Extra classes applied to the <main> scroll container (e.g. "!p-0" for full-bleed pages). */
+ mainClassName?: string
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({
@@ -35,6 +38,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
  networkHref,
  onLogout,
  sidebarFooter,
+ mainClassName,
 }) => {
  const [sidebarOpen, setSidebarOpen] = useState(true)
  const [isMobile, setIsMobile] = useState(false)
@@ -56,34 +60,88 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
  return () => window.removeEventListener('resize', handleResize)
  }, [])
 
- // Socket.IO: connect and listen for real-time notifications
- const setupSocket = useCallback(async () => {
- if (!userId) return
- const { io } = await import('socket.io-client')
- const socket = io({ transports: ['websocket', 'polling'] })
- socket.on('connect', () => {
- socket.emit('chat:join', { userId })
- })
- socket.on('notification:new', (data: { title: string; message: string; id: string; type: string; createdAt: string }) => {
- toast.info(
- <div>
- <p className="font-semibold text-sm">{data.title}</p>
- <p className="text-xs text-gray-600 mt-0.5">{data.message}</p>
- </div>,
- { autoClose: 5000 }
- )
- window.dispatchEvent(new CustomEvent('notification:new', { detail: data }))
- })
- return () => {
- socket.disconnect()
- }
- }, [userId])
-
+ // Socket.IO singleton — ONE socket and ONE notification listener per
+ // (tab, userId). Every time this effect runs (strict-mode, HMR, nav):
+ //   • reuse the existing socket if one exists for this userId
+ //   • ALWAYS re-attach the current `notification:new` handler using
+ //     off() then on() — prevents stale listeners from old HMR modules
+ //     from continuing to fire toasts alongside the new one.
+ //
+ // Seen-ids set lives on window so duplicate notifications (backend
+ // retries, socket replay) are deduped across re-mounts too.
  useEffect(() => {
- let cleanup: (() => void) | undefined
- setupSocket().then(fn => { cleanup = fn })
- return () => { cleanup?.() }
- }, [setupSocket])
+ if (!userId || typeof window === 'undefined') return
+ const w = window as any
+ let cancelled = false
+
+ // Fresh login under a different userId — drop the old socket first.
+ if (w.__mediwyzSocket && w.__mediwyzSocketUserId !== userId) {
+  try { w.__mediwyzSocket.removeAllListeners(); w.__mediwyzSocket.disconnect() } catch {}
+  w.__mediwyzSocket = null
+ }
+
+ // Shared seen-ids across remounts
+ const seenIds: Set<string> = w.__mediwyzSeenNotifIds ?? new Set<string>()
+ w.__mediwyzSeenNotifIds = seenIds
+
+ const wireListeners = (socket: any) => {
+  // Detach every prior listener for these events — removes ghost
+  // listeners attached by HMR'd module instances and guarantees
+  // exactly ONE handler is active per event.
+  socket.off('connect')
+  socket.off('notification:new')
+
+  socket.on('connect', () => { socket.emit('chat:join', { userId }) })
+
+  socket.on('notification:new', (data: { title: string; message: string; id: string; type: string; createdAt: string }) => {
+   if (data?.id && seenIds.has(data.id)) return
+   if (data?.id) seenIds.add(data.id)
+   toast.info(
+    <div>
+     <p className="font-semibold text-sm">{data.title}</p>
+     <p className="text-xs text-gray-600 mt-0.5">{data.message}</p>
+    </div>,
+    { toastId: data?.id, autoClose: 5000 },
+   )
+   window.dispatchEvent(new CustomEvent('notification:new', { detail: data }))
+  })
+
+  // If socket was already connected when we rewired, manually (re)join
+  // the room since the `connect` handler won't fire again.
+  if (socket.connected) socket.emit('chat:join', { userId })
+ }
+
+ // Reuse existing socket when possible.
+ if (w.__mediwyzSocket && w.__mediwyzSocketUserId === userId) {
+  wireListeners(w.__mediwyzSocket)
+  return () => { cancelled = true }
+ }
+
+ // Mark claim synchronously so concurrent mounts don't both create sockets.
+ w.__mediwyzSocketUserId = userId
+ w.__mediwyzSocketCreating = true
+
+ ;(async () => {
+  try {
+   const { io } = await import('socket.io-client')
+   if (cancelled || w.__mediwyzSocketUserId !== userId) return
+   // If another effect ran first and created the socket, reuse it.
+   if (w.__mediwyzSocket) { wireListeners(w.__mediwyzSocket); return }
+
+   const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL
+    || (window.location.hostname === 'localhost'
+     ? 'http://localhost:3001'
+     : window.location.origin)
+   const socket = io(socketUrl, { transports: ['websocket', 'polling'], withCredentials: true })
+   w.__mediwyzSocket = socket
+   wireListeners(socket)
+  } finally {
+   w.__mediwyzSocketCreating = false
+  }
+ })()
+
+ return () => { cancelled = true }
+ }, [userId])
 
  const handleToggleSidebar = () => {
  setSidebarOpen((prev) => !prev)
@@ -131,8 +189,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
  <main
  id="dashboard-main-content"
  role="main"
- className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8"
+ className={`flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8${mainClassName ? ` ${mainClassName}` : ''}`}
  >
+ <VerificationBanner userId={userId} userType={currentUser?.userType} />
  {children}
  </main>
  </div>

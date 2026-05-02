@@ -38,6 +38,7 @@ export default function WalletTopUp({ userId, currency = 'MUR', onSuccess }: Wal
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ amount: numAmount, paymentMethod }),
+ credentials: 'include',
  })
  const json = await res.json()
  if (json.success) {
@@ -60,7 +61,7 @@ export default function WalletTopUp({ userId, currency = 'MUR', onSuccess }: Wal
  onClick={() => setShowForm(true)}
  className="w-full mt-3 py-2.5 text-white rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-sm"
  >
- <FaPlus className="text-xs" /> Top Up Wallet
+ <FaPlus className="text-xs" /> Top Up Balance
  </button>
  )
  }
@@ -68,7 +69,7 @@ export default function WalletTopUp({ userId, currency = 'MUR', onSuccess }: Wal
  return (
  <div className="mt-3 bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
  <div className="flex items-center justify-between mb-3">
- <h4 className="text-sm font-semibold text-gray-900">Top Up Wallet</h4>
+ <h4 className="text-sm font-semibold text-gray-900">Top Up Balance</h4>
  <button
  onClick={() => { setShowForm(false); setError(null) }}
  className="p-1 text-gray-400 hover:text-gray-600"

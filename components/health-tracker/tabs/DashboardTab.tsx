@@ -5,6 +5,7 @@ import { FaUtensils, FaDumbbell, FaTint, FaSync } from 'react-icons/fa'
 import CircularProgress from '../shared/CircularProgress'
 import WaterTracker from '../shared/WaterTracker'
 import GoalProgressBar from '../shared/GoalProgressBar'
+import StreakTile from '../shared/StreakTile'
 
 interface DashboardData {
  calories: { consumed: number; target: number; burned: number }
@@ -25,15 +26,16 @@ export default function DashboardTab({ onNavigateToTab }: DashboardTabProps) {
  try {
  setLoading(true)
  setError('')
- const res = await fetch('/api/ai/health-tracker/dashboard')
+ const res = await fetch('/api/ai/health-tracker/dashboard', { credentials: 'include' })
  if (!res.ok) throw new Error('Failed to load dashboard')
  const json = await res.json()
  if (!json.success) throw new Error(json.message || 'Failed to load dashboard')
- const d = json.data
+ const d = json.data ?? {}
+ const n = (v: unknown) => Number.isFinite(Number(v)) ? Number(v) : 0
  setData({
- calories: { consumed: d.caloriesConsumed, target: d.targetCalories, burned: d.caloriesBurned },
- water: { consumed: d.waterConsumedMl, target: d.waterTargetMl },
- exercise: { minutes: d.exerciseMinutes, targetMinutes: d.exerciseTargetMin, caloriesBurned: d.caloriesBurned },
+ calories: { consumed: n(d.caloriesConsumed), target: n(d.targetCalories) || 2000, burned: n(d.caloriesBurned) },
+ water: { consumed: n(d.waterConsumedMl), target: n(d.waterTargetMl) || 2000 },
+ exercise: { minutes: n(d.exerciseMinutes), targetMinutes: n(d.exerciseTargetMin) || 30, caloriesBurned: n(d.caloriesBurned) },
  })
  } catch (err) {
  setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -52,6 +54,7 @@ export default function DashboardTab({ onNavigateToTab }: DashboardTabProps) {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ amountMl: 250 }),
+ credentials: 'include',
  })
  if (!res.ok) throw new Error('Failed to log water')
  await fetchData()
@@ -100,6 +103,8 @@ export default function DashboardTab({ onNavigateToTab }: DashboardTabProps) {
 
  return (
  <div className="p-4 space-y-6">
+ <StreakTile />
+
  {/* Header with refresh */}
  <div className="flex items-center justify-between">
  <h2 className="text-lg font-bold text-gray-800">Daily Summary</h2>

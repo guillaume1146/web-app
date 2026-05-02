@@ -220,7 +220,7 @@ export default function LabTestingPage() {
  const fetchLabTests = useCallback(async () => {
  try {
  setIsLoading(true)
- const res = await fetch('/api/search/lab-tests')
+ const res = await fetch('/api/search/providers?type=LAB_TECHNICIAN')
  const json = await res.json()
  if (json.success && Array.isArray(json.data)) {
  const mapped = json.data.map(mapApiTestToUi)

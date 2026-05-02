@@ -48,7 +48,7 @@ export default function CheckoutPage() {
  return
  }
  try {
- const res = await fetch(`/api/users/${userId}/wallet`)
+ const res = await fetch(`/api/users/${userId}/wallet`, { credentials: 'include' })
  const json = await res.json()
  if (json.success && json.data) {
  setWalletData({
@@ -87,6 +87,7 @@ export default function CheckoutPage() {
 
  const res = await fetch('/api/orders', {
  method: 'POST',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ items: orderItems }),
  })

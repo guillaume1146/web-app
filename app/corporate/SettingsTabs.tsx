@@ -81,7 +81,7 @@ export default function SettingsTabs({ initialTab }: SettingsTabsProps) {
  const userId = getUserId()
  if (!userId) return
 
- fetch(`/api/corporate/${userId}/dashboard`)
+ fetch(`/api/corporate/${userId}/dashboard`, { credentials: 'include' })
  .then(res => res.ok ? res.json() : null)
  .then(json => {
  if (json?.success) {

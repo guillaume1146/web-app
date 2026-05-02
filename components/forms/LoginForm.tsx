@@ -79,11 +79,14 @@ const LoginForm: React.FC = () => {
  return
  }
 
- // Store user data in localStorage for client-side access
+ // Store user data + redirect path in localStorage for client-side access
  localStorage.setItem('mediwyz_user', JSON.stringify(data.user))
+ if (data.redirectPath) {
+  localStorage.setItem('mediwyz_redirectPath', data.redirectPath)
+ }
 
- // Redirect to the user's dashboard (auto-detected from their role)
- router.push(data.redirectPath || '/patient')
+ // Redirect to the user's private dashboard feed
+ router.push(data.redirectPath || '/patient/feed')
  } catch {
  setError('Network error. Please try again.')
  setIsSubmitting(false)
@@ -191,6 +194,12 @@ const LoginForm: React.FC = () => {
  'Sign In'
  )}
  </button>
+
+ <div className="text-center mt-3">
+ <a href="/forgot-password" className="text-sm text-[#0C6780] hover:underline">
+ Forgot password?
+ </a>
+ </div>
  </form>
 
  {/* Divider */}

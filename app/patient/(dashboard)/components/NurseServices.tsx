@@ -62,7 +62,7 @@ const NurseServices: React.FC<Props> = ({ patientData, onVideoCall }) => {
  // Fetch nurse bookings for this patient
  const fetchBookings = useCallback(async () => {
  try {
- const res = await fetch(`/api/patients/${patientData.id}/bookings`)
+ const res = await fetch('/api/bookings/unified?role=patient', { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
@@ -97,11 +97,19 @@ const NurseServices: React.FC<Props> = ({ patientData, onVideoCall }) => {
  const fetchNurses = async () => {
  setLoadingNurses(true)
  try {
- const res = await fetch('/api/nurses/available')
+ const res = await fetch('/api/search/providers?type=NURSE')
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
- setAvailableNurses(json.data)
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ setAvailableNurses(json.data.map((n: any) => ({
+ id: n.id,
+ userId: n.id,
+ name: `${n.firstName} ${n.lastName}`,
+ profileImage: n.profileImage || null,
+ experience: n.experience || '',
+ specializations: n.specializations || [],
+ })))
  }
  }
  } catch (error) {
@@ -124,7 +132,7 @@ const NurseServices: React.FC<Props> = ({ patientData, onVideoCall }) => {
  const fetchServices = async () => {
  setLoadingServices(true)
  try {
- const res = await fetch(`/api/nurses/${selectedNurseId}/services`)
+ const res = await fetch(`/api/providers/${selectedNurseId}/services`, { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success && json.data) {
@@ -160,10 +168,12 @@ const NurseServices: React.FC<Props> = ({ patientData, onVideoCall }) => {
  let successCount = 0
 
  for (const slot of selectedSlots) {
- const res = await fetch('/api/bookings/nurse', {
+ const res = await fetch('/api/bookings', {
  method: 'POST',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
+ providerType: 'NURSE',
  nurseId: selectedNurseId,
  consultationType,
  scheduledDate: slot.date,

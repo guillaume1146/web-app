@@ -90,6 +90,7 @@ export default function FoodScanPanel({ onResult }: FoodScanPanelProps) {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ imageBase64: dataUrl }),
+ credentials: 'include',
  })
 
  const json: AiScanResponse = await res.json()

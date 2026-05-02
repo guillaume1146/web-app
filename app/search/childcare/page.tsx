@@ -17,6 +17,20 @@ interface NannyProps {
 }
 
 const NannyCard = ({ nanny }: NannyProps) => {
+ // Defensive defaults — API may omit fields for nannies coming from the generic provider search
+ const ageGroups = Array.isArray(nanny.ageGroups) ? nanny.ageGroups : []
+ const languages = Array.isArray(nanny.languages) ? nanny.languages : []
+ const specialization = Array.isArray(nanny.specialization)
+  ? nanny.specialization
+  : Array.isArray((nanny as unknown as { specializations?: string[] }).specializations)
+  ? (nanny as unknown as { specializations: string[] }).specializations
+  : []
+ const careTypes = Array.isArray(nanny.careTypes) ? nanny.careTypes : []
+ const location = nanny.location || (nanny as unknown as { address?: string }).address || ''
+ const nextAvailable = nanny.nextAvailable || 'Available'
+ const reviews = nanny.reviews ?? 0
+ const rating = nanny.rating ?? 0
+
  return (
  <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 overflow-hidden">
  <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-3">
@@ -47,48 +61,52 @@ const NannyCard = ({ nanny }: NannyProps) => {
  {nanny.firstName} {nanny.lastName}
  </h3>
  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium border whitespace-nowrap bg-pink-50 text-pink-700 border-pink-200">
- {nanny.ageGroups.slice(0, 2).join(', ')}
- {nanny.ageGroups.length > 2 && ` +${nanny.ageGroups.length - 2}`}
+ {ageGroups.slice(0, 2).join(', ') || 'All ages'}
+ {ageGroups.length > 2 && ` +${ageGroups.length - 2}`}
  </span>
  </div>
  <p className="text-xs text-purple-600 font-medium truncate mb-1">
- {nanny.specialization.join(', ')}
+ {specialization.join(', ') || 'Childcare'}
  </p>
 
  {/* Meta row */}
  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-1.5">
  <span className="flex items-center gap-1">
  <FaStar className="text-yellow-500 text-[10px]" />
- <span className="font-semibold text-gray-700">{nanny.rating}</span>
- <span className="text-gray-400">({nanny.reviews})</span>
+ <span className="font-semibold text-gray-700">{rating}</span>
+ <span className="text-gray-400">({reviews})</span>
  </span>
+ {location && (
  <span className="flex items-center gap-1">
  <FaMapMarkerAlt className="text-[10px] text-gray-400" />
- <span className="truncate max-w-[120px]">{nanny.location}</span>
+ <span className="truncate max-w-[120px]">{location}</span>
  </span>
+ )}
+ {languages.length > 0 && (
  <span className="flex items-center gap-1">
  <FaLanguage className="text-[10px] text-gray-400" />
- <span>{nanny.languages.slice(0, 2).join(', ')}</span>
- {nanny.languages.length > 2 && <span className="text-gray-400">+{nanny.languages.length - 2}</span>}
+ <span>{languages.slice(0, 2).join(', ')}</span>
+ {languages.length > 2 && <span className="text-gray-400">+{languages.length - 2}</span>}
  </span>
+ )}
  </div>
 
  {/* Tags */}
  <div className="flex flex-wrap items-center gap-1.5">
  <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
- <FaClock className="text-[8px]" /> {nanny.nextAvailable}
+ <FaClock className="text-[8px]" /> {nextAvailable}
  </span>
- {nanny.careTypes.includes('Full-time Care') && (
+ {careTypes.includes('Full-time Care') && (
  <span className="inline-flex items-center gap-1 text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
  <FaHome className="text-[8px]" /> Full-time
  </span>
  )}
- {nanny.careTypes.includes('Part-time Care') && (
+ {careTypes.includes('Part-time Care') && (
  <span className="inline-flex items-center gap-1 text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200">
  <FaClock className="text-[8px]" /> Part-time
  </span>
  )}
- {nanny.careTypes.includes('Date Night Sitting') && (
+ {careTypes.includes('Date Night Sitting') && (
  <span className="inline-flex items-center gap-1 text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">
  <FaCalendarAlt className="text-[8px]" /> Date Night
  </span>

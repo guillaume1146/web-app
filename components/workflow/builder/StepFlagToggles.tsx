@@ -1,36 +1,17 @@
 'use client'
 
-import { FiVideo, FiDollarSign, FiRefreshCw, FiMessageSquare, FiStar, FiPackage, FiShield, FiFileText, FiBell } from 'react-icons/fi'
+import { FiVideo, FiPhone, FiDollarSign, FiRefreshCw, FiMessageSquare, FiStar, FiPackage, FiShield, FiFileText, FiInfo } from 'react-icons/fi'
 
+/** Only the flags that survive — set exclusively by step-type defaultFlags.
+ *  Admins never toggle these in the builder; the engine merges them from the
+ *  selected WorkflowStepType.defaultFlags at runtime. */
 export interface StepFlags {
-  triggers_video_call?: boolean
-  triggers_payment?: boolean
-  triggers_refund?: boolean
-  triggers_conversation?: boolean
-  triggers_review_request?: boolean
-  triggers_stock_check?: boolean
-  triggers_stock_subtract?: boolean
+  requires_content?: string
   requires_prescription?: boolean
-  requires_content?: string | boolean
-  notify_patient?: boolean
-  notify_provider?: boolean
 }
 
-const FLAG_CONFIG = [
-  { key: 'triggers_payment', label: 'Wallet Payment', desc: 'Check balance + debit patient, credit provider (always required for bookings)', icon: FiDollarSign, color: 'text-green-600 bg-green-50', mandatory: true },
-  { key: 'triggers_video_call', label: 'Video Call', desc: 'Auto-create video room when this step is reached', icon: FiVideo, color: 'text-purple-600 bg-purple-50' },
-  { key: 'triggers_refund', label: 'Refund', desc: 'Refund patient based on cancellation policy', icon: FiRefreshCw, color: 'text-orange-600 bg-orange-50' },
-  { key: 'triggers_conversation', label: 'Chat', desc: 'Auto-create chat conversation between patient & provider', icon: FiMessageSquare, color: 'text-blue-600 bg-blue-50' },
-  { key: 'triggers_review_request', label: 'Review Request', desc: 'Send review prompt to patient after completion', icon: FiStar, color: 'text-yellow-600 bg-yellow-50' },
-  { key: 'triggers_stock_check', label: 'Stock Check', desc: 'Validate inventory availability before proceeding', icon: FiPackage, color: 'text-cyan-600 bg-cyan-50' },
-  { key: 'triggers_stock_subtract', label: 'Stock Subtract', desc: 'Decrement inventory stock after transition', icon: FiPackage, color: 'text-red-600 bg-red-50' },
-  { key: 'requires_prescription', label: 'Prescription Required', desc: 'Validate patient has a valid prescription', icon: FiShield, color: 'text-pink-600 bg-pink-50' },
-  { key: 'notify_patient', label: 'Notify Patient', desc: 'Send custom notification to patient when this step is reached', icon: FiBell, color: 'text-indigo-600 bg-indigo-50' },
-  { key: 'notify_provider', label: 'Notify Provider', desc: 'Send custom notification to provider when this step is reached', icon: FiBell, color: 'text-teal-600 bg-teal-50' },
-] as const
-
 const CONTENT_TYPES = [
-  { value: '', label: 'None' },
+  { value: '', label: 'None — no document required at this step' },
   { value: 'prescription', label: 'Prescription' },
   { value: 'lab_result', label: 'Lab Results' },
   { value: 'care_notes', label: 'Care Notes' },
@@ -41,76 +22,101 @@ const CONTENT_TYPES = [
   { value: 'exercise_plan', label: 'Exercise Plan' },
 ]
 
+/** Behaviors the engine fires automatically — shown as read-only information so
+ *  admins understand what happens without needing to configure anything. */
+const AUTOMATIC_BEHAVIORS = [
+  { icon: FiDollarSign, color: 'text-green-600 bg-green-50', label: 'Wallet payment', desc: 'Charged on acceptance, if serviceMode has a price (template-level paymentTiming).' },
+  { icon: FiRefreshCw, color: 'text-orange-600 bg-orange-50', label: 'Refund', desc: 'Reversed automatically on any cancel / deny / decline transition.' },
+  { icon: FiMessageSquare, color: 'text-blue-600 bg-blue-50', label: 'Chat conversation', desc: 'Opened when the booking is accepted.' },
+  { icon: FiVideo, color: 'text-purple-600 bg-purple-50', label: 'Video room', desc: 'Created on acceptance for video-mode bookings, or on VIDEO_CALL_READY / VIDEO_CALL_ACTIVE step types.' },
+  { icon: FiPhone, color: 'text-cyan-600 bg-cyan-50', label: 'Audio room', desc: 'Created automatically for AUDIO_CALL_READY / AUDIO_CALL_ACTIVE step types.' },
+  { icon: FiStar, color: 'text-yellow-600 bg-yellow-50', label: 'Review request', desc: 'Sent to the patient when the booking reaches a terminal success step.' },
+  { icon: FiPackage, color: 'text-teal-600 bg-teal-50', label: 'Health Shop stock', desc: 'Checked on acceptance and subtracted on completion — configured at template level via serviceConfig.stock, not per step.' },
+]
+
 interface StepFlagTogglesProps {
   flags: StepFlags
   onChange: (flags: StepFlags) => void
 }
 
 export default function StepFlagToggles({ flags, onChange }: StepFlagTogglesProps) {
-  function toggleFlag(key: string) {
-    onChange({ ...flags, [key]: !flags[key as keyof StepFlags] })
-  }
-
-  function setContentType(value: string) {
-    onChange({ ...flags, requires_content: value || undefined })
-  }
-
   return (
-    <div className="space-y-2">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Triggered Actions</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {FLAG_CONFIG.map(({ key, label, desc, icon: Icon, color, ...rest }) => {
-          const isMandatory = 'mandatory' in rest && rest.mandatory
-          const active = isMandatory || !!flags[key as keyof StepFlags]
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => { if (!isMandatory) toggleFlag(key) }}
-              disabled={isMandatory}
-              className={`flex items-start gap-3 p-3 rounded-lg border transition text-left ${
-                isMandatory
-                  ? 'border-green-300 bg-green-50 cursor-default opacity-90'
-                  : active
-                    ? 'border-brand-teal bg-sky-50'
-                    : 'border-gray-200 hover:border-gray-300 bg-white'
-              }`}
-            >
+    <div className="space-y-4">
+
+      {/* ── Automatic behaviors (read-only) ───────────────────────────────── */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <FiInfo className="w-3.5 h-3.5 text-gray-400" />
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Automatic behaviors — no configuration needed</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {AUTOMATIC_BEHAVIORS.map(({ icon: Icon, color, label, desc }) => (
+            <div key={label} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50">
               <div className={`p-1.5 rounded-lg ${color} flex-shrink-0`}>
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900">{label}</span>
-                  {isMandatory ? (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-200 text-green-800">ALWAYS ON</span>
-                  ) : (
-                    <div className={`w-3 h-3 rounded-full border-2 ${active ? 'bg-brand-teal border-brand-teal' : 'border-gray-300'}`} />
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+                <p className="text-sm font-medium text-gray-700">{label}</p>
+                <p className="text-xs text-gray-400 mt-0.5 leading-snug">{desc}</p>
               </div>
-            </button>
-          )
-        })}
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Content requirement selector */}
-      <div className="mt-3 p-3 rounded-lg border border-gray-200 bg-white">
-        <div className="flex items-center gap-2 mb-2">
-          <FiFileText className="w-4 h-4 text-indigo-600" />
-          <span className="text-sm font-medium text-gray-900">Required Content Attachment</span>
+      {/* ── Step-type-driven overrides ─────────────────────────────────────
+           These two are set automatically when you pick a step type that
+           carries defaultFlags (RESULTS_READY, CARE_NOTES, etc.).
+           Use the dropdowns below only when your step type doesn't set them
+           and you need an explicit content or prescription requirement.      */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Step-type overrides</p>
+        <p className="text-xs text-gray-400 leading-snug">
+          These are set automatically by the step type you chose above. Override here only if you need
+          a different content requirement than the step type provides.
+        </p>
+
+        {/* required content type */}
+        <div className="p-3 rounded-lg border border-gray-200 bg-white">
+          <div className="flex items-center gap-2 mb-2">
+            <FiFileText className="w-4 h-4 text-indigo-500" />
+            <span className="text-sm font-medium text-gray-800">Required content attachment</span>
+          </div>
+          <select
+            value={typeof flags.requires_content === 'string' ? flags.requires_content : ''}
+            onChange={(e) => onChange({ ...flags, requires_content: e.target.value || undefined })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
+          >
+            {CONTENT_TYPES.map(ct => (
+              <option key={ct.value} value={ct.value}>{ct.label}</option>
+            ))}
+          </select>
         </div>
-        <select
-          value={typeof flags.requires_content === 'string' ? flags.requires_content : ''}
-          onChange={(e) => setContentType(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
-        >
-          {CONTENT_TYPES.map(ct => (
-            <option key={ct.value} value={ct.value}>{ct.label}</option>
-          ))}
-        </select>
+
+        {/* requires prescription (mid-workflow, not upfront) */}
+        <div className="p-3 rounded-lg border border-gray-200 bg-white">
+          <button
+            type="button"
+            onClick={() => onChange({ ...flags, requires_prescription: !flags.requires_prescription })}
+            className="flex items-start gap-3 w-full text-left"
+          >
+            <div className={`p-1.5 rounded-lg flex-shrink-0 ${flags.requires_prescription ? 'text-pink-600 bg-pink-50' : 'text-gray-400 bg-gray-50'}`}>
+              <FiShield className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-800">Mid-workflow prescription check</span>
+                <div className={`w-3 h-3 rounded-full border-2 flex-shrink-0 ${flags.requires_prescription ? 'bg-brand-teal border-brand-teal' : 'border-gray-300'}`} />
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5 leading-snug">
+                Requires the provider to explicitly confirm a prescription at this step.
+                For upfront eligibility checks, use serviceConfig.preflight instead.
+              </p>
+            </div>
+          </button>
+        </div>
       </div>
+
     </div>
   )
 }

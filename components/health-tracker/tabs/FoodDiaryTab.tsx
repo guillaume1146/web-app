@@ -49,7 +49,7 @@ export default function FoodDiaryTab() {
  try {
  setLoading(true)
  setError('')
- const res = await fetch(`/api/ai/health-tracker/food?date=${dateStr}`)
+ const res = await fetch(`/api/ai/health-tracker/food?date=${dateStr}`, { credentials: 'include' })
  if (!res.ok) throw new Error('Failed to load food diary')
  const json = await res.json()
  if (!json.success) throw new Error(json.message || 'Failed to load food diary')
@@ -79,7 +79,7 @@ export default function FoodDiaryTab() {
 
  const handleDelete = async (id: string) => {
  try {
- const res = await fetch(`/api/ai/health-tracker/food/${id}`, { method: 'DELETE' })
+ const res = await fetch(`/api/ai/health-tracker/food/${id}`, { method: 'DELETE', credentials: 'include' })
  if (!res.ok) throw new Error('Failed to delete')
  await fetchData()
  } catch {
@@ -93,6 +93,7 @@ export default function FoodDiaryTab() {
  try {
  const res = await fetch('/api/ai/health-tracker/food', {
  method: 'POST',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
  foodId: food.id,

@@ -99,7 +99,7 @@ export default function AdminContentManagementPage() {
  return
  }
 
- const res = await fetch(`/api/users/${userId}`)
+ const res = await fetch(`/api/users/${userId}`, { credentials: 'include' })
  if (!res.ok) {
  setCountryError('Failed to fetch your profile.')
  setCountryLoading(false)
@@ -134,9 +134,9 @@ export default function AdminContentManagementPage() {
  setLoading(true)
  try {
  const [sectionsRes, slidesRes, testimonialsRes] = await Promise.all([
- fetch(`/api/cms/sections?countryCode=${countryCode}&includeHidden=true`),
- fetch(`/api/cms/hero-slides?countryCode=${countryCode}&includeInactive=true`),
- fetch(`/api/cms/testimonials?countryCode=${countryCode}&includeInactive=true`),
+ fetch(`/api/cms/sections?countryCode=${countryCode}&includeHidden=true`, { credentials: 'include' }),
+ fetch(`/api/cms/hero-slides?countryCode=${countryCode}&includeInactive=true`, { credentials: 'include' }),
+ fetch(`/api/cms/testimonials?countryCode=${countryCode}&includeInactive=true`, { credentials: 'include' }),
  ])
 
  if (sectionsRes.ok) {
@@ -178,7 +178,7 @@ export default function AdminContentManagementPage() {
  if (!countryCode) return
  setSaving(true)
  try {
- const res = await fetch(`/api/cms/sections/${sectionType}?countryCode=${countryCode}`, {
+ const res = await fetch(`/api/cms/sections/${sectionType}?countryCode=${countryCode}`, { credentials: 'include',
  method: 'PUT',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ content, countryCode }),
@@ -206,7 +206,7 @@ export default function AdminContentManagementPage() {
  const refreshSlides = useCallback(async () => {
  if (!countryCode) return
  try {
- const res = await fetch(`/api/cms/hero-slides?countryCode=${countryCode}&includeInactive=true`)
+ const res = await fetch(`/api/cms/hero-slides?countryCode=${countryCode}&includeInactive=true`, { credentials: 'include' })
  if (res.ok) {
  const data = await res.json()
  setHeroSlides(data.data || data || [])
@@ -219,7 +219,7 @@ export default function AdminContentManagementPage() {
  const refreshTestimonials = useCallback(async () => {
  if (!countryCode) return
  try {
- const res = await fetch(`/api/cms/testimonials?countryCode=${countryCode}&includeInactive=true`)
+ const res = await fetch(`/api/cms/testimonials?countryCode=${countryCode}&includeInactive=true`, { credentials: 'include' })
  if (res.ok) {
  const data = await res.json()
  setTestimonials(data.data || data || [])

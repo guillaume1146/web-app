@@ -101,9 +101,9 @@ export default function ContentManagementPage() {
  const cc = countryCode ? `&countryCode=${countryCode}` : ''
  try {
  const [sectionsRes, slidesRes, testimonialsRes] = await Promise.all([
- fetch(`/api/cms/sections?includeHidden=true${cc}`),
- fetch(`/api/cms/hero-slides?includeInactive=true${cc}`),
- fetch(`/api/cms/testimonials?includeInactive=true${cc}`),
+ fetch(`/api/cms/sections?includeHidden=true${cc}`, { credentials: 'include' }),
+ fetch(`/api/cms/hero-slides?includeInactive=true${cc}`, { credentials: 'include' }),
+ fetch(`/api/cms/testimonials?includeInactive=true${cc}`, { credentials: 'include' }),
  ])
 
  if (sectionsRes.ok) {
@@ -144,6 +144,7 @@ export default function ContentManagementPage() {
  try {
  const res = await fetch(`/api/cms/sections/${sectionType}`, {
  method: 'PUT',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ content, countryCode }),
  })
@@ -170,7 +171,7 @@ export default function ContentManagementPage() {
  const refreshSlides = useCallback(async () => {
  const cc = countryCode ? `&countryCode=${countryCode}` : ''
  try {
- const res = await fetch(`/api/cms/hero-slides?includeInactive=true${cc}`)
+ const res = await fetch(`/api/cms/hero-slides?includeInactive=true${cc}`, { credentials: 'include' })
  if (res.ok) {
  const data = await res.json()
  setHeroSlides(data.data || data || [])
@@ -183,7 +184,7 @@ export default function ContentManagementPage() {
  const refreshTestimonials = useCallback(async () => {
  const cc = countryCode ? `&countryCode=${countryCode}` : ''
  try {
- const res = await fetch(`/api/cms/testimonials?includeInactive=true${cc}`)
+ const res = await fetch(`/api/cms/testimonials?includeInactive=true${cc}`, { credentials: 'include' })
  if (res.ok) {
  const data = await res.json()
  setTestimonials(data.data || data || [])

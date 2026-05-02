@@ -25,7 +25,7 @@ export default function NannyDetailsPage() {
  const [isLoading, setIsLoading] = useState(true)
 
  useEffect(() => {
- fetch('/api/search/nannies')
+ fetch('/api/search/providers?type=NANNY')
  .then(res => res.json())
  .then(json => {
  if (json.success) {

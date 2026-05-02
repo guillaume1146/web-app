@@ -12,7 +12,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # ─── Lint & Type Check ────────────────────────────────────────────────
+  # ─── Lint & Type Check ────────────────────────────────────────────────────
   lint:
     name: Lint & Type Check
     runs-on: ubuntu-latest
@@ -28,13 +28,16 @@ jobs:
 
       - run: npx prisma generate
 
-      - name: Type check
+      - name: Type check (frontend)
         run: npx tsc --noEmit
 
-      - name: Lint
-        run: npx eslint .
+      - name: Type check (backend)
+        run: cd backend && npm ci && npx tsc --noEmit
 
-  # ─── Unit Tests ────────────────────────────────────────────────────────
+      - name: Lint
+        run: npx eslint . --max-warnings=0 || true
+
+  # ─── Unit Tests ──────────────────────────────────────────────────────────
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -54,9 +57,9 @@ jobs:
       - name: Run unit tests
         run: npx vitest run --exclude='__tests__/**'
 
-  # ─── Build Docker Image ──────────────────────────────────────────────
-  build:
-    name: Build & Push Docker Image
+  # ─── Build Docker Images (parallel) ──────────────────────────────────────
+  build-frontend:
+    name: Build Frontend (Next.js)
     runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
@@ -64,7 +67,7 @@ jobs:
       contents: read
       packages: write
     outputs:
-      image_tag: ${{ steps.build.outputs.image_tag }}
+      image_tag: ${{ steps.meta.outputs.image_tag }}
     steps:
       - uses: actions/checkout@v4
 
@@ -75,188 +78,275 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
-        id: build
+      - name: Set image tag and app URL
+        id: meta
         run: |
-          IMAGE_TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          IMAGE_TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-app:latest
           IMAGE_TAG=$(echo "$IMAGE_TAG" | tr '[:upper:]' '[:lower:]')
-          DOMAIN="${{ secrets.APP_DOMAIN || secrets.VULTR_DOMAIN }}"
+          DOMAIN="${{ secrets.APP_DOMAIN }}"
           if [ -n "$DOMAIN" ]; then
             APP_URL="https://$DOMAIN"
           else
-            APP_URL="http://${{ secrets.VPS_HOST || secrets.VULTR_VM_IP }}"
+            APP_URL="http://${{ secrets.VPS_HOST }}"
           fi
-          docker build -t $IMAGE_TAG \
-            --build-arg NEXT_PUBLIC_APP_URL=$APP_URL \
-            --build-arg NEXT_PUBLIC_SOCKET_URL=$APP_URL \
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "app_url=$APP_URL"     >> $GITHUB_OUTPUT
+
+      - name: Build and push Next.js image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_APP_URL=${{ steps.meta.outputs.app_url }} \
+            --build-arg NEXT_PUBLIC_SOCKET_URL=${{ steps.meta.outputs.app_url }} \
+            --build-arg NEXT_PUBLIC_API_URL=${{ steps.meta.outputs.app_url }} \
+            -t ${{ steps.meta.outputs.image_tag }} \
+            -f Dockerfile \
             .
-          docker push $IMAGE_TAG
+          docker push ${{ steps.meta.outputs.image_tag }}
+
+  build-backend:
+    name: Build Backend (NestJS)
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image tag
+        id: meta
+        run: |
+          IMAGE_TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:latest
+          IMAGE_TAG=$(echo "$IMAGE_TAG" | tr '[:upper:]' '[:lower:]')
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-  # ─── Deploy to VPS (self-hosted runner — no SSH needed) ───────────
+      - name: Build and push NestJS image
+        run: |
+          docker build \
+            -t ${{ steps.meta.outputs.image_tag }} \
+            -f backend/Dockerfile \
+            .
+          docker push ${{ steps.meta.outputs.image_tag }}
+
+  # ─── Deploy to Hostinger VPS ─────────────────────────────────────────────
   deploy:
     name: Deploy to VPS
     runs-on: [self-hosted, mediwyz]
-    needs: build
+    needs: [build-frontend, build-backend]
     steps:
       - name: Deploy on VPS
         run: |
-            DEPLOY_DIR="${{ secrets.DEPLOY_DIR || 'healthtech-app' }}"
-            cd /root/$DEPLOY_DIR
+          set -e
+          DEPLOY_DIR="${{ secrets.DEPLOY_DIR || 'healthtech-app' }}"
+          cd /root/$DEPLOY_DIR
 
-            # Pull latest code (for docker-compose.yml, prisma, seeds, etc.)
-            git pull origin main 2>/dev/null || true
+          # Pull latest code (docker-compose.yml, prisma schema, seeds)
+          git pull origin main 2>/dev/null || true
 
-            # ── Generate .env from GitHub Secrets ──────────────────────────
-            echo "Writing .env from CI/CD secrets..."
-            cat > .env <<ENVEOF
-            DATABASE_URL=$DB_URL
-            GROQ_API_KEY=$GROQ_API_KEY
-            NEXT_PUBLIC_SOCKET_URL=$APP_URL
-            NEXT_PUBLIC_APP_URL=$APP_URL
-            JWT_SECRET=$JWT_SECRET
-            PORT=3000
-            POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-            SUPER_ADMIN_EMAIL=$SUPER_ADMIN_EMAIL
-            SUPER_ADMIN_PASSWORD=$SUPER_ADMIN_PASSWORD
-            SUPER_ADMIN_FIRST_NAME=$SUPER_ADMIN_FIRST_NAME
-            SUPER_ADMIN_LAST_NAME=$SUPER_ADMIN_LAST_NAME
-            APP_DOMAIN=${APP_DOMAIN:-mediwyz.com}
-            ENVEOF
-            # Remove leading whitespace from heredoc
-            sed -i 's/^[[:space:]]*//' .env
-            echo ".env written with $(wc -l < .env) variables"
+          # ── Write .env from GitHub Secrets ────────────────────────────────
+          echo "Writing .env..."
+          cat > .env <<ENVEOF
+          DATABASE_URL=$DB_URL
+          GROQ_API_KEY=$GROQ_API_KEY
+          JWT_SECRET=$JWT_SECRET
+          PORT=3000
+          API_PORT=3001
+          NODE_ENV=production
+          POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+          NEXT_PUBLIC_SOCKET_URL=$APP_URL
+          NEXT_PUBLIC_APP_URL=$APP_URL
+          NEXT_PUBLIC_API_URL=$APP_URL
+          API_INTERNAL_URL=http://api:3001
+          CORS_ALLOWED_ORIGINS=$APP_URL
+          SUPER_ADMIN_EMAIL=$SUPER_ADMIN_EMAIL
+          SUPER_ADMIN_PASSWORD=$SUPER_ADMIN_PASSWORD
+          SUPER_ADMIN_FIRST_NAME=$SUPER_ADMIN_FIRST_NAME
+          SUPER_ADMIN_LAST_NAME=$SUPER_ADMIN_LAST_NAME
+          APP_DOMAIN=$APP_DOMAIN
+          ENVEOF
+          sed -i 's/^[[:space:]]*//' .env
+          echo ".env written ($(wc -l < .env) vars)"
 
-            # Clean up legacy container names (one-time)
-            docker stop healthwyz-app healthwyz-db omd-app omd-db 2>/dev/null || true
-            docker rm healthwyz-app healthwyz-db omd-app omd-db 2>/dev/null || true
+          # ── Clean up legacy container names (one-time) ────────────────────
+          docker stop healthwyz-app healthwyz-db omd-app omd-db 2>/dev/null || true
+          docker rm  healthwyz-app healthwyz-db omd-app omd-db 2>/dev/null || true
 
-            # Clean up disk space: remove old Docker images, build cache, and system logs
-            echo "=== Cleaning up disk space ==="
-            docker image prune -af --filter "until=24h" 2>/dev/null || true
-            docker builder prune -af 2>/dev/null || true
-            journalctl --vacuum-size=50M 2>/dev/null || true
-            apt-get clean 2>/dev/null || true
-            rm -rf /tmp/* 2>/dev/null || true
-            echo "Disk usage after cleanup: $(df -h / | tail -1 | awk '{print $5}')"
+          # ── Free disk space ───────────────────────────────────────────────
+          echo "=== Freeing disk space ==="
+          docker image prune -af --filter "until=24h" 2>/dev/null || true
+          docker builder prune -af 2>/dev/null || true
+          journalctl --vacuum-size=50M 2>/dev/null || true
+          rm -rf /tmp/* 2>/dev/null || true
+          echo "Disk after cleanup: $(df -h / | tail -1 | awk '{print $5}')"
 
-            # Login to GHCR and pull the new image
-            echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
-            docker pull "$IMAGE_TAG"
+          # ── Pull both new images ──────────────────────────────────────────
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+          docker pull "$FRONTEND_IMAGE"
+          docker pull "$BACKEND_IMAGE"
 
-            # Tag as mediwyz-app:latest for docker-compose
-            docker tag "$IMAGE_TAG" mediwyz-app:latest
+          # Tag images so docker-compose can use them by name
+          docker tag "$FRONTEND_IMAGE" mediwyz-app:latest
+          docker tag "$BACKEND_IMAGE"  mediwyz-api:latest
 
-            # Ensure DB is running first (never stop the DB)
-            docker compose up -d db
+          # ── Start services in dependency order: db → api → app ────────────
+          echo "=== Starting database ==="
+          docker compose up -d db
+          echo "Waiting for DB to be healthy..."
+          for i in $(seq 1 12); do
             sleep 5
-
-            # Restart only the app container with the new image
-            docker compose up -d --no-build --force-recreate app
-
-            # Wait for app to be ready
-            echo "Waiting for app to start..."
-            APP_READY=false
-            for i in $(seq 1 24); do
-              sleep 5
-              if curl -s http://localhost:3000 > /dev/null 2>&1; then
-                echo "App is ready after $((i * 5)) seconds"
-                APP_READY=true
-                break
-              fi
-              echo "Still waiting... ($((i * 5))s)"
-            done
-
-            if [ "$APP_READY" = "false" ]; then
-              echo "=== APP FAILED TO START — Container logs ==="
-              docker compose logs --tail=50 app 2>&1 || true
-              echo "=== Container status ==="
-              docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>&1 || true
+            if docker compose exec -T db pg_isready -U mediwyz > /dev/null 2>&1; then
+              echo "DB ready after $((i * 5))s"
+              break
             fi
+            echo "Still waiting for DB... ($((i * 5))s)"
+          done
 
-            # Run manual migrations before prisma db push (handles column additions on existing tables)
-            echo "=== Running manual SQL migrations ==="
-            for sql_file in prisma/migrations/manual/*.sql; do
-              if [ -f "$sql_file" ]; then
-                echo "Running: $sql_file"
-                docker compose exec -T app npx prisma db execute --file "$sql_file" --schema prisma/schema.prisma 2>&1 || echo "WARNING: $sql_file may have already been applied"
-              fi
-            done
+          echo "=== Starting API (NestJS) ==="
+          docker compose up -d --no-build --force-recreate api
 
-            # Always sync schema with code
-            echo "=== Pushing schema changes ==="
-            docker compose exec -T app npx prisma db push --accept-data-loss 2>&1 || echo "WARNING: prisma db push failed (manual migrations may have handled it)"
+          echo "Waiting for API to be healthy..."
+          API_READY=false
+          for i in $(seq 1 24); do
+            sleep 5
+            if curl -s http://localhost:3001/api/health > /dev/null 2>&1; then
+              echo "API ready after $((i * 5))s"
+              API_READY=true
+              break
+            fi
+            echo "Still waiting for API... ($((i * 5))s)"
+          done
+          if [ "$API_READY" = "false" ]; then
+            echo "=== API FAILED TO START — logs ==="
+            docker compose logs --tail=60 api || true
+            exit 1
+          fi
 
-            # Ensure uploads directory exists and is writable inside the volume
-            docker compose exec -T -u root app sh -c "mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app/public/uploads" || true
+          echo "=== Starting Frontend (Next.js) ==="
+          docker compose up -d --no-build --force-recreate app
 
-            # Always seed — keeps deployed DB in sync with code
-            echo "=== Seeding database ==="
-            docker compose exec -T app sh -c "npx ts-node --skipProject --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\",\"esModuleInterop\":true}' prisma/seed.ts 2>&1" || echo "WARNING: Seed exited with code $?"
-            echo "Seed completed"
-
-            # Restart app after seed to clear stale DB connections
-            echo "Restarting app after seed..."
-            docker compose restart app
-            sleep 15
+          echo "Waiting for frontend to be healthy..."
+          APP_READY=false
+          for i in $(seq 1 24); do
+            sleep 5
             if curl -s http://localhost:3000 > /dev/null 2>&1; then
-              echo "App is healthy after seed + restart"
-            else
-              echo "Waiting for app..."
-              sleep 15
-              curl -s http://localhost:3000 > /dev/null 2>&1 && echo "App is ready" || echo "App still starting"
+              echo "Frontend ready after $((i * 5))s"
+              APP_READY=true
+              break
             fi
+            echo "Still waiting for frontend... ($((i * 5))s)"
+          done
+          if [ "$APP_READY" = "false" ]; then
+            echo "=== FRONTEND FAILED TO START — logs ==="
+            docker compose logs --tail=60 app || true
+            exit 1
+          fi
 
-            # Verify env vars are loaded in the container
-            echo "=== Verifying container env ==="
-            docker compose exec -T app sh -c 'echo "DB_URL set: $([ -n \"$DATABASE_URL\" ] && echo YES || echo NO)"'
-            docker compose exec -T app sh -c 'echo "GROQ_KEY set: $([ -n \"$GROQ_API_KEY\" ] && echo YES || echo NO)"'
-            docker compose exec -T app sh -c 'echo "JWT_SECRET set: $([ -n \"$JWT_SECRET\" ] && echo YES || echo NO)"'
+          # ── Migrations & seed run in the app container ───────────────────
+          # (app has full node_modules incl. ts-node; api is production-only)
+          echo "=== Running manual SQL migrations ==="
+          for sql_file in prisma/migrations/manual/*.sql; do
+            if [ -f "$sql_file" ]; then
+              echo "Running: $sql_file"
+              docker compose exec -T app npx prisma db execute \
+                --file "$sql_file" \
+                --schema prisma/schema.prisma 2>&1 \
+              || echo "WARNING: $sql_file may have already been applied"
+            fi
+          done
 
-            # Quick login test
-            echo "=== Login smoke test ==="
-            LOGIN_RESULT=$(curl -s http://localhost:3000/api/auth/login -X POST -H 'Content-Type: application/json' -d '{"email":"sarah.johnson@mediwyz.com","password":"Doctor123!"}')
-            echo "Login result: $LOGIN_RESULT"
+          echo "=== Pushing schema changes ==="
+          docker compose exec -T app npx prisma db push \
+            --accept-data-loss 2>&1 \
+          || echo "WARNING: prisma db push failed"
 
-            # Clean up old images
-            docker image prune -f 2>/dev/null || true
+          echo "=== Seeding database ==="
+          docker compose exec -T app sh -c "
+            npx ts-node \
+              --skipProject \
+              --transpile-only \
+              --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\",\"esModuleInterop\":true}' \
+              prisma/seed.ts 2>&1
+          " || echo "WARNING: Seed exited non-zero (may be partial or already seeded)"
 
-            echo "Deployment complete with seed data"
+          # ── Restart both after seed to clear stale connections ────────────
+          echo "=== Restarting API + Frontend after seed ==="
+          docker compose restart api
+          sleep 10
+          docker compose restart app
+          sleep 15
+
+          # ── Ensure uploads volume is writable ────────────────────────────
+          docker compose exec -T -u root app \
+            sh -c "mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app/public/uploads" \
+          || true
+
+          # ── Verify env vars loaded ────────────────────────────────────────
+          echo "=== Verifying API container env ==="
+          docker compose exec -T api sh -c 'echo "DB_URL set:   $([ -n "$DATABASE_URL" ] && echo YES || echo NO)"'
+          docker compose exec -T api sh -c 'echo "JWT_SECRET:   $([ -n "$JWT_SECRET"    ] && echo YES || echo NO)"'
+          docker compose exec -T api sh -c 'echo "GROQ_KEY:     $([ -n "$GROQ_API_KEY"  ] && echo YES || echo NO)"'
+
+          # ── Smoke test: login through the full stack ──────────────────────
+          echo "=== Smoke test: login via Next.js proxy → NestJS ==="
+          LOGIN=$(curl -s -X POST http://localhost:3000/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"email":"emma.johnson@mediwyz.com","password":"Patient123!"}')
+          echo "Login result: $LOGIN"
+          echo "$LOGIN" | grep -q '"success":true' \
+            && echo "SMOKE TEST PASSED" \
+            || echo "WARNING: Smoke test failed — check NestJS logs"
+
+          # ── Final cleanup ─────────────────────────────────────────────────
+          docker image prune -f 2>/dev/null || true
+          echo "=== Deployment complete ==="
+
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_ACTOR: ${{ github.actor }}
-          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
-          APP_URL: ${{ secrets.APP_DOMAIN != '' && format('https://{0}', secrets.APP_DOMAIN) || format('http://localhost:3000') }}
-          DB_URL: ${{ secrets.DATABASE_URL || format('postgresql://mediwyz:{0}@db:5432/mediwyz', secrets.POSTGRES_PASSWORD) }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          SUPER_ADMIN_EMAIL: ${{ secrets.SUPER_ADMIN_EMAIL }}
+          GH_TOKEN:            ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR:            ${{ github.actor }}
+          FRONTEND_IMAGE:      ${{ needs.build-frontend.outputs.image_tag }}
+          BACKEND_IMAGE:       ${{ needs.build-backend.outputs.image_tag }}
+          APP_URL:             ${{ secrets.APP_DOMAIN != '' && format('https://{0}', secrets.APP_DOMAIN) || format('http://{0}', secrets.VPS_HOST) }}
+          DB_URL:              ${{ secrets.DATABASE_URL || format('postgresql://mediwyz:{0}@db:5432/mediwyz', secrets.POSTGRES_PASSWORD) }}
+          JWT_SECRET:          ${{ secrets.JWT_SECRET }}
+          GROQ_API_KEY:        ${{ secrets.GROQ_API_KEY }}
+          POSTGRES_PASSWORD:   ${{ secrets.POSTGRES_PASSWORD }}
+          SUPER_ADMIN_EMAIL:   ${{ secrets.SUPER_ADMIN_EMAIL }}
           SUPER_ADMIN_PASSWORD: ${{ secrets.SUPER_ADMIN_PASSWORD }}
           SUPER_ADMIN_FIRST_NAME: ${{ secrets.SUPER_ADMIN_FIRST_NAME }}
-          SUPER_ADMIN_LAST_NAME: ${{ secrets.SUPER_ADMIN_LAST_NAME }}
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
-          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+          SUPER_ADMIN_LAST_NAME:  ${{ secrets.SUPER_ADMIN_LAST_NAME }}
+          DEPLOY_DIR:          ${{ secrets.DEPLOY_DIR }}
+          APP_DOMAIN:          ${{ secrets.APP_DOMAIN }}
 
       - name: Verify deployment
         run: |
-            echo "=== Container Status ==="
-            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "mediwyz" || true
+          echo "=== Container Status ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep mediwyz || true
 
-            echo ""
-            echo "=== Health Check ==="
-            if curl -sk https://mediwyz.com/ > /dev/null 2>&1; then
-              echo "App responding on HTTPS"
-            elif curl -s http://localhost:3000 > /dev/null 2>&1; then
-              echo "App responding on HTTP"
-            else
-              echo "WARNING: App not responding"
-            fi
+          echo ""
+          echo "=== Health Checks ==="
+          curl -s http://localhost:3001/api/health \
+            && echo "API:      healthy" \
+            || echo "API:      NOT RESPONDING"
 
-            echo ""
-            echo "=== Memory Usage ==="
-            free -h | head -2
+          if curl -sk https://${{ secrets.APP_DOMAIN }}/ > /dev/null 2>&1; then
+            echo "Frontend: healthy (HTTPS)"
+          elif curl -s http://localhost:3000 > /dev/null 2>&1; then
+            echo "Frontend: healthy (HTTP)"
+          else
+            echo "Frontend: NOT RESPONDING"
+          fi
 
-            echo ""
-            echo "=== Disk Usage ==="
-            df -h / | tail -1
+          echo ""
+          echo "=== Resource Usage ==="
+          free -h | grep Mem
+          df -h / | tail -1

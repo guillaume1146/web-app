@@ -9,39 +9,37 @@ interface LandingPageContentProps {
  labels: string[]
 }
 
-// All roles use clean URLs — middleware rewrites to the correct folder
-const USER_TYPE_FEEDS: Record<string, string> = {
- PATIENT: '/feed',
- DOCTOR: '/feed',
- NURSE: '/feed',
- NANNY: '/feed',
- PHARMACIST: '/feed',
- LAB_TECHNICIAN: '/feed',
- EMERGENCY_WORKER: '/feed',
- INSURANCE_REP: '/insurance/feed',
- CORPORATE_ADMIN: '/corporate/feed',
- REFERRAL_PARTNER: '/referral-partner/feed',
- REGIONAL_ADMIN: '/regional/feed',
- CAREGIVER: '/feed',
- PHYSIOTHERAPIST: '/feed',
- DENTIST: '/feed',
- OPTOMETRIST: '/feed',
- NUTRITIONIST: '/feed',
+const DEDICATED_FEEDS: Record<string, string> = {
+ insurance:          '/insurance/feed',
+ corporate:          '/corporate/feed',
+ 'referral-partner': '/referral-partner/feed',
+ 'regional-admin':   '/regional/feed',
+ admin:              '/admin/feed',
+}
+
+const PROVIDER_SLUGS: Record<string, string> = {
+ patient: 'patients', doctor: 'doctors', nurse: 'nurses',
+ 'child-care-nurse': 'childcare', pharmacy: 'pharmacists',
+ lab: 'lab-technicians', ambulance: 'emergency',
+ caregiver: 'caregivers', physiotherapist: 'physiotherapists',
+ dentist: 'dentists', optometrist: 'optometrists', nutritionist: 'nutritionists',
 }
 
 export default function LandingPageContent({ sections, labels }: LandingPageContentProps) {
  const router = useRouter()
  const [checked, setChecked] = useState(false)
 
- // Auto-redirect returning users (mobile app) — skip landing, go to dashboard
+ // Auto-redirect returning users — skip landing, go directly to their dashboard
  useEffect(() => {
  try {
  const stored = localStorage.getItem('mediwyz_user')
  if (stored) {
  const user = JSON.parse(stored)
- if (user?.userType) {
- const feed = USER_TYPE_FEEDS[user.userType] || '/feed'
- router.replace(feed)
+ if (user?.id) {
+ // Go directly to the right route — no intermediate stops that would flash spinners
+ const dest = DEDICATED_FEEDS[user.userType] ??
+   `/provider/${PROVIDER_SLUGS[user.userType] ?? 'patients'}/feed`
+ router.replace(dest)
  return
  }
  }

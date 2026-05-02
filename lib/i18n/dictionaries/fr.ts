@@ -1,0 +1,67 @@
+import type { MessageKey } from './en'
+
+/** French translations — partial by design. Missing keys fall back to English. */
+export const fr: Partial<Record<MessageKey, string>> = {
+  'workflow.action.accept': 'Accepter',
+  'workflow.action.decline': 'Refuser',
+  'workflow.action.cancel': 'Annuler',
+  'workflow.action.start': 'Démarrer',
+  'workflow.action.complete': 'Terminer',
+  'workflow.action.reschedule': 'Reprogrammer',
+  'workflow.action.confirm': 'Confirmer',
+  'workflow.action.leaveReview': 'Laisser un avis',
+
+  'workflow.category.pending': 'En attente',
+  'workflow.category.active': 'En cours',
+  'workflow.category.success': 'Terminé',
+  'workflow.category.danger': 'Annulé',
+  'workflow.category.waiting': 'En attente',
+
+  'library.title': 'Bibliothèque de workflows',
+  'library.subtitle': 'Parcourez tous les workflows — par défaut du système, modèles des admins régionaux, et personnalisations des prestataires. Clonez-en un pour partir sur une base existante.',
+  'library.search.placeholder': 'Rechercher nom, slug, description...',
+  'library.filter.allRoles': 'Tous les rôles',
+  'library.filter.allModes': 'Tous les modes',
+  'library.filter.allSources': 'Toutes les sources',
+  'library.filter.source.system': 'Par défaut système',
+  'library.filter.source.admin': 'Par admins régionaux',
+  'library.filter.source.provider': 'Par prestataires',
+  'library.scope.everyone': 'Tous',
+  'library.scope.mine': 'Les miens',
+  'library.action.clone': 'Cloner & utiliser',
+  'library.action.edit': 'Modifier',
+  'library.empty.title': 'Aucun workflow ne correspond à vos filtres',
+  'library.empty.subtitle': 'Essayez d\'élargir la recherche ou de réinitialiser les filtres.',
+
+  'role.request.trigger': 'Je ne vois pas mon rôle — en proposer un nouveau',
+  'role.request.modal.title': 'Proposer un nouveau rôle',
+  'role.request.modal.subtitle': 'Votre demande est envoyée à un admin régional pour approbation. En attendant, vous pouvez finir l\'inscription en tant que patient.',
+  'role.request.field.label': 'Nom du rôle',
+  'role.request.field.description': 'Que fait ce rôle ?',
+  'role.request.submit': 'Envoyer la demande',
+  'role.request.cancel': 'Annuler',
+  'role.request.success': 'Demande envoyée. En attente de validation par l\'admin régional.',
+
+  'referral.title': 'Parrainez des amis, gagnez des crédits',
+  'referral.subtitle': 'Chaque inscription avec votre code = crédit dans votre portefeuille',
+  'referral.stat.referrals': 'Parrainages',
+  'referral.stat.earned': 'Gagné',
+  'referral.code.label': 'Votre code',
+  'referral.share': 'Partager votre lien',
+  'referral.copied': 'Lien copié — partagez-le où vous voulez',
+
+  'booking.toast.statusUpdated': 'Statut mis à jour : {{status}}',
+
+  'analytics.title': 'Analyses des workflows',
+  'analytics.subtitle': 'L\'utilisation de chaque modèle dans votre région. Triez par volume ; surveillez les taux d\'abandon.',
+  'analytics.stat.today': 'Aujourd\'hui',
+  'analytics.stat.week7d': '7 derniers jours',
+  'analytics.stat.completed': 'Terminés',
+  'analytics.stat.dropOffRate': 'Taux d\'abandon',
+
+  'audio.title': 'Appels audio',
+  'audio.subtitle': 'Appels voix uniquement — plus rapides à connecter sur les réseaux faibles et moins distrayants en urgence.',
+  'audio.empty.title': 'Aucun appel audio',
+  'audio.empty.subtitle': 'Un appel apparaît ici automatiquement lorsqu\'une étape de workflow ouvre une salle audio.',
+  'audio.action.join': 'Rejoindre',
+}

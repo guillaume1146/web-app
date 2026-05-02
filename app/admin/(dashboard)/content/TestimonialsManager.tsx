@@ -67,12 +67,14 @@ export default function TestimonialsManager({ testimonials, countryCode, onRefre
  method: 'PUT',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ ...formData, countryCode }),
+ credentials: 'include',
  })
  } else {
  await fetch(`/api/cms/testimonials?countryCode=${countryCode}`, {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ ...formData, countryCode }),
+ credentials: 'include',
  })
  }
  closeForm()
@@ -90,6 +92,7 @@ export default function TestimonialsManager({ testimonials, countryCode, onRefre
  method: 'PUT',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ isActive: !t.isActive, countryCode }),
+ credentials: 'include',
  })
  onRefresh()
  } catch (err) {
@@ -100,7 +103,7 @@ export default function TestimonialsManager({ testimonials, countryCode, onRefre
  const handleDelete = async (id: string) => {
  if (!confirm('Are you sure you want to delete this testimonial?')) return
  try {
- await fetch(`/api/cms/testimonials/${id}?countryCode=${countryCode}`, { method: 'DELETE' })
+ await fetch(`/api/cms/testimonials/${id}?countryCode=${countryCode}`, { method: 'DELETE', credentials: 'include' })
  onRefresh()
  } catch (err) {
  console.error('Failed to delete testimonial:', err)

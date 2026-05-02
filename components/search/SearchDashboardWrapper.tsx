@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useUser } from '@/hooks/useUser'
 import { DashboardLayout, DashboardLoadingState } from '@/components/dashboard'
@@ -13,15 +14,9 @@ import {
 } from 'react-icons/fa'
 import { getPatientHealthItems } from '@/lib/dashboard/patientHealthItems'
 
-// Cookie value → provider slug mapping (same as middleware)
-const PROVIDER_SLUGS: Record<string, string> = {
-  patient: 'patients', doctor: 'doctors', nurse: 'nurses',
-  'child-care-nurse': 'childcare', pharmacy: 'pharmacists',
-  lab: 'lab-technicians', ambulance: 'emergency',
-  caregiver: 'caregivers', physiotherapist: 'physiotherapists',
-  dentist: 'dentists', optometrist: 'optometrists',
-  nutritionist: 'nutritionists',
-}
+// Fallback (used until /api/roles loads). Kept minimal — only what middleware needs for SSR.
+// At runtime this is overridden with DB-backed slugs from ProviderRole.cookieValue → ProviderRole.slug.
+const FALLBACK_SLUGS: Record<string, string> = { patient: 'patients' }
 
 function getProviderSidebarItems(base: string): SidebarItem[] {
   return [
@@ -44,17 +39,40 @@ export default function SearchDashboardWrapper({ children }: { children: React.R
   const pathname = usePathname()
   const router = useRouter()
 
-  // Get cookie value for slug resolution
-  const cookieVal = typeof document !== 'undefined'
-    ? document.cookie.split(';').find(c => c.trim().startsWith('mediwyz_userType='))?.split('=')?.[1]?.trim()
-    : null
-  const providerSlug = cookieVal ? PROVIDER_SLUGS[cookieVal] : null
+  // Hydration guard — cookie access only runs after mount to avoid SSR/CSR mismatch
+  const [mounted, setMounted] = useState(false)
+  const [cookieVal, setCookieVal] = useState<string | null>(null)
+  const [cookieToSlug, setCookieToSlug] = useState<Record<string, string>>(FALLBACK_SLUGS)
+
+  useEffect(() => {
+    setMounted(true)
+    const match = document.cookie.split(';').find(c => c.trim().startsWith('mediwyz_userType='))
+    setCookieVal(match ? decodeURIComponent(match.split('=')[1]?.trim() || '') : null)
+  }, [])
+
+  // Load provider slug map dynamically from /api/roles — no hardcoded role list
+  useEffect(() => {
+    fetch('/api/roles')
+      .then(r => r.json())
+      .then(json => {
+        if (!json?.success || !Array.isArray(json.data)) return
+        const map: Record<string, string> = { ...FALLBACK_SLUGS }
+        for (const role of json.data) {
+          if (role.cookieValue && role.slug) map[role.cookieValue] = role.slug
+        }
+        setCookieToSlug(map)
+      })
+      .catch(() => {})
+  }, [])
+
+  const providerSlug = cookieVal ? cookieToSlug[cookieVal] : null
   const basePath = providerSlug ? `/provider/${providerSlug}` : ''
 
   const dynamicSearch = useDynamicSearchItems(basePath)
   const featureConfig = useRoleFeatureConfig(user?.userType)
 
-  if (userLoading) {
+  // Render loading state on SSR + before mount to keep server and first-client paint identical
+  if (!mounted || userLoading) {
     return <DashboardLoadingState />
   }
 
@@ -96,6 +114,10 @@ export default function SearchDashboardWrapper({ children }: { children: React.R
     router.push('/login')
   }
 
+  // Full-bleed pages inside the dashboard (no padding so the content can
+  // stretch to the very bottom of the screen).
+  const isFullBleed = pathname === '/search/ai'
+
   return (
     <DashboardLayout
       userName={displayName}
@@ -107,6 +129,7 @@ export default function SearchDashboardWrapper({ children }: { children: React.R
       profileHref={profileHref}
       networkHref={networkHref}
       onLogout={handleLogout}
+      mainClassName={isFullBleed ? '!p-0 !overflow-hidden relative' : undefined}
     >
       {children}
     </DashboardLayout>

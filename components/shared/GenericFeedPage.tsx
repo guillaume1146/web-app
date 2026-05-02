@@ -30,7 +30,7 @@ export default function GenericFeedPage() {
  <PostFeed currentUserId={user.id} currentUserType={user.userType} showCreateButton={true} />
  </div>
  <div className="hidden lg:block w-72 flex-shrink-0 space-y-4">
- <UserSuggestions currentUserId={user.id} maxResults={5} />
+ <UserSuggestions currentUserId={user.id} maxResults={7} />
  <ChatContactsSidebar currentUserId={user.id} messagesPath={messagesPath} />
  </div>
  </div>

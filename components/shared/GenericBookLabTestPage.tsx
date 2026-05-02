@@ -53,7 +53,7 @@ export default function GenericBookLabTestPage({ params }: { params: Promise<{ i
  try {
  setLoading(true)
 
- const testsRes = await fetch('/api/search/lab-tests')
+ const testsRes = await fetch('/api/search/providers?type=LAB_TECHNICIAN')
  const testsData = await testsRes.json()
 
  if (testsData.success && testsData.data) {
@@ -69,7 +69,7 @@ export default function GenericBookLabTestPage({ params }: { params: Promise<{ i
 
  const userId = getUserId()
  if (userId) {
- const walletRes = await fetch(`/api/users/${userId}/wallet`)
+ const walletRes = await fetch(`/api/users/${userId}/wallet`, { credentials: 'include' })
  const walletData = await walletRes.json()
  if (walletData.success && walletData.data) {
  setWalletBalance(walletData.data.balance)
@@ -90,10 +90,12 @@ export default function GenericBookLabTestPage({ params }: { params: Promise<{ i
  setSubmitData(data)
 
  try {
- const res = await fetch('/api/bookings/lab-test', {
+ const res = await fetch('/api/bookings', {
  method: 'POST',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
+ providerType: 'LAB_TECHNICIAN',
  labTechId: labTest?.labTechnician.id,
  testName: labTest?.testName,
  scheduledDate: data.scheduledDate,

@@ -156,7 +156,7 @@ function getOtherParticipants(participants: Participant[], currentUserId: string
 }
 
 function participantDisplayName(p: Participant): string {
- return `${p.firstName} ${p.lastName}`
+ return `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Unknown'
 }
 
 // ---------------------------------------------------------------------------
@@ -323,7 +323,7 @@ export default function ChatView({ currentUser, initialConversationId }: ChatVie
  typingUsers,
  } = useChat({ userId: currentUser.id })
 
- const senderFullName = `${currentUser.firstName} ${currentUser.lastName}`
+ const senderFullName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'User'
 
  // Keep ref in sync so callbacks always have current conversations
  useEffect(() => {
@@ -511,6 +511,21 @@ export default function ChatView({ currentUser, initialConversationId }: ChatVie
  useEffect(() => {
  if (!selectedId) return
 
+ // AI Assistant — no server-side conversation; just seed a greeting once.
+ if (selectedId === 'ai-assistant') {
+ setMessages((prev) => prev.length > 0 && prev[0].conversationId === 'ai-assistant' ? prev : [{
+ id: 'ai-welcome',
+ conversationId: 'ai-assistant',
+ senderId: 'ai-assistant',
+ senderName: 'AI Health Assistant',
+ senderType: 'AI_ASSISTANT',
+ content: 'Hi! I\'m your AI health assistant. Ask me anything — nutrition, symptoms, exercise, sleep, or general wellbeing.',
+ createdAt: new Date().toISOString(),
+ }])
+ setLoadingMessages(false)
+ return
+ }
+
  let cancelled = false
 
  async function fetchMessages() {
@@ -632,6 +647,64 @@ export default function ChatView({ currentUser, initialConversationId }: ChatVie
 
  setInputText('')
 
+ // ---- AI Assistant inline chat ----
+ if (selectedId === 'ai-assistant') {
+ const userMsg: Message = {
+ id: `ai-u-${Date.now()}`,
+ conversationId: 'ai-assistant',
+ senderId: currentUser.id,
+ senderName: senderFullName,
+ senderType: currentUser.userType,
+ content: text,
+ createdAt: new Date().toISOString(),
+ }
+ setMessages((prev) => [...prev, userMsg])
+
+ // Typing placeholder
+ const typingId = `ai-typing-${Date.now()}`
+ setMessages((prev) => [...prev, {
+ id: typingId,
+ conversationId: 'ai-assistant',
+ senderId: 'ai-assistant',
+ senderName: 'AI Health Assistant',
+ senderType: 'AI_ASSISTANT',
+ content: 'Typing...',
+ createdAt: new Date().toISOString(),
+ }])
+
+ try {
+ const res = await fetch('/api/ai/chat', {
+ method: 'POST',
+ credentials: 'include',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({ message: text }),
+ })
+ const json = await res.json().catch(() => null)
+ const reply = json?.data?.response || json?.data?.message || 'Sorry, I couldn\'t respond right now.'
+ setMessages((prev) => prev.filter(m => m.id !== typingId).concat({
+ id: `ai-a-${Date.now()}`,
+ conversationId: 'ai-assistant',
+ senderId: 'ai-assistant',
+ senderName: 'AI Health Assistant',
+ senderType: 'AI_ASSISTANT',
+ content: reply,
+ createdAt: new Date().toISOString(),
+ }))
+ } catch {
+ setMessages((prev) => prev.filter(m => m.id !== typingId).concat({
+ id: `ai-err-${Date.now()}`,
+ conversationId: 'ai-assistant',
+ senderId: 'ai-assistant',
+ senderName: 'AI Health Assistant',
+ senderType: 'AI_ASSISTANT',
+ content: 'AI is unavailable right now — please try again in a moment.',
+ createdAt: new Date().toISOString(),
+ }))
+ }
+ inputRef.current?.focus()
+ return
+ }
+
  // Stop typing indicator
  if (typingTimeoutRef.current) {
  clearTimeout(typingTimeoutRef.current)
@@ -655,7 +728,7 @@ export default function ChatView({ currentUser, initialConversationId }: ChatVie
  }
 
  inputRef.current?.focus()
- }, [inputText, selectedId, sendMessage, stopTyping, senderFullName, currentUser.userType])
+ }, [inputText, selectedId, sendMessage, stopTyping, senderFullName, currentUser.userType, currentUser.id, currentUser.userType])
 
  // ---- Typing indicator ----
  const handleInputChange = useCallback(
@@ -691,10 +764,10 @@ export default function ChatView({ currentUser, initialConversationId }: ChatVie
  const [creatingConversation, setCreatingConversation] = useState(false)
 
  const handleSelectConversation = useCallback(async (id: string) => {
- // AI Assistant — redirect to AI chat page
+ // AI Assistant — stay inside the chat UI and talk to the bot inline.
  if (id === 'ai-assistant') {
-   // Use clean URL — middleware handles routing to correct provider folder
-   window.location.href = '/ai-assistant'
+   setSelectedId('ai-assistant')
+   setMobileShowMessages(true)
    return
  }
 

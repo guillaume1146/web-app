@@ -63,6 +63,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ documents }) => {
  const res = await fetch('/api/documents/verify', {
  method: 'POST',
  body: formData,
+ credentials: 'include',
  })
 
  const data = await res.json()

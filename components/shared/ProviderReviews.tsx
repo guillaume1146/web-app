@@ -58,7 +58,7 @@ export default function ProviderReviews({
 
  const fetchReviews = useCallback(async () => {
  try {
- const res = await fetch(`/api/providers/${providerUserId}/reviews?limit=50`)
+ const res = await fetch(`/api/providers/${providerUserId}/reviews?limit=50`, { credentials: 'include' })
  const json = await res.json()
  if (json.success) {
  setReviews(json.data)
@@ -85,6 +85,7 @@ export default function ProviderReviews({
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ response: replyText }),
+ credentials: 'include',
  })
  if (res.ok) {
  setReplyingTo(null)
@@ -104,6 +105,7 @@ export default function ProviderReviews({
  method: 'PATCH',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ helpful: true }),
+ credentials: 'include',
  })
  fetchReviews()
  } catch {

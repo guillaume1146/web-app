@@ -1,0 +1,384 @@
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { WorkflowEngineService } from '../workflow/workflow-engine.service';
+
+/**
+ * Unified booking service — ALL bookings go through ServiceBooking.
+ *
+ * Legacy booking tables (Appointment, NurseBooking, ChildcareBooking, LabTestBooking,
+ * EmergencyBooking) are READ-ONLY for historical data. New bookings always use
+ * ServiceBooking regardless of provider type.
+ *
+ * Default fees come from:
+ *   1. ProviderServiceConfig.priceOverride (provider-specific)
+ *   2. PlatformService.defaultPrice (service-level default)
+ *   3. ProviderRole.defaultBookingFee (role-level default)
+ *   4. 0 (no fee)
+ */
+
+/** Legacy booking models for backward-compat reads */
+const LEGACY_MODEL_MAP: Record<string, string> = {
+  appointment: 'appointment',
+  nurse_booking: 'nurseBooking',
+  childcare_booking: 'childcareBooking',
+  lab_test_booking: 'labTestBooking',
+  emergency_booking: 'emergencyBooking',
+};
+
+@Injectable()
+export class BookingsService {
+  private readonly logger = new Logger(BookingsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+    private workflowEngine: WorkflowEngineService,
+  ) {}
+
+  /** Ensure user has a PatientProfile */
+  private async ensurePatientProfile(userId: string) {
+    const existing = await this.prisma.patientProfile.findUnique({ where: { userId }, select: { id: true } });
+    if (existing) return existing;
+    const { randomUUID } = require('crypto');
+    return this.prisma.patientProfile.create({
+      data: { userId, nationalId: `AUTO-${randomUUID().slice(0, 12).toUpperCase()}`, bloodType: 'Unknown', allergies: [], chronicConditions: [], healthScore: 50 },
+      select: { id: true },
+    });
+  }
+
+  /** Combine date string + time string into a single DateTime */
+  private buildScheduledAt(date: string, time?: string): Date {
+    if (!date) return new Date();
+    if (date.includes('T')) return new Date(date);
+    const timeStr = time || '09:00';
+    const normalized = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+    return new Date(`${date}T${normalized}`);
+  }
+
+  /** Check wallet balance */
+  private async checkBalance(userId: string, amount: number) {
+    const wallet = await this.prisma.userWallet.findUnique({ where: { userId }, select: { balance: true } });
+    if (!wallet || wallet.balance < amount) {
+      throw new BadRequestException(`Insufficient wallet balance. Required: ${amount}, Available: ${wallet?.balance ?? 0}`);
+    }
+  }
+
+  /**
+   * Resolve the booking fee dynamically from DB:
+   * 1. ProviderServiceConfig (provider's custom price)
+   * 2. PlatformService.defaultPrice
+   * 3. ProviderRole.defaultBookingFee
+   * 4. Fallback to 0
+   */
+  private async resolveBookingFee(providerUserId: string, providerType: string, serviceName?: string): Promise<number> {
+    // Try provider's service config for this specific service
+    if (serviceName) {
+      try {
+        const config = await this.prisma.providerServiceConfig.findFirst({
+          where: {
+            providerUserId,
+            platformService: { serviceName, providerType: providerType as any },
+          },
+          select: { priceOverride: true, platformService: { select: { defaultPrice: true } } },
+        });
+        if (config) {
+          return config.priceOverride ?? config.platformService.defaultPrice ?? 0;
+        }
+      } catch {
+        // Relation query may fail if no matching service exists — continue to fallback
+      }
+    }
+
+    // Try any default platform service for this provider type
+    const platformService = await this.prisma.platformService.findFirst({
+      where: { providerType: providerType as any, isDefault: true },
+      select: { defaultPrice: true },
+    });
+    if (platformService?.defaultPrice) return platformService.defaultPrice;
+
+    // Try ProviderRole.defaultBookingFee
+    const role = await this.prisma.providerRole.findUnique({
+      where: { code: providerType },
+      select: { defaultBookingFee: true },
+    });
+    if (role?.defaultBookingFee) return role.defaultBookingFee;
+
+    return 0;
+  }
+
+  // ─── Unified Booking Creation ─────────────────────────────────────────
+
+  async createBooking(patientUserId: string, data: {
+    providerUserId: string; providerType: string; scheduledDate: string; scheduledTime: string;
+    type?: string; reason?: string; notes?: string; duration?: number;
+    serviceName?: string; servicePrice?: number; consultationType?: string;
+    children?: any[]; sampleType?: string; priority?: string;
+    testName?: string; location?: string; contactNumber?: string; specialty?: string;
+  }) {
+    const providerType = data.providerType.toUpperCase();
+
+    // Verify provider exists and is verified
+    const provider = await this.prisma.user.findUnique({
+      where: { id: data.providerUserId },
+      select: { id: true, firstName: true, lastName: true, userType: true, regionId: true, phone: true, verified: true },
+    });
+    if (!provider) throw new NotFoundException('Provider not found');
+    if (!provider.verified) {
+      throw new BadRequestException('This provider\'s account is pending document verification and cannot accept bookings yet.');
+    }
+
+    // Ensure patient profile
+    const patientProfile = await this.ensurePatientProfile(patientUserId);
+
+    // Build scheduled date/time
+    const scheduledAt = this.buildScheduledAt(data.scheduledDate, data.scheduledTime);
+
+    // Resolve fee from DB — server-authoritative. We deliberately IGNORE any
+    // `data.servicePrice` the client sends; prices come from ProviderServiceConfig
+    // / PlatformService. Letting the client dictate the charge was a silent
+    // money-flow hole (found in the April 2026 audit).
+    const fee = await this.resolveBookingFee(data.providerUserId, providerType, data.serviceName);
+
+    // Check balance — skip if role has skipWalletCheck (e.g., emergency services)
+    if (fee > 0) {
+      const role = await this.prisma.providerRole.findUnique({ where: { code: providerType }, select: { skipWalletCheck: true } });
+      if (!role?.skipWalletCheck) {
+        await this.checkBalance(patientUserId, fee);
+      }
+    }
+
+    // Build role-specific metadata (any extra fields go here)
+    const metadata: Record<string, any> = {};
+    if (data.children?.length) metadata.children = data.children;
+    if (data.sampleType) metadata.sampleType = data.sampleType;
+    if (data.testName) metadata.testName = data.testName;
+    if (data.contactNumber) metadata.contactNumber = data.contactNumber;
+
+    // Create unified ServiceBooking for ALL provider types
+    const booking = await this.prisma.serviceBooking.create({
+      data: {
+        patientId: patientProfile.id,
+        providerUserId: data.providerUserId,
+        providerType: providerType as any,
+        providerName: `${provider.firstName} ${provider.lastName}`,
+        scheduledAt,
+        duration: data.duration || 30,
+        type: data.type || 'in_person',
+        status: 'pending',
+        reason: data.reason || data.serviceName,
+        notes: data.notes,
+        serviceName: data.serviceName,
+        servicePrice: fee,
+        specialty: data.specialty,
+        location: data.location,
+        priority: data.priority || 'normal',
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+      },
+    });
+
+    // Attach workflow (uses 'service' as the universal booking route)
+    const wf = await this.workflowEngine.attachWorkflow({
+      bookingId: booking.id, bookingRoute: 'service', patientUserId,
+      providerUserId: data.providerUserId, providerType,
+      consultationType: data.consultationType || data.type,
+      servicePrice: fee, regionCode: provider.regionId,
+    });
+
+    if (!wf.workflowInstanceId) {
+      // Every service must have a workflow — if none resolves, this is a
+      // configuration problem, not a client error. Roll back the booking.
+      await this.prisma.serviceBooking.delete({ where: { id: booking.id } }).catch(() => {});
+      throw new BadRequestException(
+        'No workflow template is configured for this service type. ' +
+        'A regional admin must create a workflow template before bookings can be accepted.',
+      );
+    }
+
+    return { booking, workflowInstanceId: wf.workflowInstanceId };
+  }
+
+  // ─── Unified Bookings List (reads from all tables including legacy) ────
+
+  async getUnified(userId: string, role: 'patient' | 'provider') {
+    const results: any[] = [];
+
+    if (role === 'patient') {
+      const profile = await this.prisma.patientProfile.findUnique({ where: { userId }, select: { id: true } });
+      if (!profile) return [];
+
+      // Query ServiceBooking (universal) + legacy tables for historical data
+      const [serviceBookings, appointments, nurseBookings, childcareBookings, labTests, emergencyBookings] = await Promise.all([
+        this.prisma.serviceBooking.findMany({ where: { patientId: profile.id, deletedAt: null }, orderBy: { scheduledAt: 'desc' }, take: 50 }),
+        this.prisma.appointment.findMany({ where: { patientId: profile.id }, orderBy: { scheduledAt: 'desc' }, take: 50 }),
+        this.prisma.nurseBooking.findMany({ where: { patientId: profile.id }, orderBy: { scheduledAt: 'desc' }, take: 50 }),
+        this.prisma.childcareBooking.findMany({ where: { patientId: profile.id }, orderBy: { scheduledAt: 'desc' }, take: 50 }),
+        this.prisma.labTestBooking.findMany({ where: { patientId: profile.id }, orderBy: { scheduledAt: 'desc' }, take: 50 }),
+        this.prisma.emergencyBooking.findMany({ where: { patientId: profile.id }, orderBy: { createdAt: 'desc' }, take: 50 }),
+      ]);
+
+      const toPlain = (obj: any) => JSON.parse(JSON.stringify(obj));
+      serviceBookings.forEach(b => results.push({ ...toPlain(b), bookingType: 'service_booking', type: 'service' }));
+      appointments.forEach(a => results.push({ ...toPlain(a), bookingType: 'appointment', type: 'doctor' }));
+      nurseBookings.forEach(b => results.push({ ...toPlain(b), bookingType: 'nurse_booking', type: 'nurse' }));
+      childcareBookings.forEach(b => results.push({ ...toPlain(b), bookingType: 'childcare_booking', type: 'nanny' }));
+      labTests.forEach(b => results.push({ ...toPlain(b), bookingType: 'lab_test_booking', type: 'lab-test' }));
+      emergencyBookings.forEach(b => results.push({ ...toPlain(b), bookingType: 'emergency_booking', type: 'emergency' }));
+    } else {
+      // Provider: get bookings via workflow instances + enrich with ServiceBooking details
+      const instances = await this.prisma.workflowInstance.findMany({
+        where: { providerUserId: userId },
+        include: { template: { select: { name: true, providerType: true } } },
+        orderBy: { updatedAt: 'desc' },
+        take: 100,
+      });
+
+      // Split booking ids by booking type so we resolve against the right table.
+      // Previously only ServiceBooking was consulted, so every legacy booking
+      // (appointment, nurse_booking, childcare_booking, lab_test_booking,
+      // emergency_booking) showed up as "Unknown Patient" in the provider's
+      // My Practice view.
+      const idsByType = new Map<string, string[]>();
+      for (const i of instances) {
+        const arr = idsByType.get(i.bookingType) ?? [];
+        arr.push(i.bookingId);
+        idsByType.set(i.bookingType, arr);
+      }
+
+      const [serviceBookings, appointments, nurseBookings, childcareBookings, labTests, emergencyBookings] = await Promise.all([
+        this.prisma.serviceBooking.findMany({ where: { id: { in: idsByType.get('service_booking') ?? [] }, deletedAt: null } }),
+        this.prisma.appointment.findMany({ where: { id: { in: idsByType.get('appointment') ?? [] } } }),
+        this.prisma.nurseBooking.findMany({ where: { id: { in: idsByType.get('nurse_booking') ?? [] } } }),
+        this.prisma.childcareBooking.findMany({ where: { id: { in: idsByType.get('childcare_booking') ?? [] } } }),
+        this.prisma.labTestBooking.findMany({ where: { id: { in: idsByType.get('lab_test_booking') ?? [] } } }),
+        this.prisma.emergencyBooking.findMany({ where: { id: { in: idsByType.get('emergency_booking') ?? [] } } }),
+      ]);
+
+      // Build a normalised lookup: bookingId → { patientId, scheduledAt, ... }
+      const detailMap = new Map<string, any>();
+      serviceBookings.forEach(b => detailMap.set(b.id, b));
+      appointments.forEach(b => detailMap.set(b.id, b));
+      nurseBookings.forEach(b => detailMap.set(b.id, b));
+      childcareBookings.forEach(b => detailMap.set(b.id, b));
+      labTests.forEach(b => detailMap.set(b.id, b));
+      emergencyBookings.forEach(b => detailMap.set(b.id, b));
+
+      // Collect every patient profile id referenced by any of the booking tables
+      const patientIds = new Set<string>();
+      for (const b of detailMap.values()) {
+        if (b?.patientId) patientIds.add(b.patientId);
+      }
+      const patients = await this.prisma.patientProfile.findMany({
+        where: { id: { in: [...patientIds] } },
+        include: { user: { select: { firstName: true, lastName: true, profileImage: true } } },
+      });
+      const patientMap = new Map<string, { user: { firstName: string; lastName: string; profileImage: string | null } }>();
+      patients.forEach(p => patientMap.set(p.id, p));
+
+      instances.forEach(i => {
+        const detail: any = detailMap.get(i.bookingId);
+        const patient = detail?.patientId ? patientMap.get(detail.patientId) : undefined;
+        results.push({
+          id: i.bookingId, bookingType: i.bookingType, status: i.currentStatus,
+          workflowInstanceId: i.id, templateName: i.template.name,
+          createdAt: i.createdAt, updatedAt: i.updatedAt,
+          patientName: patient ? `${patient.user.firstName} ${patient.user.lastName}` : 'Unknown Patient',
+          patientImage: patient?.user.profileImage || null,
+          scheduledAt: detail?.scheduledAt,
+          serviceName: detail?.serviceName || detail?.type || undefined,
+          reason: detail?.reason,
+          type: detail?.type,
+          duration: detail?.duration,
+          price: detail?.servicePrice ?? detail?.price,
+          providerType: detail?.providerType || i.template.providerType,
+        });
+      });
+    }
+
+    return results;
+  }
+
+  // ─── Cancel ────────────────────────────────────────────────────────────
+
+  async cancel(userId: string, bookingId: string, bookingType: string) {
+    // Try workflow transition first
+    try {
+      const result = await this.workflowEngine.transition({
+        bookingId, bookingType, action: 'cancel',
+        actionByUserId: userId, actionByRole: 'patient',
+      });
+      return result;
+    } catch {
+      // Direct cancel — try ServiceBooking first, then legacy tables
+      const serviceBooking = await this.prisma.serviceBooking.findUnique({ where: { id: bookingId } });
+      if (serviceBooking) {
+        await this.prisma.serviceBooking.update({
+          where: { id: bookingId },
+          data: { status: 'cancelled', cancelledBy: userId, cancelledAt: new Date() },
+        });
+        return { success: true, message: 'Booking cancelled' };
+      }
+
+      // Fallback to legacy models
+      const legacyModel = LEGACY_MODEL_MAP[bookingType];
+      if (legacyModel) {
+        await (this.prisma as any)[legacyModel]?.update?.({
+          where: { id: bookingId }, data: { status: 'cancelled' },
+        });
+      }
+      return { success: true, message: 'Booking cancelled' };
+    }
+  }
+
+  // ─── Available Slots ───────────────────────────────────────────────────
+
+  async getAvailableSlots(providerUserId: string, date: string) {
+    const dayOfWeek = new Date(date).getDay();
+    const [slots, bookedSlots] = await Promise.all([
+      this.prisma.providerAvailability.findMany({
+        where: { userId: providerUserId, dayOfWeek, isActive: true },
+        select: { startTime: true, endTime: true },
+        orderBy: { startTime: 'asc' },
+      }),
+      this.prisma.bookedSlot.findMany({
+        where: {
+          providerUserId,
+          date: new Date(date),
+          status: 'booked',
+        },
+        select: { startTime: true, endTime: true },
+      }),
+    ]);
+
+    // Build a set of booked start times for fast lookup
+    const bookedTimes = new Set(bookedSlots.map(b => b.startTime));
+
+    // Filter out slots that are already booked
+    return slots
+      .filter(s => !bookedTimes.has(s.startTime))
+      .map(s => ({ startTime: s.startTime, endTime: s.endTime }));
+  }
+
+  // ─── Reschedule ────────────────────────────────────────────────────────
+
+  async reschedule(userId: string, bookingId: string, bookingType: string, newDate: string, newTime: string) {
+    const scheduledAt = this.buildScheduledAt(newDate, newTime);
+
+    // Try ServiceBooking first
+    const serviceBooking = await this.prisma.serviceBooking.findUnique({ where: { id: bookingId } });
+    if (serviceBooking) {
+      await this.prisma.serviceBooking.update({ where: { id: bookingId }, data: { scheduledAt } });
+      return { message: 'Booking rescheduled successfully' };
+    }
+
+    // Fallback to legacy models
+    const legacyModel = LEGACY_MODEL_MAP[bookingType];
+    if (!legacyModel) throw new BadRequestException('Invalid booking type');
+
+    await (this.prisma as any)[legacyModel].update({
+      where: { id: bookingId },
+      data: { scheduledAt },
+    });
+    return { message: 'Booking rescheduled successfully' };
+  }
+}

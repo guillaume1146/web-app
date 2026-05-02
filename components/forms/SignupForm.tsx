@@ -186,6 +186,7 @@ const documentRequirements: Record<string, Document[]> = {
 export default function EnhancedRegistrationForm() {
  const [currentStep, setCurrentStep] = useState(1)
  const [selectedUserType, setSelectedUserType] = useState<string>('patient')
+ const [showRoleRequestModal, setShowRoleRequestModal] = useState(false)
  const [showPassword, setShowPassword] = useState(false)
  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
  const [isSubmitting, setIsSubmitting] = useState(false)
@@ -398,8 +399,8 @@ export default function EnhancedRegistrationForm() {
  key={type.id}
  onClick={() => handleUserTypeChange(type.id)}
  className={`p-6 border-2 rounded-2xl text-left transition-all hover:shadow-lg ${
- selectedUserType === type.id 
- ? `${type.color} border-current shadow-lg` 
+ selectedUserType === type.id
+ ? `${type.color} border-current shadow-lg`
  : "border-gray-200 hover:border-gray-300"
  }`}
  >
@@ -411,7 +412,31 @@ export default function EnhancedRegistrationForm() {
  </button>
  )
  })}
+ {/* "Other — propose a new role" tile. Submits a ProviderRole
+  request in `isActive:false` state; regional admin reviews.
+  Keeps the platform open for roles we don't ship by default
+  (osteopath, audiologist, homeopath, …) without a code change. */}
+ <button
+ type="button"
+ onClick={() => setShowRoleRequestModal(true)}
+ className="p-6 border-2 border-dashed rounded-2xl text-left transition-all hover:shadow-lg hover:border-brand-teal text-gray-600 hover:text-brand-navy"
+ >
+ <span className="text-3xl mb-4 block">➕</span>
+ <h3 className="font-bold text-lg mb-2">I don&apos;t see my role</h3>
+ <p className="text-sm text-gray-500">Propose a new provider role for regional admin review.</p>
+ </button>
  </div>
+
+ {showRoleRequestModal && (
+ <RoleRequestModal
+ onClose={() => setShowRoleRequestModal(false)}
+ onSubmitted={() => {
+  setShowRoleRequestModal(false)
+  // Fall back to patient signup while their proposed role is under review.
+  handleUserTypeChange('patient')
+ }}
+ />
+ )}
 
  {selectedUserType && (
  <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-xl">
@@ -1031,6 +1056,102 @@ export default function EnhancedRegistrationForm() {
  </div>
  </div>
  </div>
+ </div>
+ )
+}
+
+/**
+ * Inline modal for the "I don't see my role" path on signup. Submits to
+ * `POST /api/roles/request` which creates a pending ProviderRole for
+ * regional-admin review. Users can continue signing up as a patient in the
+ * meantime; when the role is approved they can be re-tagged.
+ */
+function RoleRequestModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitted: () => void }) {
+ const [label, setLabel] = useState('')
+ const [description, setDescription] = useState('')
+ const [busy, setBusy] = useState(false)
+ const [error, setError] = useState<string | null>(null)
+
+ async function submit() {
+ if (label.trim().length < 3) {
+  setError('Role name must be at least 3 characters.')
+  return
+ }
+ setBusy(true); setError(null)
+ try {
+  const res = await fetch('/api/roles/request', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ label: label.trim(), description: description.trim() || undefined }),
+  })
+  const json = await res.json()
+  if (!json.success) {
+  setError(json.message || 'Request failed')
+  return
+  }
+  onSubmitted()
+ } catch {
+  setError('Network error — try again.')
+ } finally {
+  setBusy(false)
+ }
+ }
+
+ return (
+ <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
+  <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+  <h3 className="text-xl font-bold text-gray-900">Propose a new provider role</h3>
+  <p className="text-sm text-gray-500 mt-1">
+   Your request goes to a regional admin for approval. While you wait,
+   you can complete signup as a patient and upgrade to your approved
+   role later.
+  </p>
+
+  <div className="mt-4 space-y-3">
+   <div>
+   <label className="text-xs font-medium text-gray-600 block mb-1">Role name *</label>
+   <input
+   type="text"
+   value={label}
+   onChange={(e) => setLabel(e.target.value)}
+   placeholder="e.g. Audiologist, Osteopath, Homeopath"
+   maxLength={40}
+   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none"
+   />
+   </div>
+   <div>
+   <label className="text-xs font-medium text-gray-600 block mb-1">Short description</label>
+   <textarea
+   value={description}
+   onChange={(e) => setDescription(e.target.value)}
+   placeholder="What does this role do?"
+   rows={3}
+   maxLength={200}
+   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none"
+   />
+   </div>
+   {error && (
+   <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">{error}</p>
+   )}
+  </div>
+
+  <div className="mt-5 flex justify-end gap-3">
+   <button
+   onClick={onClose}
+   disabled={busy}
+   className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50"
+   >
+   Cancel
+   </button>
+   <button
+   onClick={submit}
+   disabled={busy}
+   className="px-4 py-2 rounded-lg text-sm font-semibold bg-brand-navy hover:bg-brand-teal text-white disabled:opacity-50"
+   >
+   {busy ? 'Submitting…' : 'Submit request'}
+   </button>
+  </div>
+  </div>
  </div>
  )
 }

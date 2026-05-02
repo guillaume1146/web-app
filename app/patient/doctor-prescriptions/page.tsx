@@ -84,7 +84,7 @@ export default function PrescriptionManagementPage() {
  const userId = getUserId()
  if (!userId) return
  try {
- const res = await fetch(`/api/patients/${userId}/prescriptions?limit=50`)
+ const res = await fetch(`/api/patients/${userId}/prescriptions?limit=50`, { credentials: 'include' })
  const data = await res.json()
  if (data.data) {
  setPrescriptions(data.data.map(mapApiPrescription))

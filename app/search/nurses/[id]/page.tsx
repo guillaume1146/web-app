@@ -24,7 +24,7 @@ export default function NurseDetailsPage() {
  const [isLoading, setIsLoading] = useState(true)
 
  useEffect(() => {
- fetch('/api/search/nurses')
+ fetch('/api/search/providers?type=NURSE')
  .then(res => res.json())
  .then(json => {
  if (json.success) {

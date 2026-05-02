@@ -62,7 +62,7 @@ export class AuthService {
 
   static async logout(): Promise<void> {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' })
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
     } catch {
       // Best-effort server-side cookie clear
     }

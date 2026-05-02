@@ -5,7 +5,7 @@
 // - Made the short disclaimer more prominent and linked to full pages.
 import Link from 'next/link'
 import Image from 'next/image'
-import { FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn, FaPhone, FaEnvelope, FaMapMarkerAlt } from 'react-icons/fa'
+import { FaFacebookF, FaLinkedinIn, FaPhone, FaEnvelope, FaMapMarkerAlt } from 'react-icons/fa'
 
 interface FooterLink {
  href: string
@@ -39,10 +39,8 @@ const Footer: React.FC = () => {
  ]
 
  const socialLinks: SocialLink[] = [
- { href: '#', icon: <FaFacebookF />, label: 'Facebook' },
- { href: '#', icon: <FaTwitter />, label: 'Twitter' },
- { href: '#', icon: <FaInstagram />, label: 'Instagram' },
- { href: '#', icon: <FaLinkedinIn />, label: 'LinkedIn' },
+ { href: 'https://www.facebook.com/profile.php?id=61579689551043', icon: <FaFacebookF />, label: 'Facebook' },
+ { href: 'https://www.linkedin.com/company/mediwyz', icon: <FaLinkedinIn />, label: 'LinkedIn' },
  ]
 
  return (
@@ -53,10 +51,11 @@ const Footer: React.FC = () => {
  >
  {/* Gradient accent line at top */}
  <div className="h-1 bg-brand-teal " />
- {/* Footer Content */}
- <div className="py-16">
+ {/* Footer Content — reduced vertical padding to prioritise the
+     marketplace above; visitors should reach the footer quickly. */}
+ <div className="py-8">
  <div className="container mx-auto px-4">
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
  {/* Company Info */}
  <div>
  <div className="flex items-center space-x-3 mb-4">
@@ -69,11 +68,11 @@ const Footer: React.FC = () => {
  </p>
  <div className="flex items-center space-x-2 text-gray-400 mb-2">
  <FaMapMarkerAlt />
- <span>Port Louis, Mauritius</span>
+ <span>Moka, Mauritius</span>
  </div>
  <div className="flex items-center space-x-2 text-gray-400 mb-2">
  <FaPhone />
- <span>+230 123 4567</span>
+ <a href="tel:+23058176189" className="hover:text-white transition">+230 5817 6189</a>
  </div>
  <div className="flex items-center space-x-2 text-gray-400">
  <FaEnvelope />
@@ -125,7 +124,7 @@ const Footer: React.FC = () => {
  </div>
 
  {/* Social Links and Follow */}
- <div className="border-t border-gray-700 mt-12 pt-8">
+ <div className="border-t border-gray-700 mt-6 pt-5">
  <div className="flex flex-col md:flex-row justify-between items-center">
  <div className="mb-4 md:mb-0">
  <p className="text-gray-400 mb-2">Follow us:</p>
@@ -147,7 +146,7 @@ const Footer: React.FC = () => {
  </div>
 
  {/* Copyright - All in one line */}
- <div className="border-t border-gray-700 mt-8 pt-8 text-center">
+ <div className="border-t border-gray-700 mt-4 pt-4 text-center">
  <div className="flex flex-wrap justify-center items-center gap-1 text-gray-400 text-sm">
  <span>© 2025 MediWyz. All rights reserved.</span>
  <span className="hidden md:inline mx-2">|</span>

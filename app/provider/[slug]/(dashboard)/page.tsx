@@ -1,15 +1,56 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useUser } from '@/hooks/useUser'
-import { FaCalendarCheck, FaComments, FaMoneyBillWave, FaRobot } from 'react-icons/fa'
+import { FaCalendarCheck, FaClock, FaCheckCircle, FaChartLine, FaComments, FaMoneyBillWave, FaRobot } from 'react-icons/fa'
 import Link from 'next/link'
+import DashboardStatCard from '@/components/shared/DashboardStatCard'
+
+interface Booking {
+  id: string
+  type: string
+  status: string
+  patientName?: string
+  scheduledAt?: string
+  createdAt?: string
+}
 
 export default function DynamicProviderDashboard() {
   const params = useParams()
   const slug = params.slug as string
   const base = `/provider/${slug}`
   const { user } = useUser()
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user?.id) return
+    const fetchBookings = async () => {
+      try {
+        const res = await fetch(`/api/bookings/unified?role=provider`, { credentials: 'include' })
+        if (!res.ok) return
+        const json = await res.json()
+        if (json.success && Array.isArray(json.data)) {
+          setBookings(json.data)
+        }
+      } catch {
+        // Keep empty state
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchBookings()
+  }, [user?.id])
+
+  const totalBookings = bookings.length
+  const pendingBookings = bookings.filter(b =>
+    ['PENDING', 'CONFIRMED', 'SCHEDULED', 'IN_PROGRESS'].includes(b.status?.toUpperCase() ?? '')
+  ).length
+  const completedBookings = bookings.filter(b =>
+    ['COMPLETED', 'DELIVERED'].includes(b.status?.toUpperCase() ?? '')
+  ).length
+  const recentBookings = bookings.slice(0, 5)
 
   const quickLinks = [
     { label: 'My Practice', href: `${base}/practice`, icon: FaCalendarCheck, color: 'bg-blue-50 text-blue-600' },
@@ -17,6 +58,16 @@ export default function DynamicProviderDashboard() {
     { label: 'Billing', href: `${base}/billing`, icon: FaMoneyBillWave, color: 'bg-purple-50 text-purple-600' },
     { label: 'AI Assistant', href: `${base}/ai-assistant`, icon: FaRobot, color: 'bg-teal-50 text-teal-600' },
   ]
+
+  const statusColor: Record<string, string> = {
+    PENDING: 'bg-yellow-100 text-yellow-800',
+    CONFIRMED: 'bg-blue-100 text-blue-800',
+    SCHEDULED: 'bg-blue-100 text-blue-800',
+    IN_PROGRESS: 'bg-indigo-100 text-indigo-800',
+    COMPLETED: 'bg-green-100 text-green-800',
+    DELIVERED: 'bg-green-100 text-green-800',
+    CANCELLED: 'bg-red-100 text-red-800',
+  }
 
   return (
     <div className="space-y-6 p-1">
@@ -27,6 +78,41 @@ export default function DynamicProviderDashboard() {
         <p className="text-gray-500 mt-1">Here is your dashboard overview</p>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <DashboardStatCard
+          icon={FaChartLine}
+          title="Total Bookings"
+          value={loading ? '...' : totalBookings}
+          color="bg-[#0C6780]"
+        />
+        <DashboardStatCard
+          icon={FaClock}
+          title="Pending"
+          value={loading ? '...' : pendingBookings}
+          color="bg-yellow-500"
+        />
+        <DashboardStatCard
+          icon={FaCheckCircle}
+          title="Completed"
+          value={loading ? '...' : completedBookings}
+          color="bg-green-500"
+        />
+        <DashboardStatCard
+          icon={FaCalendarCheck}
+          title="This Month"
+          value={loading ? '...' : bookings.filter(b => {
+            const d = b.scheduledAt || b.createdAt
+            if (!d) return false
+            const date = new Date(d)
+            const now = new Date()
+            return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
+          }).length}
+          color="bg-purple-500"
+        />
+      </div>
+
+      {/* Quick Links */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {quickLinks.map(link => (
           <Link
@@ -42,16 +128,53 @@ export default function DynamicProviderDashboard() {
         ))}
       </div>
 
+      {/* Recent Activity */}
       <div>
         <h2 className="text-lg font-bold text-gray-900 mb-3">Recent Activity</h2>
-        <div className="bg-white rounded-xl border border-gray-200 p-6 text-center">
-          <p className="text-sm text-gray-500">
-            View appointments, bookings, and patient activity in{' '}
-            <Link href={`${base}/practice`} className="text-[#0C6780] font-medium hover:underline">
-              My Practice
-            </Link>
-          </p>
-        </div>
+        {loading ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-6 text-center">
+            <p className="text-sm text-gray-500">Loading bookings...</p>
+          </div>
+        ) : recentBookings.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-6 text-center">
+            <p className="text-sm text-gray-500">
+              No recent bookings yet. View your full schedule in{' '}
+              <Link href={`${base}/practice`} className="text-[#0C6780] font-medium hover:underline">
+                My Practice
+              </Link>
+            </p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+            {recentBookings.map(booking => {
+              const dateStr = booking.scheduledAt || booking.createdAt
+              const statusKey = booking.status?.toUpperCase() ?? ''
+              return (
+                <div key={booking.id} className="flex items-center justify-between p-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {booking.patientName || booking.type?.replace(/_/g, ' ') || 'Booking'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {booking.type?.replace(/_/g, ' ')}
+                      {dateStr ? ` - ${new Date(dateStr).toLocaleDateString()}` : ''}
+                    </p>
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap ${statusColor[statusKey] || 'bg-gray-100 text-gray-800'}`}>
+                    {booking.status?.replace(/_/g, ' ') || 'Unknown'}
+                  </span>
+                </div>
+              )
+            })}
+            {bookings.length > 5 && (
+              <div className="p-3 text-center">
+                <Link href={`${base}/practice`} className="text-sm text-[#0C6780] font-medium hover:underline">
+                  View all {bookings.length} bookings
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

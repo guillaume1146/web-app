@@ -30,16 +30,18 @@ export default function CorporateCompanyPage() {
 
  const fetchProfile = async () => {
  try {
- const res = await fetch(`/api/corporate/${userId}/dashboard`)
+ const res = await fetch(`/api/corporate/${userId}/dashboard`, { credentials: 'include' })
  if (res.ok) {
  const json = await res.json()
  if (json.success) {
- const stats = json.data.stats
+ // Backend returns { company: {...}, stats: { employeeCount, ... } }
+ const company = json.data.company || {}
+ const stats = json.data.stats || {}
  setProfile({
- companyName: stats.companyName || '',
- industry: stats.industry || '',
- registrationNumber: stats.registrationNumber || '',
- employeeCount: stats.totalEmployees || 0,
+ companyName: company.companyName || stats.companyName || '',
+ industry: company.industry || stats.industry || '',
+ registrationNumber: company.registrationNumber || stats.registrationNumber || '',
+ employeeCount: stats.employeeCount ?? stats.totalEmployees ?? 0,
  })
  }
  }
@@ -85,6 +87,7 @@ export default function CorporateCompanyPage() {
  try {
  const res = await fetch(`/api/users/${userId}`, {
  method: 'PATCH',
+ credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
  profileData: {

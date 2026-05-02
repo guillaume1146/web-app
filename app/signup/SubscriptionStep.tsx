@@ -41,7 +41,10 @@ export default function SubscriptionStep({
  const [corporatePlans, setCorporatePlans] = useState<Plan[]>([])
  const [loading, setLoading] = useState(true)
 
- const isCorporate = userType === 'corporate'
+ // Corporate-admin is a capability acquired AFTER signup (by creating a
+ // company). Signup only ever picks an individual plan — users can upgrade
+ // via the Settings → Subscription tab once they have a company.
+ const isCorporate = false
 
  useEffect(() => {
  async function fetchPlans() {

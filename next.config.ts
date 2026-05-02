@@ -97,6 +97,31 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+
+  // ─── API + uploads proxy to NestJS Backend (always on) ─────────────
+  // ALL /api/* requests are proxied to the NestJS backend. Next.js has NO
+  // API routes — NestJS is the only backend.
+  // `/uploads/*` is ALSO proxied: the backend writes user-uploaded files
+  // to `backend/public/uploads/<file>` and serves them at `/uploads/<file>`
+  // on port 3001. Without this rewrite the frontend (on :3000) fetches
+  // the URL from its OWN public folder (which is empty) and every avatar /
+  // cover / receipt looks broken even though the file saved fine.
+  async rewrites() {
+    const apiUrl = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
+    return {
+      beforeFiles: [
+        {
+          source: '/api/:path*',
+          destination: `${apiUrl}/api/:path*`,
+        },
+        {
+          source: '/uploads/:path*',
+          destination: `${apiUrl}/uploads/:path*`,
+        },
+      ],
+    }
+  },
 };
 
 export default nextConfig;

@@ -30,7 +30,7 @@ export default function CheckoutPage() {
   // Fetch wallet balance
   useEffect(() => {
     if (!user) return
-    fetch(`/api/users/${user.id}/wallet`)
+    fetch(`/api/users/${user.id}/wallet`, { credentials: 'include' })
       .then(r => r.json())
       .then(json => { if (json.success) setWalletBalance(json.data.balance) })
       .catch(() => {})
@@ -39,7 +39,7 @@ export default function CheckoutPage() {
   // Fetch prescriptions if cart has Rx items
   useEffect(() => {
     if (!user || !hasRxItems) return
-    fetch(`/api/patients/${user.id}/prescriptions`)
+    fetch(`/api/patients/${user.id}/prescriptions`, { credentials: 'include' })
       .then(r => r.json())
       .then(json => {
         if (json.success && json.data) {
@@ -70,15 +70,14 @@ export default function CheckoutPage() {
       for (const [providerUserId, providerItems] of providerGroups) {
         const res = await fetch('/api/inventory/orders', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             providerUserId,
-            providerType: providerItems[0].providerType,
-            deliveryType,
+            deliveryMethod: deliveryType,
             deliveryAddress: deliveryType === 'delivery' ? deliveryAddress : undefined,
-            deliveryFee: deliveryType === 'delivery' ? 150 : 0,
             items: providerItems.map(i => ({
-              inventoryItemId: i.id,
+              itemId: i.id,
               quantity: i.quantity,
             })),
           }),
