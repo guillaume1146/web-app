@@ -45,6 +45,10 @@ npx playwright test                # Full E2E suite (127+ tests)
 # Swagger UI: http://localhost:3001/api/docs
 ```
 
+## Git Conventions
+
+**Never add a "Co-Authored-By" trailer to commits.** All commits belong solely to the developer (Tsantaniaina Rakotonjanahary). The developer conceives, designs, and drives all implementation decisions — do NOT append `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>` or any Claude attribution line to commit messages. Commit messages should be concise, present the change accurately, and end without any co-author or AI attribution footer.
+
 ## Architecture
 
 ### Directory Structure

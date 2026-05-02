@@ -3,27 +3,34 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// MediWyz mobile config.
 ///
-/// Three ways to pick the backend URL (precedence top→bottom):
+/// URL resolution order (first non-empty wins):
 ///
-/// 1. `--dart-define=API_BASE=https://api.mediwyz.com/api` at build time (wins everywhere).
-/// 2. Auto-detect by host:
-///    - Flutter Web in Chrome → `http://127.0.0.1:3001`
-///    - Android emulator      → `http://10.0.2.2:3001` (emulator's alias for dev machine)
-///    - Real Android device   → falls back to `127.0.0.1` which won't work → override at build time
-///    - iOS simulator         → `http://127.0.0.1:3001`
-/// 3. Fallback: `http://127.0.0.1:3001`.
+/// 1. Build-time dart-define (production releases):
+///    ```
+///    flutter build apk --dart-define=API_BASE=https://mediwyz.com/api --dart-define=SOCKET_URL=https://mediwyz.com
+///    flutter build ios --dart-define=API_BASE=https://mediwyz.com/api --dart-define=SOCKET_URL=https://mediwyz.com
+///    ```
+/// 2. Auto-detect by platform (development):
+///    - Flutter Web  → `http://127.0.0.1:3001` (NestJS running locally)
+///    - Android emulator → `http://10.0.2.2:3001` (emulator alias for dev machine localhost)
+///    - Android device  → `http://10.0.2.2:3001` (works on emulator; use dart-define on real device)
+///    - iOS simulator   → `http://127.0.0.1:3001`
+///    - iOS device      → use dart-define (device can't reach host loopback)
+/// 3. Fallback: `http://127.0.0.1:3001`
 class AppConfig {
-  // Compile-time overrides — always win when provided.
-  static const String _envApi = String.fromEnvironment('API_BASE');
+  static const String _envApi    = String.fromEnvironment('API_BASE');
   static const String _envSocket = String.fromEnvironment('SOCKET_URL');
 
-  /// REST base URL — backend NestJS controllers.
+  /// Production domain — used when no dart-define is provided and release mode is detected.
+  static const String _productionHost = 'https://mediwyz.com';
+
+  /// REST base URL for NestJS API.
   static String get apiBase {
     if (_envApi.isNotEmpty) return _envApi;
     return '${_host()}/api';
   }
 
-  /// Socket.IO URL (chat, notifications, WebRTC signaling).
+  /// Socket.IO connection URL (port 3001 proxied via nginx → NestJS).
   static String get socketUrl {
     if (_envSocket.isNotEmpty) return _envSocket;
     return _host();
@@ -32,12 +39,19 @@ class AppConfig {
   /// App display name.
   static const String appName = 'MediWyz';
 
+  /// Android package name / iOS bundle ID (used in deep-link routing).
+  static const String bundleId = 'com.mediwyz.mobile';
+
   static String _host() {
+    // In release mode without an explicit dart-define, use production.
+    const bool isRelease = bool.fromEnvironment('dart.vm.product');
+    if (isRelease) return _productionHost;
+
     if (kIsWeb) return 'http://127.0.0.1:3001';
     try {
       if (Platform.isAndroid) return 'http://10.0.2.2:3001';
-      if (Platform.isIOS) return 'http://127.0.0.1:3001';
-    } catch (_) { /* non-IO env (tests) */ }
+      if (Platform.isIOS)     return 'http://127.0.0.1:3001';
+    } catch (_) { /* non-IO env (tests, web) */ }
     return 'http://127.0.0.1:3001';
   }
 }

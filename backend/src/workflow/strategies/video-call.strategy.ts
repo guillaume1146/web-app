@@ -53,5 +53,6 @@ async function createRoom(prisma: PrismaService, ctx: TransitionContext, mode: '
   } catch {
     console.warn(`Could not create ${mode} room for workflow instance ${ctx.instanceId}`);
   }
-  return { videoCallId: roomId };
+  // Return both internal ID and shareable room code so clients can join via /video/:roomCode
+  return { videoCallId: roomId, roomCode };
 }

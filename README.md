@@ -1,83 +1,83 @@
-# MediWyz - Digital Health Platform for Mauritius
+# MediWyz — Digital Health Platform
 
-A digital health platform built with **Next.js 15**, **TypeScript**, **PostgreSQL**, **Socket.IO**, and **WebRTC**. It connects patients with doctors, nurses, nannies, pharmacists, lab technicians, and emergency responders through video consultations, appointment booking, prescription management, and more.
+A multi-country SaaS platform connecting patients with 17+ provider types across Mauritius, Madagascar, Kenya, Togo, Benin, and Rwanda. Built on **Next.js 15** (frontend) + **NestJS 10** (backend) + **Flutter** (mobile), with a configurable workflow engine, real-time video/chat, insurance SaaS, and an AI health assistant.
 
 ---
 
 ## Table of Contents
 
-- [Architecture](#architecture)
+- [System Architecture](#system-architecture)
 - [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started with Docker Compose](#getting-started-with-docker-compose)
-- [Getting Started without Docker](#getting-started-without-docker)
+- [Repository Structure](#repository-structure)
+- [Data Model](#data-model)
+- [Dynamic Role System](#dynamic-role-system)
+- [Workflow Engine](#workflow-engine)
+- [Insurance SaaS & Money Flow](#insurance-saas--money-flow)
+- [Real-time (Socket.IO)](#real-time-socketio)
+- [AI Assistant](#ai-assistant)
+- [CI/CD Pipeline](#cicd-pipeline)
+- [Development Setup](#development-setup)
 - [Environment Variables](#environment-variables)
-- [Database Schema](#database-schema)
-- [API Endpoints](#api-endpoints)
-- [Authentication Flow](#authentication-flow)
-- [Video Call System](#video-call-system)
-- [User Roles & Demo Accounts](#user-roles--demo-accounts)
-- [Key Features](#key-features)
+- [User Types & Demo Accounts](#user-types--demo-accounts)
+- [API Documentation](#api-documentation)
 
 ---
 
-## Architecture
+## System Architecture
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                     Browser (Client)                         │
-│  Next.js App Router (React 19) + Tailwind CSS                │
-│                                                              │
-│  ┌──────────┐  ┌──────────────┐  ┌─────────────────────────┐ │
-│  │ useAuth  │  │  useSocket   │  │      useWebRTC          │ │
-│  │ (Zustand │  │  (Socket.IO  │  │  (simple-peer P2P       │ │
-│  │  + API)  │  │   client)    │  │   video/audio/screen)   │ │
-│  └──────────┘  └──────┬───────┘  └───────────┬─────────────┘ │
-└────────────────────────┼─────────────────────┼───────────────┘
-                    WebSocket              WebRTC P2P
-                         │                     │
-┌────────────────────────┼─────────────────────┼───────────────┐
-│               Custom Node.js Server (server.js)              │
-│                                                              │
-│  ┌─────────────────────┴─────────────────────┐               │
-│  │           Socket.IO Server                 │               │
-│  │  - Room management                         │               │
-│  │  - WebRTC signaling (offer/answer/ICE)     │               │
-│  │  - Session persistence to PostgreSQL       │               │
-│  │  - Reconnection grace period (2 min)       │               │
-│  │  - Heartbeat monitoring (30s)              │               │
-│  │  - Room cleanup (2h timeout)               │               │
-│  └────────────────────────────────────────────┘               │
-│  ┌────────────────────────────────────────────┐               │
-│  │           Next.js HTTP Handler              │               │
-│  │  - REST API routes (/api/...)               │               │
-│  │  - JWT authentication (httpOnly cookies)    │               │
-│  │  - Zod request validation                   │               │
-│  │  - Per-page data fetching (Prisma select)   │               │
-│  └────────────────────────────────────────────┘               │
-└───────────────────────────┬──────────────────────────────────┘
-                            │
-                     Prisma ORM (TCP)
-                            │
-                 ┌──────────┴──────────┐
-                 │    PostgreSQL 16     │
-                 │                     │
-                 │  Fully normalized   │
-                 │  relational schema  │
-                 │  (30+ tables)       │
-                 │  No JSON columns    │
-                 │  Proper FKs & JOINs │
-                 └─────────────────────┘
+```mermaid
+graph TB
+    subgraph Clients
+        WEB["Next.js 15\nBrowser / SSR"]
+        MOB["Flutter 3\nAndroid & iOS"]
+    end
+
+    subgraph Edge
+        NGINX["nginx\nReverse Proxy + SSL\nmediwyz.com"]
+    end
+
+    subgraph AppLayer["Application Layer (Docker)"]
+        NEXT["Next.js 15\nPort 3000\nFrontend only\nProxies /api/* → NestJS"]
+        NEST["NestJS 10\nPort 3001\nSingle backend API"]
+    end
+
+    subgraph Realtime["Real-time (NestJS port 3001)"]
+        WS1["WebRtcGateway\nSignaling"]
+        WS2["ChatGateway\nMessages"]
+        WS3["NotificationsGateway\nPush events"]
+    end
+
+    subgraph Data
+        PG["PostgreSQL 16\n50+ tables\nPrisma 6 ORM"]
+    end
+
+    subgraph Registry["Container Registry"]
+        GHCR["GHCR\nghcr.io/mediwyz/\nplatform-app:latest\nplatform-api:latest"]
+    end
+
+    WEB -->|HTTPS| NGINX
+    MOB -->|HTTPS REST| NGINX
+    MOB -->|WebSocket| NGINX
+    NGINX -->|:3000| NEXT
+    NGINX -->|:3001| NEST
+    NEXT -->|Rewrite /api/*| NEST
+    NEST --- WS1
+    NEST --- WS2
+    NEST --- WS3
+    NEST -->|Prisma| PG
+    GHCR -->|docker pull| NEXT
+    GHCR -->|docker pull| NEST
 ```
 
-**Key design decisions:**
-- **Layered Architecture** — types (`lib/data/`, `types/`) → services (`lib/auth/`) → API routes (`app/api/`) → UI (`components/`, `app/*/dashboard/`). Separation of concerns throughout.
-- **DRY components** — Video call, stat cards, and booking flows each exist as a single shared component. No duplicates.
-- The dev server is `node server.js` (NOT `next dev`) — it wraps Next.js to co-host Socket.IO on the same port
-- Login returns only profile data (`id`, `firstName`, `lastName`, `email`, `profileImage`, `userType`) — no bulk data loading
-- Each page fetches its own data via dedicated API endpoints using the user ID from auth state
-- Video call sessions are persisted to the database so calls survive server restarts
-- Domain types are centralized in `lib/data/` — all components import from there
+### Key architectural decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **NestJS is the ONLY backend** | Next.js is pure frontend. `app/api/` removed. All `/api/*` proxied via `next.config.ts` rewrites |
+| **Dynamic roles** | Provider roles (Doctor, Nurse, Optician…) are DB rows in `ProviderRole`, not code enums |
+| **Single `ServiceBooking` model** | All booking types converge on one table; legacy tables kept read-only |
+| **Workflow engine** | Every status change goes through `WorkflowEngine.transition()` — never direct DB update |
+| **Capability over role** | Corporate admin, insurance owner, referral partner = capabilities, not signup roles |
 
 ---
 
@@ -85,582 +85,414 @@ A digital health platform built with **Next.js 15**, **TypeScript**, **PostgreSQ
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 15.4 (App Router), React 19, TypeScript |
-| Styling | Tailwind CSS 4, Framer Motion |
-| State | Zustand, React hooks |
-| Real-time | Socket.IO 4.8, WebRTC via simple-peer |
-| Backend | Custom Node.js HTTP server + Next.js handler |
-| Database | PostgreSQL 16 + Prisma 6.16 ORM |
-| Auth | JWT (jsonwebtoken), bcrypt, httpOnly cookies |
-| Validation | Zod |
-| Containerization | Docker, Docker Compose |
+| **Web frontend** | Next.js 15.4 (App Router), React 19, TypeScript 5 |
+| **Styling** | Tailwind CSS 4, Framer Motion |
+| **State** | Zustand, React hooks |
+| **Mobile** | Flutter 3.x (Android + iOS + Web) |
+| **Backend API** | NestJS 10 (TypeScript), class-validator, Passport |
+| **Real-time** | Socket.IO 4.8 (3 gateways on NestJS) |
+| **Video** | WebRTC via simple-peer (P2P, signaled through NestJS) |
+| **Database** | PostgreSQL 16 + Prisma 6 ORM |
+| **Auth** | JWT (httpOnly cookies), bcrypt, global JwtAuthGuard |
+| **AI** | Groq API (llama-3.1-8b-instant / llama-3.2-11b-vision) |
+| **Payments** | Internal Health Credit ledger (MCB Juice seam ready) |
+| **Container** | Docker, Docker Compose, GHCR |
+| **CI/CD** | GitHub Actions → GHCR → self-hosted runner on VPS |
+| **Reverse proxy** | nginx + Let's Encrypt (Certbot) |
+| **Scheduler** | `@nestjs/schedule` — reminder sweeps every 30 min |
 
 ---
 
-## Project Structure
+## Repository Structure
 
 ```
-├── app/
-│   ├── api/
-│   │   ├── auth/
-│   │   │   ├── login/route.ts         # POST — authenticate, returns JWT cookie
-│   │   │   ├── logout/route.ts        # POST — clear auth cookies
-│   │   │   └── me/route.ts            # GET  — current user profile
-│   │   ├── patients/[id]/
-│   │   │   ├── route.ts               # GET  — patient profile
-│   │   │   ├── appointments/route.ts  # GET  — paginated, filterable by status
-│   │   │   ├── prescriptions/route.ts # GET  — with medicines via JOIN
-│   │   │   ├── medical-records/route.ts
-│   │   │   ├── vital-signs/route.ts   # GET  — latest or history
-│   │   │   ├── pill-reminders/route.ts
-│   │   │   ├── lab-tests/route.ts     # GET  — with results via JOIN
-│   │   │   └── notifications/route.ts
-│   │   ├── doctors/[id]/
-│   │   │   ├── appointments/route.ts  # GET  — with patient info via JOIN
-│   │   │   ├── patients/route.ts      # GET  — unique patients from appointments
-│   │   │   ├── schedule/route.ts      # GET  — weekly time slots
-│   │   │   └── notifications/route.ts
-│   │   ├── webrtc/
-│   │   │   ├── session/route.ts       # CRUD — video call session management
-│   │   │   └── recovery/route.ts      # POST — session recovery after disconnect
-│   │   ├── health/route.ts            # GET  — DB connectivity check
-│   │   ├── config/route.ts            # GET  — app configuration
-│   │   ├── upload/route.ts            # POST — file upload
-│   │   └── video/room/route.ts        # POST/GET — video room management
-│   ├── patient/                       # Patient pages
-│   │   ├── dashboard/
-│   │   ├── doctor-consultations/
-│   │   ├── doctor-prescriptions/
-│   │   ├── health-records/
-│   │   ├── home-nursing/
-│   │   ├── pharmacy/
-│   │   ├── childcare/
-│   │   ├── lab-tests/
-│   │   ├── emergency/
-│   │   ├── insurance/
-│   │   ├── video-call/[roomId]/       # WebRTC video call page
-│   │   ├── profile/
-│   │   ├── settings/
-│   │   ├── error.tsx                  # Error boundary
-│   │   └── loading.tsx                # Loading state
-│   ├── doctor/                        # Doctor pages
-│   │   ├── dashboard/
-│   │   ├── appointments/
-│   │   ├── consultations/
-│   │   ├── patients/
-│   │   ├── prescriptions/
-│   │   ├── availability/
-│   │   ├── video-call/[roomId]/
-│   │   ├── profile/
-│   │   ├── settings/
-│   │   ├── error.tsx
-│   │   └── loading.tsx
-│   ├── admin/dashboard/               # Admin dashboard
-│   ├── nurse/dashboard/               # Nurse dashboard
-│   ├── nanny/dashboard/               # Nanny dashboard
-│   ├── login/                         # Login page + auth utilities
-│   │   ├── page.tsx
-│   │   ├── types/auth.ts             # AuthUser interface
-│   │   └── utils/auth.ts             # AuthService class
-│   ├── error.tsx                      # Global error boundary
-│   ├── loading.tsx                    # Global loading state
-│   ├── layout.tsx                     # Root layout
-│   └── page.tsx                       # Landing page
+platform/
+├── app/                          # Next.js App Router (frontend only)
+│   ├── [userType]/(dashboard)/   # Dashboard per user type — no /dashboard/ in URL
+│   │   ├── layout.tsx            # DashboardLayout wrapper
+│   │   ├── sidebar-config.ts     # Sidebar items driven by userType
+│   │   └── page.tsx              # Overview page
+│   ├── search/
+│   │   ├── health-shop/          # Health Shop — browse all providers' inventory
+│   │   └── providers/            # Provider search by role
+│   ├── login/                    # Login page
+│   ├── signup/                   # Registration
+│   └── page.tsx                  # Landing page (CMS-driven)
+│
+├── backend/                      # NestJS backend (port 3001)
+│   └── src/
+│       ├── auth/                 # JWT, guards, registration, login
+│       ├── bookings/             # Universal booking via ServiceBooking
+│       ├── workflow/             # Workflow engine: engine, strategies, registry
+│       ├── search/               # Provider + health shop search
+│       ├── ai/                   # Groq AI assistant + health tracker
+│       ├── corporate/            # Corporate plans, insurance SaaS, treasury
+│       ├── payments/             # MCB Juice seam (mock|mcb_juice toggle)
+│       ├── notifications/        # Push + Socket.IO notifications
+│       ├── shared/               # Guards, interceptors, filters, pipes
+│       └── main.ts               # Bootstrap: CORS, global guards, Swagger
+│
 ├── components/
-│   ├── video/                         # Shared video call components (single source of truth)
-│   │   ├── VideoCallRoom.tsx          # Video UI with PiP, controls, stream management
-│   │   └── VideoConsultation.tsx      # Full consultation flow with session management
-│   ├── home/                          # Landing page sections
-│   ├── layout/                        # Navbar, Footer
-│   ├── booking/                       # Booking flow (6 generic components)
-│   ├── forms/                         # Contact, Login, Signup forms
-│   ├── shared/                        # Reusable UI (DashboardStatCard, PageHeader, etc.)
-│   │   ├── ProviderReviews.tsx        # Shared review/rating component for all provider types
-│   └── ui/                            # Utility components
-├── hooks/
-│   ├── useAuth.ts                     # Auth state management
-│   ├── useSocket.ts                   # Socket.IO with auto-reconnection
-│   ├── useWebRTC.ts                   # WebRTC peer connections
-│   └── useAppConfig.ts               # App config fetcher
+│   ├── dashboard/                # DashboardLayout, Sidebar, Header
+│   ├── settings/                 # SettingsLayout + shared tabs
+│   ├── shared/                   # DashboardStatCard, PaymentMethodForm, PageHeader
+│   ├── video/                    # VideoConsultation (shared, any user type)
+│   ├── workflow/                 # WorkflowTimeline, WorkflowCurrentStep, Builder
+│   └── health-shop/              # ShopItemCard, ShopFilters, CartContext, FloatingCart
+│
+├── hooks/                        # useAuth, useSocket, useWebRTC, useCurrency
+│
 ├── lib/
-│   ├── auth/
-│   │   ├── jwt.ts                     # signToken() / verifyToken()
-│   │   ├── cookies.ts                 # setAuthCookies() / clearAuthCookies()
-│   │   ├── validate.ts               # validateRequest() for API routes
-│   │   └── schemas.ts                # Zod schemas (loginSchema)
-│   ├── data/                          # Domain model type definitions
-│   │   ├── patients.ts               # Patient interface + related types
-│   │   ├── doctors.ts                # Doctor interface + related types
-│   │   ├── nurses.ts                 # Nurse interface
-│   │   ├── nannies.ts                # Nanny interface
-│   │   └── index.ts                  # Re-exports all types
-│   ├── dashboard/
-│   │   ├── createDashboardLayout.tsx  # Shared HOC for all 12 layouts
-│   │   └── getActiveSectionFromPath.ts # Shared sidebar active section resolver
-│   ├── db.ts                          # Prisma singleton
-│   ├── db-utils.ts                    # getPatientDashboardSummary()
-│   └── constants.ts                   # Static content (services, stats)
+│   ├── auth/                     # JWT helpers, cookie helpers, Zod schemas
+│   ├── db.ts                     # Prisma client singleton (default export)
+│   ├── workflow/                 # Workflow engine (frontend-side types + helpers)
+│   └── commission.ts             # Commission calculation (Platform 15% / Provider 85%)
+│
+├── mobile/                       # Flutter app (Android + iOS)
+│   ├── lib/
+│   │   ├── api/                  # Dio-based HTTP wrappers per module
+│   │   ├── models/               # Freezed data classes
+│   │   ├── screens/              # One screen per route
+│   │   ├── widgets/              # Reusable components
+│   │   ├── services/             # Auth, socket, Riverpod notifiers
+│   │   ├── router/               # go_router routes + auth redirect
+│   │   └── theme/                # MediWyzColors, ThemeData
+│   └── test/                     # flutter_test unit + widget tests
+│
 ├── prisma/
-│   ├── schema.prisma                  # 30+ normalized tables
-│   ├── seed.ts                        # Entry point — calls all seeders
-│   └── seeds/                         # Modular seed files
-│       ├── 01-medicines.seed.ts
-│       ├── 02-doctors.seed.ts
-│       ├── 03-nurses.seed.ts
-│       ├── 04-nannies.seed.ts
-│       ├── 05-patients.seed.ts
-│       ├── 06-clinical-data.seed.ts   # Records, prescriptions, vitals, lab tests
-│       ├── 07-appointments.seed.ts
-│       ├── 08-video-rooms.seed.ts     # Pre-created rooms with IDs
-│       └── 09-supporting-data.seed.ts # Reminders, billing, notifications
-├── types/
-│   ├── index.ts                       # Shared UI component types
-│   └── super-admin.ts                 # Admin management types
-├── server.js                          # Custom server (Socket.IO + Next.js)
-├── middleware.ts                      # Route protection by user type
-├── docker-compose.yml                 # PostgreSQL + App
-├── Dockerfile                         # Multi-stage production build
-├── .env.example                       # Environment variable template
-├── tailwind.config.ts                 # Brand colors & theme
-└── package.json
+│   ├── schema.prisma             # 50+ tables, normalized
+│   └── seeds/                    # 57 modular seed files (00-regions → 50-health-shop)
+│
+├── nginx/                        # nginx config + SSL setup script
+├── scripts/                      # setup-nginx.sh, deploy helpers
+├── .github/
+│   ├── workflows/
+│   │   └── deploy.yml            # Build → GHCR → SSH deploy to VPS
+│   ├── CODEOWNERS                # Auto-request reviews by path
+│   └── dependabot.yml            # Weekly grouped dependency updates
+└── docker-compose.yml            # db + api (NestJS) + app (Next.js)
 ```
 
 ---
 
-## Getting Started with Docker Compose
+## Data Model
+
+```mermaid
+erDiagram
+    User ||--o{ PatientProfile : "1:1"
+    User ||--o{ DoctorProfile : "1:1"
+    User ||--o{ NurseProfile : "1:1"
+    User ||--o{ PharmacistProfile : "1:1"
+    User ||--o{ RegionalAdminProfile : "1:1"
+    User ||--o{ CorporateAdminProfile : "many (capability)"
+
+    User ||--o{ ServiceBooking : "as patient"
+    User ||--o{ ServiceBooking : "as provider"
+    ServiceBooking ||--|| WorkflowInstance : "1:1"
+    WorkflowInstance }o--|| WorkflowTemplate : "resolves"
+    WorkflowInstance ||--o{ WorkflowStepLog : "audit trail"
+
+    User ||--o{ UserWallet : "1:1"
+    UserWallet ||--o{ WalletTransaction : "ledger"
+
+    CorporateAdminProfile ||--o{ InsuranceCompanyTreasury : "if isInsurance"
+    InsuranceCompanyTreasury ||--o{ TreasuryTransaction : "ledger"
+    InsuranceCompanyTreasury ||--o{ InsuranceClaim : "claims"
+
+    User ||--o{ AiChatSession : "AI history"
+    AiChatSession ||--o{ AiChatMessage : "messages"
+
+    User ||--o{ ProviderInventoryItem : "as seller"
+    ProviderInventoryItem ||--o{ InventoryOrderItem : "line items"
+    InventoryOrderItem }o--|| InventoryOrder : "order"
+```
+
+### Core tables
+
+| Model | Purpose |
+|-------|---------|
+| `User` | Single auth table for all 17 user types + roles |
+| `PatientProfile` / `DoctorProfile` / … | 1:1 type-specific profile (16 profile tables) |
+| `ServiceBooking` | Universal booking model (all provider types) |
+| `WorkflowTemplate` | N-step booking script per (providerType × serviceMode) |
+| `WorkflowInstance` | Live state for one booking |
+| `ProviderRole` | Dynamic role definitions — created by Regional Admins |
+| `RoleFeatureConfig` | Per-role feature flags |
+| `PlatformService` | Bookable service catalog |
+| `ProviderInventoryItem` | Health Shop inventory (any provider) |
+| `UserWallet` + `WalletTransaction` | Internal Health Credit ledger |
+| `InsuranceCompanyTreasury` | Pooled insurance premium pool |
+
+---
+
+## Dynamic Role System
+
+Provider roles are **not code enums** — they are rows in `ProviderRole` created by Regional Admins.
+
+```mermaid
+flowchart LR
+    RA["Regional Admin\nCreates ProviderRole row"] --> DB[("ProviderRole\ntable")]
+    DB -->|"/api/roles"| FE["Frontend\nLoads roles dynamically"]
+    DB -->|"RolesResolverService"| BE["Backend\nNo hardcoded checks"]
+    FE --> SIGNUP["Signup form\nRole dropdown"]
+    FE --> SEARCH["Search\nProvider filter"]
+    FE --> BOOK["Booking flow\nAny role"]
+```
+
+- Zero code changes needed when a new role is added
+- `MEMBER` and `REGIONAL_ADMIN` are the only two system-defined types
+- Corporate admin, insurance owner, referral partner are **capabilities** (DB-driven), not roles
+- Every user has patient/member capabilities by default
+
+---
+
+## Workflow Engine
+
+All booking status changes go through `WorkflowEngine.transition()`. Three-tier trigger system:
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant API as POST /api/workflow/transition
+    participant E as WorkflowEngine
+    participant S1 as Tier 1 (Systematic)
+    participant S2 as Tier 2 (Semi-auto)
+    participant S3 as Tier 3 (Step-type flags)
+
+    C->>API: { instanceId, action, input }
+    API->>E: transition()
+    E->>E: Validate action is allowed
+    E->>S1: Always: notify both sides, audit log, sync booking.status
+    E->>S2: If conditions: video room, payment, refund, stock check/subtract
+    E->>S3: Step type defaultFlags: requires_content, triggers_video_call
+    E-->>C: { success, instance, stepLog }
+```
+
+Template resolution order (most specific wins):
+
+1. Provider's custom template linked to exact `platformServiceId`
+2. Regional admin template for same service + region
+3. System default for exact service
+4. Regional admin generic template for (providerType + serviceMode + region)
+5. System default for (providerType + serviceMode)
+6. Provider's generic fallback
+
+---
+
+## Insurance SaaS & Money Flow
+
+```mermaid
+flowchart TD
+    MEMBER["Member\n(wallet)"] -->|"monthly contribution\n+ platform fee 5%"| TREASURY["InsuranceCompanyTreasury"]
+    TREASURY -->|"claim approved\n→ rules engine"| RULES{"Rules Engine\nWaitingPeriod\nDeductible\nCoPay\nCategoryLimit\nAnnualCeiling\nFraudHeuristic"}
+    RULES -->|"approved"| REIMBURSE["Credit member wallet\nTreasuryService.payoutClaim()"]
+    RULES -->|"denied / pending_review"| LOG["ClaimDecisionLog\nAudit trail"]
+    TREASURY -->|"tiers payant\npre-authorization"| PROVIDER["Provider wallet\nTreasuryService.payoutProviderDirect()"]
+    PLATFORM["PlatformTreasury"] -->|"5% cut from every contribution"| PLATFORM
+    TREASURY --> PLATFORM
+```
+
+| Flow | From → To | Service |
+|------|-----------|---------|
+| Booking | Member wallet → Provider wallet (85%) + Platform (15%) | `BookingsService` |
+| Insurance contribution | Member wallet → Treasury (95%) + Platform (5%) | `TreasuryService` |
+| Claim approval | Treasury → Member wallet | `TreasuryService.payoutClaim()` |
+| Tiers payant | Treasury → Provider wallet | `TreasuryService.payoutProviderDirect()` |
+
+Payment gateway toggle: `PAYMENT_GATEWAY=mock|mcb_juice` (MCB Juice seam in `backend/src/payments/`).
+
+---
+
+## Real-time (Socket.IO)
+
+Three gateways on NestJS port 3001:
+
+| Gateway | Namespace | Key events |
+|---------|-----------|-----------|
+| `WebRtcGateway` | `/` | `join-room`, `signal`, `user-joined`, `heartbeat` |
+| `ChatGateway` | `/` | `chat:message:send`, `chat:message:new`, `chat:typing` |
+| `NotificationsGateway` | `/` | `notification:new`, `notification:read` |
+
+Room naming: `user:{userId}` · `convo:{id}` · `room:{roomCode}`
+
+Frontend connects via `NEXT_PUBLIC_SOCKET_URL` (default `http://localhost:3001`). One connection per app, initialized in `DashboardLayout`.
+
+---
+
+## AI Assistant
+
+Groq-backed assistant with healthcare safety rules:
+
+- **Context**: assembled from `AiService.getUserContext(userId)` — reads User + HealthTrackerProfile + PatientProfile + DoctorProfile. Single query, never piecemeal.
+- **Models**: `llama-3.1-8b-instant` (chat) · `llama-3.2-11b-vision-preview` (food/receipt OCR)
+- **Safety**: dangerous keywords → skip LLM, return emergency services immediately. Allergy hard-constraints enforced as post-filter. Never diagnose.
+- **Endpoints**: `GET /api/ai/chat` · `POST /api/ai/chat` · `GET /api/ai/chat/:id` · `DELETE /api/ai/chat/:id`
+
+---
+
+## CI/CD Pipeline
+
+```mermaid
+flowchart LR
+    PUSH["git push\nmain"] --> LINT["Lint & Type Check\nnpx tsc --noEmit"]
+    LINT --> TEST["Unit Tests\nVitest"]
+    TEST --> BUILD_FE["Build Frontend\ndocker build Dockerfile\n→ GHCR"]
+    TEST --> BUILD_BE["Build Backend\ndocker build backend/Dockerfile\n→ GHCR"]
+    BUILD_FE --> DEPLOY["Deploy\nself-hosted runner on VPS"]
+    BUILD_BE --> DEPLOY
+    DEPLOY --> STEPS["1 db up\n2 api up → healthcheck\n3 app up → healthcheck\n4 prisma db push\n5 seed\n6 smoke test login\n7 nginx + SSL"]
+```
+
+- Images pushed to `ghcr.io/mediwyz/platform-app:latest` and `platform-api:latest`
+- Self-hosted runner on Hostinger VPS (`runs-on: [self-hosted, mediwyz]`)
+- Environment: `production` (locked to `main` branch only)
+- CODEOWNERS: `.github/`, `prisma/`, `backend/src/auth/`, `backend/src/payments/` → `@Mediwyz/devops`
+
+---
+
+## Development Setup
 
 ### Prerequisites
-- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
 
-### 1. Build and start
+- Node.js 20+
+- Docker + Docker Compose
+- PostgreSQL 16 (or use Docker)
+- Flutter 3.x (for mobile)
+
+### Local (without Docker)
+
+```bash
+# 1. Install dependencies
+npm install
+cd backend && npm install && cd ..
+
+# 2. Configure environment
+cp .env.example .env
+# Edit DATABASE_URL, JWT_SECRET, GROQ_API_KEY
+
+# 3. Database
+npx prisma db push          # Create/sync tables
+npx prisma db seed          # Seed 57 demo files
+
+# 4. Start both servers
+cd backend && npm run start:dev   # NestJS on :3001
+npm run dev                        # Next.js on :3000
+
+# Swagger UI: http://localhost:3001/api/docs
+# App: http://localhost:3000
+```
+
+### Local (Docker Compose)
 
 ```bash
 docker compose up --build -d
+# App: http://localhost:3000
+# API: http://localhost:3001
 ```
 
-This starts:
-- **PostgreSQL 16** on port 5432 (with health checks)
-- **MediWyz app** on port 3000 (maps to container port 8080)
-
-### 2. Set up the database
+### Mobile (Flutter)
 
 ```bash
-# Create tables from the Prisma schema
-docker compose exec app npx prisma db push
-
-# Seed with demo data (5 patients, 3 doctors, 2 nurses, 2 nannies, medicines, appointments, video rooms, etc.)
-docker compose exec app npx prisma db seed
+cd mobile
+flutter pub get
+flutter run -d chrome           # Web (for rapid dev)
+flutter run -d android          # Android device/emulator
+flutter run -d ios              # iOS simulator
+flutter build apk               # Android release
+flutter build ios               # iOS release (macOS required)
 ```
 
-### 3. Open the app
-
-Go to **http://localhost:3000**
-
-### Stop / Reset
+### Useful commands
 
 ```bash
-docker compose down       # Stop containers
-docker compose down -v    # Stop + delete database volume
-```
+# Type check
+npx tsc --noEmit                   # Frontend
+cd backend && npx tsc --noEmit    # Backend
 
----
+# Tests
+npm run test                       # Vitest unit tests
+cd backend && npx jest             # NestJS unit tests
+npx playwright test                # E2E suite
 
-## Getting Started without Docker
-
-### Prerequisites
-- Node.js 20+
-- PostgreSQL running locally
-
-### 1. Install dependencies
-
-```bash
-npm install
-```
-
-### 2. Configure environment
-
-```bash
-cp .env.example .env
-# Edit .env with your DATABASE_URL and JWT_SECRET
-```
-
-### 3. Set up database
-
-```bash
-npx prisma db push     # Create tables
-npx prisma db seed      # Insert demo data
-```
-
-### 4. Run
-
-```bash
-npm run dev             # Development (node server.js on port 3000)
-npm run build           # Production build (prisma generate + next build)
-npm run start           # Production server
-```
-
-### Other commands
-
-```bash
-npx prisma studio       # Visual database browser at localhost:5555
-npx prisma migrate dev  # Create a migration
-npx eslint .            # Lint
+# Database
+npx prisma studio                  # Visual DB browser
+npx prisma migrate dev             # Create migration
 ```
 
 ---
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | Required |
-| `JWT_SECRET` | Secret key for JWT signing | `mediwyz-dev-secret...` |
-| `NEXT_PUBLIC_SOCKET_URL` | Socket.IO server URL | `http://localhost:3000` |
-| `NEXT_PUBLIC_APP_URL` | App base URL | `http://localhost:3000` |
-| `PORT` | Server port | `3000` |
-| `SUPER_ADMIN_EMAIL` | Super admin email (auto-created on startup) | `hassan.doorgakant@mediwyz.com` |
-| `SUPER_ADMIN_PASSWORD` | Super admin password | `Admin123!` |
-| `PLATFORM_COMMISSION_RATE` | Platform fee % (fallback if DB config missing) | `5` |
-| `REGIONAL_COMMISSION_RATE` | Regional admin fee % (fallback) | `10` |
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `DATABASE_URL` | PostgreSQL connection string | ✅ |
+| `JWT_SECRET` | JWT signing key | ✅ |
+| `GROQ_API_KEY` | Groq AI API key | ✅ |
+| `POSTGRES_PASSWORD` | PostgreSQL password (Docker) | ✅ |
+| `NEXT_PUBLIC_APP_URL` | Public app URL | ✅ |
+| `NEXT_PUBLIC_SOCKET_URL` | NestJS Socket.IO URL | ✅ |
+| `NEXT_PUBLIC_API_URL` | NestJS API URL | ✅ |
+| `API_INTERNAL_URL` | Internal NestJS URL (Docker: `http://api:3001`) | ✅ |
+| `APP_DOMAIN` | Custom domain (e.g. `mediwyz.com`) | Production |
+| `CORS_ALLOWED_ORIGINS` | Allowed origins for CORS | Production |
+| `SUPER_ADMIN_EMAIL` | Auto-created super admin email | ✅ |
+| `SUPER_ADMIN_PASSWORD` | Auto-created super admin password | ✅ |
+| `PAYMENT_GATEWAY` | `mock` or `mcb_juice` | Default: `mock` |
+| `NODE_ENV` | `development` or `production` | ✅ |
 
 ---
 
-## Database Schema
+## User Types & Demo Accounts
 
-The database is **fully normalized** — no JSON columns. All data is stored in proper relational tables with foreign keys, indexes, and cascading deletes.
-
-### Core Tables
-
-| Table | Description | Key Relations |
-|-------|-------------|---------------|
-| `Patient` | Patient profiles | Has many: appointments, prescriptions, medical records, vital signs, lab tests |
-| `Doctor` | Doctor profiles with credentials | Has many: appointments, prescriptions, education, certifications, schedule slots |
-| `Nurse` | Nursing staff | Has many: nurse bookings |
-| `Nanny` | Childcare professionals | Has many: childcare bookings |
-
-### Clinical Tables
-
-| Table | Description | Key Relations |
-|-------|-------------|---------------|
-| `Appointment` | Scheduled appointments | FK to Patient + Doctor, includes roomId for video calls |
-| `Prescription` | Prescriptions | FK to Patient + Doctor |
-| `PrescriptionMedicine` | Medicines in a prescription | FK to Prescription + Medicine (JOIN table) |
-| `Medicine` | Medicine catalog | Referenced by prescriptions and orders |
-| `MedicalRecord` | Consultation records | FK to Patient + Doctor |
-| `VitalSigns` | BP, heart rate, temperature, etc. | FK to Patient, uses scalar fields (not JSON) |
-| `LabTest` | Lab test orders | FK to Patient, has many LabTestResult |
-| `LabTestResult` | Individual test parameters | FK to LabTest |
-
-### Video Call Tables
-
-| Table | Description | Key Relations |
-|-------|-------------|---------------|
-| `VideoRoom` | Pre-created rooms with unique codes | Links Doctor + Patient, has many sessions |
-| `VideoCallSession` | Active/ended call sessions | FK to VideoRoom + Patient + Doctor |
-| `WebRTCConnection` | Individual peer connections | FK to VideoCallSession, stores socket/ICE state |
-
-### Messaging Tables
-
-| Table | Description |
-|-------|-------------|
-| `Conversation` | Direct or group conversations |
-| `ConversationParticipant` | Polymorphic: links to Patient/Doctor/Nurse/Nanny |
-| `Message` | Chat messages with sender info |
-
-### Supporting Tables
-
-| Table | Description |
-|-------|-------------|
-| `PillReminder` | Medication reminders (FK to Prescription) |
-| `NurseBooking` | Home nursing appointments (FK to Patient + Nurse) |
-| `ChildcareBooking` | Nanny bookings (FK to Patient + Nanny) |
-| `BillingInfo` | Payment methods (last 4 digits only) |
-| `NutritionAnalysis` | Food/meal tracking |
-| `Document` | Uploaded files/reports |
-| `MedicineOrder` + `MedicineOrderItem` | Pharmacy orders |
-| `Notification` | Push notifications |
-| `ScheduleSlot` | Doctor weekly availability |
-| `DoctorEducation`, `DoctorCertification`, `DoctorWorkHistory` | Doctor credentials |
-| `PatientComment` | Doctor reviews |
-| `PatientEmergencyContact` | Personal emergency contact |
-| `EmergencyServiceContact` | Emergency services (ambulance, ER) |
-| `ProviderReview` | Generic reviews for any provider type |
-| `UserConnection` | Social connections between users (pending/accepted/rejected) |
-
-### Configuration Tables
-
-| Table | Description |
-|-------|-------------|
-| `PlatformConfig` | Commission rates (provider/regional/platform %), currency, trial wallet amount — singleton |
-| `RoleFeatureConfig` | Admin-configurable feature visibility per user role |
-| `RequiredDocumentConfig` | Admin-configurable required documents per user role |
-| `ProviderReview` | Generic reviews for all provider types (rating, comment, response, helpful) |
-| `InsuranceClaim` | Insurance claim lifecycle (pending → approved/rejected) |
+| User Type | URL Prefix | Demo Email | Password |
+|-----------|-----------|-----------|----------|
+| Member (Patient) | `/patient/` | `emma.johnson@mediwyz.com` | `Patient123!` |
+| Doctor | `/doctor/` | `dr.amara.diallo@mediwyz.com` | `Doctor123!` |
+| Nurse | `/nurse/` | `nurse.claire@mediwyz.com` | `Nurse123!` |
+| Nanny | `/nanny/` | `nanny.sophie@mediwyz.com` | `Nanny123!` |
+| Pharmacist | `/pharmacist/` | `pharma.jean@mediwyz.com` | `Pharma123!` |
+| Lab Technician | `/lab-technician/` | `lab.marie@mediwyz.com` | `Lab123!` |
+| Emergency Worker | `/responder/` | `emt.david@mediwyz.com` | `EMT123!` |
+| Insurance Rep | `/insurance/` | `insurance.rep@mediwyz.com` | `Insurance123!` |
+| Corporate Admin | `/corporate/` | `corporate.admin@mediwyz.com` | `Corporate123!` |
+| Regional Admin (MU) | `/regional/` | `regional.mu@mediwyz.com` | `Regional123!` |
+| Caregiver | `/caregiver/` | `caregiver.alice@mediwyz.com` | `Caregiver123!` |
+| Physiotherapist | `/physiotherapist/` | `physio.paul@mediwyz.com` | `Physio123!` |
+| Dentist | `/dentist/` | `dentist.sara@mediwyz.com` | `Dentist123!` |
+| Optometrist | `/optometrist/` | `optometrist.lisa@mediwyz.com` | `Optometrist123!` |
+| Nutritionist | `/nutritionist/` | `nutritionist.marc@mediwyz.com` | `Nutritionist123!` |
+| Super Admin | `/admin/` | set via env `SUPER_ADMIN_EMAIL` | env `SUPER_ADMIN_PASSWORD` |
 
 ---
 
-## API Endpoints
+## API Documentation
 
-All API routes (except `/api/auth/login`, `/api/health`, and `/api/config`) require a valid JWT in the `mediwyz_token` httpOnly cookie.
+Interactive Swagger UI available at **http://localhost:3001/api/docs** when running locally.
 
-### Authentication
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/auth/login` | Login with email + password + userType. Returns user profile + sets JWT cookie |
-| POST | `/api/auth/logout` | Clears auth cookies |
-| GET | `/api/auth/me` | Returns current user profile from JWT |
+### Key endpoint groups
 
-### Patient Data (all require patient auth)
-| Method | Path | Query Params | Description |
-|--------|------|-------------|-------------|
-| GET | `/api/patients/[id]` | — | Patient profile |
-| GET | `/api/patients/[id]/appointments` | `status`, `limit`, `offset` | Appointments with doctor details (JOIN) |
-| GET | `/api/patients/[id]/prescriptions` | `active`, `limit`, `offset` | Prescriptions with medicines (JOIN) |
-| GET | `/api/patients/[id]/medical-records` | `type`, `limit`, `offset` | Medical records with doctor (JOIN) |
-| GET | `/api/patients/[id]/vital-signs` | `latest`, `limit` | Vital signs history |
-| GET | `/api/patients/[id]/pill-reminders` | `active` | Active medication reminders |
-| GET | `/api/patients/[id]/lab-tests` | `status`, `limit`, `offset` | Lab tests with results (JOIN) |
-| GET | `/api/patients/[id]/notifications` | `unread` | Notifications |
-
-### Doctor Data (all require doctor auth)
-| Method | Path | Query Params | Description |
-|--------|------|-------------|-------------|
-| GET | `/api/doctors/[id]/appointments` | `status`, `limit`, `offset` | Appointments with patient details (JOIN) |
-| GET | `/api/doctors/[id]/patients` | — | Unique patients from appointment history |
-| GET | `/api/doctors/[id]/schedule` | — | Weekly time slots |
-| GET | `/api/doctors/[id]/notifications` | `unread` | Notifications |
-
-### System
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/health` | Database connectivity check |
-| GET | `/api/config` | App name, tagline |
-
-### Provider Reviews
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/providers/[id]/reviews` | Paginated reviews for any provider (public) |
-| POST | `/api/providers/[id]/reviews` | Submit review (auth required) |
-| PATCH | `/api/providers/[id]/reviews/[reviewId]` | Provider responds or mark helpful |
-
-### Connections
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/connections` | List connections (filter by status, direction) |
-| POST | `/api/connections` | Send connection request |
-| PATCH | `/api/connections/[id]` | Accept or reject connection (receiver only) |
-| DELETE | `/api/connections/[id]` | Remove connection |
-
-### AI Support
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/ai/support` | Chat with AI health assistant (Groq LLM, rate limited) |
-
-### Insurance
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/insurance/claims` | List insurance claims (filter by status) |
-| POST | `/api/insurance/claims` | Create new insurance claim |
-| PATCH | `/api/insurance/claims/[id]` | Approve or reject claim |
-| GET | `/api/insurance/[id]/dashboard` | Insurance rep dashboard stats |
-| GET | `/api/patients/[id]/claims` | Patient's insurance claims |
-
-### Emergency & Lab Tech
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/responders/[id]/calls` | Emergency worker call history |
-| GET | `/api/lab-techs/[id]/results` | Lab technician test results |
-
-### Corporate
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/corporate/[id]/dashboard` | Corporate admin stats (employees, claims, contributions) |
-| GET | `/api/corporate/[id]/employees` | Employee list |
-| GET | `/api/corporate/[id]/claims` | Corporate claims |
-
-### Bookings
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/bookings/doctor` | Create doctor appointment |
-| POST | `/api/bookings/nurse` | Create nurse booking |
-| POST | `/api/bookings/nanny` | Create childcare booking |
-| POST | `/api/bookings/lab-test` | Create lab test booking |
-| POST | `/api/bookings/emergency` | Create emergency request (broadcasts to all workers) |
-| POST | `/api/bookings/confirm` | Provider confirms booking, triggers payment with commission split |
-| GET | `/api/bookings/available-slots` | Available time slots for a provider |
-
-### Admin Configuration
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/admin/role-config` | All role feature configs |
-| PUT | `/api/admin/role-config` | Upsert role feature configs |
-| GET | `/api/admin/required-documents` | All required document configs |
-| PUT | `/api/admin/required-documents` | Upsert required document configs |
-| GET | `/api/role-config/[userType]` | Public: enabled features for a role |
-| GET | `/api/admin/commission-config` | Get platform commission configuration |
-| PUT | `/api/admin/commission-config` | Update commission rates (super admin only) |
-| GET | `/api/admin/platform-commission` | Commission earnings dashboard data |
-| GET | `/api/admin/regional-activity` | Regional admin activity and stats |
+| Group | Base path | Description |
+|-------|-----------|-------------|
+| Auth | `/api/auth/*` | Login, register, logout, me |
+| Bookings | `/api/bookings` | Universal booking (all provider types) |
+| Workflow | `/api/workflow/*` | Transitions, templates, instances |
+| Search | `/api/search/*` | Providers + Health Shop |
+| AI | `/api/ai/*` | Chat sessions, health tracker |
+| Corporate | `/api/corporate/*` | Plans, insurance, treasury, claims |
+| Roles | `/api/roles` | Dynamic provider roles from DB |
+| Users | `/api/users/:id/*` | Profile, wallet, notifications, subscriptions |
+| Inventory | `/api/inventory/*` | Health Shop items + orders |
+| Regional | `/api/regional/*` | Plans, workflow templates, service groups |
 
 ---
 
-## Authentication Flow
+## Contributing
 
-1. User submits email + password + userType on `/login`
-2. `POST /api/auth/login` validates input with Zod, queries the database by userType
-3. Password is verified with `bcrypt.compare()`
-4. A JWT is generated (`lib/auth/jwt.ts`) containing `{ sub: userId, userType, email }`
-5. The JWT is set as an **httpOnly cookie** (`mediwyz_token`) — not accessible via JavaScript
-6. Minimal user info (`id`, `firstName`, `lastName`, `email`, `profileImage`, `userType`) is stored in localStorage for UI display only
-7. `middleware.ts` checks the `mediwyz_userType` cookie and redirects unauthorized users
-8. Every API route validates the JWT via `validateRequest()` before returning data
-9. On logout, `POST /api/auth/logout` clears all cookies
+1. All provider-role branching is **forbidden** in new code — use `ProviderRole` from `/api/roles`
+2. All booking status changes go through `WorkflowEngine.transition()` — never direct DB update
+3. Money movements must write a `WalletTransaction` / `TreasuryTransaction` inside `prisma.$transaction()`
+4. New features need: DTO, service method, unit test, empty state, error state
+5. Web changes visible on mobile must have a Flutter mirror in the same PR
+6. Run `npx tsc --noEmit && cd backend && npx tsc --noEmit` before pushing
 
-**Security features:**
-- JWT tokens with 7-day expiry
-- httpOnly, Secure, SameSite=Lax cookies
-- Zod validation on all inputs
-- Patients can only access their own data (API enforces `auth.sub === id`)
-- No passwords or tokens in localStorage
-- No hardcoded credentials in source code
-
----
-
-## Video Call System
-
-The video call system is designed to be **resilient to network interruptions, connection resets, and server restarts**.
-
-### Architecture
-
-```
-Patient Browser ──── WebRTC P2P ──── Doctor Browser
-       │                                     │
-       └──── Socket.IO (signaling) ──────────┘
-                       │
-              ┌────────┴────────┐
-              │  server.js      │
-              │  - Room state   │
-              │  - Heartbeats   │
-              │  - DB persist   │
-              └────────┬────────┘
-                       │
-              ┌────────┴────────┐
-              │  PostgreSQL     │
-              │  - VideoRoom    │
-              │  - Session      │
-              │  - Connection   │
-              └─────────────────┘
-```
-
-### How it works
-
-1. **Room creation**: Video rooms are pre-created in the database (`VideoRoom` table) with a unique `roomCode` (e.g., `ROOM-DOC001-PAT001`). The room ID is stored on the `Appointment` record.
-
-2. **Joining**: Both patient and doctor dashboards use the **same shared component** (`components/video/VideoConsultation.tsx`) — there is only ONE video call component in the entire codebase. The `useSocket` hook connects to Socket.IO and the `useWebRTC` hook handles peer connections.
-
-3. **Signaling**: SDP offers, answers, and ICE candidates are relayed through Socket.IO between peers.
-
-4. **P2P connection**: Once signaling is complete, video/audio streams flow directly between browsers (no server relay).
-
-### Resilience features
-
-| Scenario | Handling |
-|----------|----------|
-| **Network glitch** | ICE restart with exponential backoff (up to 10 attempts) |
-| **Socket disconnection** | Auto-reconnection (infinite retries, 1-5s backoff). Room state preserved in `sessionStorage`. Auto-rejoin on reconnect |
-| **Peer disconnects temporarily** | 2-minute grace period before removing from room. Peers see "reconnecting" status |
-| **Server restart** | Sessions are persisted to PostgreSQL (`VideoCallSession` + `WebRTCConnection`). On reconnect, client requests recovery from DB |
-| **ICE failure** | Automatic ICE restart via `createOffer({ iceRestart: true })`. Falls back to new peer creation if restart fails |
-| **Browser tab close** | `leave-room` event sent, peer cleaned up immediately |
-| **SDP negotiation race** | Perfect Negotiation pattern: polite/impolite roles based on user ID ordering |
-| **Signaling errors** | Benign SDP errors (`setRemoteDescription`, `Called in wrong state`) are swallowed |
-
-### Connection health monitoring
-
-- `useWebRTC` checks ICE and connection state every 5 seconds
-- `useSocket` sends heartbeat every 30 seconds
-- Server times out sockets after 90 seconds of no heartbeat
-- Rooms are cleaned up after 2 hours of inactivity
-
----
-
-## User Roles & Demo Accounts
-
-After running `npx prisma db seed`, these accounts are available:
-
-| Role | Email | Password |
-|------|-------|----------|
-| Patient | emma.johnson@mediwyz.com | Patient123! |
-| Patient | jean.pierre@mediwyz.com | Patient123! |
-| Patient | aisha.khan@mediwyz.com | Patient123! |
-| Patient | vikash.d@mediwyz.com | Patient123! |
-| Patient | nadia.s@mediwyz.com | Patient123! |
-| Doctor | sarah.johnson@mediwyz.com | Doctor123! |
-| Doctor | raj.patel@mediwyz.com | Doctor123! |
-| Doctor | marie.dupont@mediwyz.com | Doctor123! |
-| Nurse | priya.ramgoolam@mediwyz.com | Nurse123! |
-| Nurse | sophie.laurent@mediwyz.com | Nurse123! |
-| Nanny | anita.beeharry@mediwyz.com | Nanny123! |
-| Nanny | claire.morel@mediwyz.com | Nanny123! |
-| Pharmacist | rajesh.doorgakant@mediwyz.com | Pharma123! |
-| Pharmacist | anushka.doobur@mediwyz.com | Pharma123! |
-| Lab Technician | david.ahkee@mediwyz.com | Lab123! |
-| Lab Technician | priya.doorgakant@mediwyz.com | Lab123! |
-| Emergency Worker | jeanmarc.lafleur@mediwyz.com | Emergency123! |
-| Emergency Worker | fatima.joomun@mediwyz.com | Emergency123! |
-| Insurance Rep | vikram.doorgakant@mediwyz.com | Insurance123! |
-| Insurance Rep | marie.genave@mediwyz.com | Insurance123! |
-| Corporate Admin | anil.doobur@mediwyz.com | Corporate123! |
-| Referral Partner | sophie.leclerc@mediwyz.com | Referral123! |
-| Regional Admin (MU) | vikash.doorgakant@mediwyz.com | Regional123! |
-| Regional Admin (MG) | tiana.rasoa@mediwyz.com | Regional123! |
-| Regional Admin (KE) | james.mwangi@mediwyz.com | Regional123! |
-| Super Admin | hassan.doorgakant@mediwyz.com | Admin123! |
-
-All passwords are hashed with bcrypt in the database.
-
-### Pre-created Video Rooms
-
-| Room Code | Participants |
-|-----------|-------------|
-| ROOM-DOC001-PAT001 | Dr. Johnson + Emma Johnson |
-| ROOM-DOC003-PAT004 | Dr. Dupont + Vikash Doorgakant |
-| ROOM-DOC001-PAT005 | Dr. Johnson + Nadia Soobramanien |
-| ROOM-DOC002-PAT002 | Dr. Patel + Jean Pierre |
-| ROOM-DOC002-PAT003 | Dr. Patel + Aisha Khan |
-
----
-
-## Key Features
-
-- **Video consultations** — WebRTC P2P with resilient reconnection, screen sharing, in-call chat
-- **Appointment booking** — Schedule with doctors, nurses, nannies
-- **Prescription management** — Active prescriptions with medicine details via JOINs, refill tracking, pill reminders
-- **Medical records** — Consultation history, lab results with individual parameters
-- **Vital signs monitoring** — Proper scalar fields (systolicBP, diastolicBP, heartRate, etc.)
-- **Lab tests** — Tests with individual result parameters, reference ranges, abnormal flags
-- **Nutrition tracking** — Food logging with calorie/macro analysis
-- **Emergency services** — Contact emergency responders
-- **Multi-role dashboards** — Patient, Doctor, Nurse, Nanny, Admin
-- **Per-page data loading** — Each page fetches only what it needs via dedicated API endpoints
-- **Pagination** — All list endpoints support `limit` and `offset`
-- **Provider reviews** — Generic review/rating system for all provider types (doctors, nurses, nannies, pharmacists, lab techs, emergency workers) via unified `/api/providers/{id}/reviews` API
-- **Admin role configuration** — Super admin can toggle feature visibility per user role from the Role Config page, stored in database (`RoleFeatureConfig`)
-- **Required documents config** — Super admin can configure which documents are required during registration per role (`RequiredDocumentConfig`)
-- **Unified dashboard architecture** — All 12 user type dashboards use a shared `createDashboardLayout` HOC and `createGetActiveSectionFromPath` utility, eliminating code duplication
-- **Insurance claims** — Full create/approve/reject flow with `InsuranceClaim` model
-- **Wallet system** — Trial credits (Rs 4,500) for all users, debit on booking acceptance, credit for providers
-- **Commission system** — Automatic revenue split: 85% provider, 10% regional admin, 5% platform. Rates stored in `PlatformConfig` table and configurable via super admin UI
-- **Regional admin model** — Regional admins install the platform in their region, manage CMS content, and earn commission on all transactions. Super admin (env vars) validates regional admin accounts
-- **Referral tracking** — Referral codes tracked at signup, referrer gets commission credits
-- **Emergency dispatch** — Broadcast-based emergency booking with responder accept/dispatch/en-route/resolved flow
-- **AI health assistant** — Groq-powered LLM with dietary tracking, date-aware insight extraction (Llama 3.1)
-- **AI support chat** — Public AI-powered health Q&A at `/search/ai` via Groq API (no login required)
-- **Social connections** — LinkedIn/Facebook-style Connect + Message buttons on all search result cards, with `UserConnection` model (pending/accepted/rejected)
-- **Unified booking UI** — Shared `BookingForm` component with time-slot grid for all 5 provider types (doctor, nurse, nanny, lab-test, emergency)
-- **Collapsible sidebar** — Icon-only mode on desktop when collapsed, with tooltips and notification dots
-- **Billing in settings** — Shared `BillingSettingsTab` available in all 11 user type settings pages
-- **i18n** — English, French, and Mauritian Creole with language switcher
-- **PWA** — Service worker + manifest for mobile app-like experience
-- **Responsive mobile nav** — Service icons in 4-column grid on mobile, expandable categories on tablet+
-- **ERD diagram** — Auto-generated entity relationship diagram at `docs/erd.svg` via prisma-erd-generator
+All commits are authored by the developer. See `CLAUDE.md` for full project conventions.

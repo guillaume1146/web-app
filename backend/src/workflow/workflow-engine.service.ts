@@ -74,7 +74,7 @@ export class WorkflowEngineService {
   };
 
   private readonly serviceModeMap: Record<string, 'office' | 'home' | 'video'> = {
-    video: 'video', in_person: 'office', home_visit: 'home', office: 'office', home: 'home',
+    video: 'video', audio: 'video', in_person: 'office', home_visit: 'home', office: 'office', home: 'home',
   };
 
   constructor(
@@ -407,27 +407,29 @@ export class WorkflowEngineService {
       }
 
       // Auto: video room (serviceMode=video on acceptance, or VIDEO_CALL_READY/ACTIVE step type)
-      //       audio room (AUDIO_CALL_READY/ACTIVE step type — emergency dispatch, audio-only flows)
+      //       audio room (serviceMode=video + consultationType=audio, or AUDIO_CALL_READY/ACTIVE step type)
       // Both are fully systematic. No per-step flag needed.
       if (!triggeredActions.videoCallId) {
         const serviceMode = instance.serviceMode;
+        const consultationType = (instance.metadata as any)?.consultationType as string | undefined;
+        const isAudioConsultation = consultationType === 'audio';
         const targetStepType: string | undefined = (targetStep as any).stepType;
         const isVideoStepType = ['VIDEO_CALL_READY', 'VIDEO_CALL_ACTIVE'].includes(targetStepType ?? '');
         const isAudioStepType = ['AUDIO_CALL_READY', 'AUDIO_CALL_ACTIVE'].includes(targetStepType ?? '');
 
-        if ((isAcceptAction && serviceMode === 'video') || isVideoStepType) {
-          const videoHandler = this.flagHandlers.get('triggers_video_call');
-          if (videoHandler?.execute) {
-            try {
-              const r = await videoHandler.execute(ctx);
-              if (r.videoCallId) triggeredActions.videoCallId = r.videoCallId;
-            } catch { /* non-fatal */ }
-          }
-        } else if (isAudioStepType) {
+        if (isAudioStepType || (isAcceptAction && serviceMode === 'video' && isAudioConsultation)) {
           const audioHandler = this.flagHandlers.get('triggers_audio_call');
           if (audioHandler?.execute) {
             try {
               const r = await audioHandler.execute(ctx);
+              if (r.videoCallId) triggeredActions.videoCallId = r.videoCallId;
+            } catch { /* non-fatal */ }
+          }
+        } else if (isVideoStepType || (isAcceptAction && serviceMode === 'video')) {
+          const videoHandler = this.flagHandlers.get('triggers_video_call');
+          if (videoHandler?.execute) {
+            try {
+              const r = await videoHandler.execute(ctx);
               if (r.videoCallId) triggeredActions.videoCallId = r.videoCallId;
             } catch { /* non-fatal */ }
           }
@@ -632,7 +634,10 @@ export class WorkflowEngineService {
         providerUserId: params.providerUserId, providerType: params.providerType,
         patientUserId: params.patientUserId, serviceMode,
         regionCode: params.regionCode,
-        metadata: params.servicePrice ? { servicePrice: params.servicePrice } : undefined,
+        metadata: {
+          ...(params.servicePrice ? { servicePrice: params.servicePrice } : {}),
+          ...(params.consultationType ? { consultationType: params.consultationType } : {}),
+        },
       });
       if (result.success) return { workflowInstanceId: result.instanceId };
       return { workflowError: result.error };

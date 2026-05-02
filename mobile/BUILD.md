@@ -76,25 +76,52 @@ Output: `build/app/outputs/bundle/release/app-release.aab` — upload to Google 
 
 ## iOS (requires macOS)
 
-On a Mac with Xcode:
+The `ios/` folder is git-ignored (Flutter regenerates it). On a Mac with Xcode:
 ```bash
-flutter create . --platforms=ios --org=com.mediwyz
+# 1. Generate the Xcode project
+flutter create --platforms=ios --org=com.mediwyz --project-name=mediwyz_mobile .
+
+# 2. Apply the custom Info.plist (camera/mic permissions + bundle ID com.mediwyz.mobile)
+#    Copy mobile/ios/Runner/Info.plist.template → ios/Runner/Info.plist
+#    (or the CI workflow applies it automatically)
+
+# 3. Install CocoaPods dependencies
 cd ios && pod install && cd ..
-flutter build ios --release
-# Then open ios/Runner.xcworkspace in Xcode → Archive → Distribute
+
+# 4. Build for testing (no signing)
+flutter build ios --release --no-codesign \
+  --dart-define=API_BASE=https://mediwyz.com/api \
+  --dart-define=SOCKET_URL=https://mediwyz.com
+
+# 5. For App Store: open ios/Runner.xcworkspace in Xcode → Product → Archive → Distribute
 ```
+
+**Bundle ID**: `com.mediwyz.mobile`  
+**Minimum iOS**: 13.0  
+**CI**: The GitHub Actions `mobile.yml` workflow builds iOS automatically on every push to `main` (macOS runner, no-codesign).
 
 ## Pointing the build at a remote backend
 
-All three forms accept `--dart-define`:
+Pass `--dart-define` at build time:
 
 ```bash
+# Android
 flutter build apk --release \
-  --dart-define=API_BASE=https://api.mediwyz.com/api \
-  --dart-define=SOCKET_URL=https://api.mediwyz.com
+  --dart-define=API_BASE=https://mediwyz.com/api \
+  --dart-define=SOCKET_URL=https://mediwyz.com
+
+# iOS
+flutter build ios --release --no-codesign \
+  --dart-define=API_BASE=https://mediwyz.com/api \
+  --dart-define=SOCKET_URL=https://mediwyz.com
+
+# Web
+flutter build web --release \
+  --dart-define=API_BASE=https://mediwyz.com/api \
+  --dart-define=SOCKET_URL=https://mediwyz.com
 ```
 
-Without those, the app defaults to `http://127.0.0.1:3001` (dev localhost).
+In release mode without `--dart-define`, `config.dart` automatically defaults to `https://mediwyz.com`.
 
 ## Known platform limits
 

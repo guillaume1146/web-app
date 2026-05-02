@@ -227,6 +227,7 @@ export interface WorkflowState {
 
 export interface StepFlagResult {
   videoCallId?: string;
+  roomCode?: string;
   stockCheckResult?: { available: boolean; unavailable?: string[] };
   stockSubtracted?: { itemId: string; newQuantity: number }[];
   paymentProcessed?: { amount: number; patientDebited: number; providerCredited: number };

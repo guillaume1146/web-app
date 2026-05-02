@@ -2,20 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useUser } from '@/hooks/useUser'
 import { DashboardLayout, DashboardLoadingState } from '@/components/dashboard'
+import DashboardSidebar, { type SidebarItem } from '@/components/dashboard/DashboardSidebar'
+import HealthwyzLogo from '@/components/ui/HealthwyzLogo'
 import { getSidebarConfig } from '@/lib/dashboard/sidebarRegistry'
 import { useDynamicSearchItems } from '@/hooks/useDynamicSearchItems'
 import { useRoleFeatureConfig, filterSidebarByFeatures } from '@/hooks/useRoleFeatureConfig'
-import type { SidebarItem } from '@/components/dashboard/DashboardSidebar'
+import { getSearchItems } from '@/lib/dashboard/patientHealthItems'
 import {
   FaHome, FaRss, FaBriefcaseMedical, FaMoneyBillWave, FaCubes,
   FaCogs, FaProjectDiagram, FaVideo, FaComments, FaBuilding,
+  FaBars,
 } from 'react-icons/fa'
 import { getPatientHealthItems } from '@/lib/dashboard/patientHealthItems'
 
-// Fallback (used until /api/roles loads). Kept minimal — only what middleware needs for SSR.
-// At runtime this is overridden with DB-backed slugs from ProviderRole.cookieValue → ProviderRole.slug.
 const FALLBACK_SLUGS: Record<string, string> = { patient: 'patients' }
 
 function getProviderSidebarItems(base: string): SidebarItem[] {
@@ -34,15 +36,103 @@ function getProviderSidebarItems(base: string): SidebarItem[] {
   ]
 }
 
+/**
+ * Guest layout: header with logo + sign-in/up, sidebar with search-only
+ * items (no auth required). Used when user is not logged in on /search/* pages.
+ */
+function SearchGuestLayout({
+  children,
+  searchItems,
+  pathname,
+}: {
+  children: React.ReactNode
+  searchItems: SidebarItem[]
+  pathname: string
+}) {
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (mobile) setSidebarOpen(false)
+    }
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const searchSegment = pathname.replace(/^\/search\/?/, '').split('/')[0]
+  const activeId = searchSegment ? `search-${searchSegment}` : 'overview'
+
+  return (
+    <div className="h-screen flex flex-col overflow-hidden">
+      {/* Guest header */}
+      <header className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between z-40">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSidebarOpen(v => !v)}
+            className="p-2 rounded-lg hover:bg-gray-100 transition"
+            aria-label="Toggle sidebar"
+          >
+            <FaBars className="text-gray-600" />
+          </button>
+          <HealthwyzLogo height={36} />
+        </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/login"
+            className="px-4 py-2 text-sm font-medium text-[#0C6780] hover:bg-teal-50 rounded-lg transition"
+          >
+            Sign In
+          </Link>
+          <Link
+            href="/signup"
+            className="px-4 py-2 text-sm font-medium text-white bg-[#0C6780] hover:bg-[#0a5a70] rounded-lg transition"
+          >
+            Sign Up Free
+          </Link>
+        </div>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+        <DashboardSidebar
+          items={searchItems}
+          activeItemId={activeId}
+          isOpen={sidebarOpen}
+          isMobile={isMobile}
+          onClose={() => setSidebarOpen(false)}
+        />
+
+        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8">
+          {children}
+        </main>
+      </div>
+
+      {/* Mobile overlay */}
+      {isMobile && sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+    </div>
+  )
+}
+
 export default function SearchDashboardWrapper({ children }: { children: React.ReactNode }) {
   const { user, loading: userLoading, clearUser } = useUser()
   const pathname = usePathname()
   const router = useRouter()
 
-  // Hydration guard — cookie access only runs after mount to avoid SSR/CSR mismatch
   const [mounted, setMounted] = useState(false)
   const [cookieVal, setCookieVal] = useState<string | null>(null)
   const [cookieToSlug, setCookieToSlug] = useState<Record<string, string>>(FALLBACK_SLUGS)
+
+  // Static search items available to all (no auth required)
+  const guestSearchItems = getSearchItems('')
 
   useEffect(() => {
     setMounted(true)
@@ -50,7 +140,6 @@ export default function SearchDashboardWrapper({ children }: { children: React.R
     setCookieVal(match ? decodeURIComponent(match.split('=')[1]?.trim() || '') : null)
   }, [])
 
-  // Load provider slug map dynamically from /api/roles — no hardcoded role list
   useEffect(() => {
     fetch('/api/roles')
       .then(r => r.json())
@@ -71,16 +160,23 @@ export default function SearchDashboardWrapper({ children }: { children: React.R
   const dynamicSearch = useDynamicSearchItems(basePath)
   const featureConfig = useRoleFeatureConfig(user?.userType)
 
-  // Render loading state on SSR + before mount to keep server and first-client paint identical
+  // Before hydration, show the full-screen loading state
   if (!mounted || userLoading) {
     return <DashboardLoadingState />
   }
 
+  // ── GUEST: no user ────────────────────────────────────────────────────────
+  // Always show the layout with the search sidebar so visitors can browse
+  // provider types without needing to log in.
   if (!user) {
-    return <>{children}</>
+    return (
+      <SearchGuestLayout searchItems={guestSearchItems} pathname={pathname}>
+        {children}
+      </SearchGuestLayout>
+    )
   }
 
-  // Try registry first (non-provider roles: insurance, corporate, etc.)
+  // ── AUTHENTICATED ─────────────────────────────────────────────────────────
   const registryConfig = getSidebarConfig(user.userType)
 
   let sidebarItems: SidebarItem[]
@@ -94,7 +190,6 @@ export default function SearchDashboardWrapper({ children }: { children: React.R
     profileHref = registryConfig.profileHref
     networkHref = registryConfig.networkHref
   } else {
-    // Provider role — build items dynamically
     const coreItems = getProviderSidebarItems(basePath)
     sidebarItems = dynamicSearch.length > 0
       ? [...coreItems.filter(i => !i.id.startsWith('search-') && i.id !== 'divider-search'), ...dynamicSearch]
@@ -114,8 +209,6 @@ export default function SearchDashboardWrapper({ children }: { children: React.R
     router.push('/login')
   }
 
-  // Full-bleed pages inside the dashboard (no padding so the content can
-  // stretch to the very bottom of the screen).
   const isFullBleed = pathname === '/search/ai'
 
   return (
