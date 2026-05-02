@@ -10,3 +10,7 @@ out
 README.md
 .DS_Store
 .vscode
+backend/node_modules
+backend/dist
+mobile
+.claude/worktrees

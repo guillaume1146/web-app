@@ -41,11 +41,6 @@ COPY --from=builder /app/../prisma ../prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
-# Also copy root node_modules Prisma client (fallback for PrismaService loader)
-# The NestJS PrismaService tries backend's node_modules first, then root
-COPY --from=deps /app/node_modules/.prisma ../node_modules/.prisma 2>/dev/null || true
-COPY --from=deps /app/node_modules/@prisma ../node_modules/@prisma 2>/dev/null || true
-
 RUN chown -R nestjs:nodejs /app
 USER nestjs
 
