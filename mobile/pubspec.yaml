@@ -1,0 +1,65 @@
+name: mediwyz_mobile
+description: MediWyz mobile + web client (Flutter). Mirrors the Next.js frontend.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+  # State management
+  flutter_riverpod: ^2.5.1
+
+  # Routing
+  go_router: ^14.0.0
+
+  # HTTP + cookie support
+  dio: ^5.4.3+1
+  dio_cookie_manager: ^3.1.1
+  cookie_jar: ^4.0.8
+
+  # Realtime — pinned to 2.0.3+1 to avoid dart2js interop strictness in newer versions
+  socket_io_client: 2.0.3+1
+
+  # WebRTC (video calls) — newer versions of flutter_webrtc have been updated
+  # for Dart 3.11's strict JS interop. If the build fails again, pin to 0.11.x.
+  flutter_webrtc: ^0.12.0
+
+  # Permissions (camera/mic for video on native)
+  permission_handler: ^11.3.1
+
+  # Storage
+  shared_preferences: ^2.2.3
+
+  # Image / file pickers (for post images, profile photo, document upload)
+  file_picker: ^8.0.0
+  image_picker: ^1.1.0
+
+  # JSON / models
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # UI helpers
+  cached_network_image: ^3.3.1
+  intl: ^0.19.0
+
+  # Open external URLs (e.g. prescription PDF view in the system browser)
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.10
+  freezed: ^2.5.2
+  json_serializable: ^6.8.0
+
+flutter:
+  uses-material-design: true
