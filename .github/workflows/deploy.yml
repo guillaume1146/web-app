@@ -273,7 +273,14 @@ jobs:
             node_modules/.bin/prisma db push \
               --schema=./prisma/schema.prisma \
               --accept-data-loss \
-          || echo "WARNING: prisma db push failed — check api container logs"
+          || {
+            echo "WARNING: --accept-data-loss failed (likely column type change with existing data)"
+            echo "Retrying with --force-reset (wipes DB — seed will repopulate)..."
+            docker compose exec -T api \
+              node_modules/.bin/prisma db push \
+                --schema=./prisma/schema.prisma \
+                --force-reset
+          }
 
           echo "=== Seeding database ==="
           docker compose exec -T api sh -c "

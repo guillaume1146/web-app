@@ -16,6 +16,10 @@ COPY backend/ ./
 # (avoids the "could not find package.json at root /" auto-install failure)
 COPY prisma/ ./prisma/
 
+# Copy root lib files imported by seed scripts (e.g. lib/currency.ts, lib/db.ts)
+COPY lib/currency.ts ./lib/currency.ts
+COPY lib/db.ts ./lib/db.ts
+
 # Generate Prisma client
 RUN npx prisma generate --schema=./prisma/schema.prisma
 
