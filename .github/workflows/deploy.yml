@@ -98,6 +98,7 @@ jobs:
             --build-arg NEXT_PUBLIC_APP_URL=${{ steps.meta.outputs.app_url }} \
             --build-arg NEXT_PUBLIC_SOCKET_URL=${{ steps.meta.outputs.app_url }} \
             --build-arg NEXT_PUBLIC_API_URL=${{ steps.meta.outputs.app_url }} \
+            --build-arg API_INTERNAL_URL=http://api:3001 \
             -t ${{ steps.meta.outputs.image_tag }} \
             -f Dockerfile \
             .
@@ -251,27 +252,32 @@ jobs:
             exit 1
           fi
 
-          # ── Migrations & seed run in the app container ───────────────────
-          # (app has full node_modules incl. ts-node; api is production-only)
+          # ── Migrations & seed run in the API container ───────────────────
+          # Use the api container's local Prisma 6 CLI (node_modules/.bin/prisma)
+          # so we never accidentally download Prisma 7 via npx, which rejects the
+          # Prisma 6 schema and silently leaves the DB empty.
           echo "=== Running manual SQL migrations ==="
-          for sql_file in prisma/migrations/manual/*.sql; do
-            if [ -f "$sql_file" ]; then
+          docker compose exec -T api sh -c '
+            for sql_file in prisma/migrations/manual/*.sql; do
+              [ -f "$sql_file" ] || continue
               echo "Running: $sql_file"
-              docker compose exec -T app npx prisma db execute \
+              node_modules/.bin/prisma db execute \
                 --file "$sql_file" \
-                --schema prisma/schema.prisma 2>&1 \
+                --schema ./prisma/schema.prisma 2>&1 \
               || echo "WARNING: $sql_file may have already been applied"
-            fi
-          done
+            done
+          '
 
           echo "=== Pushing schema changes ==="
-          docker compose exec -T app npx prisma db push \
-            --accept-data-loss 2>&1 \
-          || echo "WARNING: prisma db push failed"
+          docker compose exec -T api \
+            node_modules/.bin/prisma db push \
+              --schema=./prisma/schema.prisma \
+              --accept-data-loss \
+          || echo "WARNING: prisma db push failed — check api container logs"
 
           echo "=== Seeding database ==="
-          docker compose exec -T app sh -c "
-            npx ts-node \
+          docker compose exec -T api sh -c "
+            node_modules/.bin/ts-node \
               --skipProject \
               --transpile-only \
               --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\",\"esModuleInterop\":true}' \
