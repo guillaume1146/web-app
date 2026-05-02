@@ -1,0 +1,54 @@
+version: 2
+updates:
+  # ── Next.js frontend ─────────────────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Indian/Mauritius
+    open-pull-requests-limit: 5
+    groups:
+      nextjs:
+        patterns: ["next", "react", "react-dom", "@types/react*"]
+      tailwind:
+        patterns: ["tailwindcss", "@tailwindcss/*", "postcss", "autoprefixer"]
+      prisma-root:
+        patterns: ["prisma", "@prisma/*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    labels:
+      - dependencies
+      - frontend
+
+  # ── NestJS backend ───────────────────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Indian/Mauritius
+    open-pull-requests-limit: 5
+    groups:
+      nestjs:
+        patterns: ["@nestjs/*"]
+      prisma-backend:
+        patterns: ["prisma", "@prisma/*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    labels:
+      - dependencies
+      - backend
+
+  # ── GitHub Actions ───────────────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels:
+      - dependencies
+      - ci

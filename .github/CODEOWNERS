@@ -1,0 +1,24 @@
+# CODEOWNERS — auto-request reviews from the right team
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything
+* @Mediwyz/engineers
+
+# CI/CD & infra — devops must review
+.github/                @Mediwyz/devops
+backend/Dockerfile      @Mediwyz/devops
+docker-compose*.yml     @Mediwyz/devops
+nginx/                  @Mediwyz/devops
+
+# Schema changes — always need a senior review
+prisma/schema.prisma    @Mediwyz/devops
+prisma/migrations/      @Mediwyz/devops
+
+# Auth & security
+backend/src/auth/       @Mediwyz/devops
+lib/auth/               @Mediwyz/devops
+
+# Money flows — high-risk, devops approves
+backend/src/payments/   @Mediwyz/devops
+backend/src/corporate/  @Mediwyz/devops
+lib/commission.ts       @Mediwyz/devops
