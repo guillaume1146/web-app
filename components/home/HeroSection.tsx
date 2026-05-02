@@ -244,7 +244,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
          variants={itemVariants}
          className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 leading-tight text-white"
        >
-         {(content?.mainTitle || config.heroTitle).split(',').map((part, index) => (
+         {(content?.mainTitle || config.heroTitle || 'Healthcare, Simplified').split(',').map((part, index) => (
            <span key={index} className={index === 1 ? 'text-brand-sky' : ''}>
              {part.trim()}
              {index === 0 && ','}{index === 0 && <br />}
