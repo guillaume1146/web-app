@@ -69,7 +69,10 @@ export async function middleware(request: NextRequest) {
     '/responder': ['ambulance'],
     '/admin': ['admin'],
     '/regional': ['regional-admin'],
-    '/corporate': ['corporate'],
+    // '/corporate' intentionally NOT role-gated — corporate-admin is a CAPABILITY,
+    // not a registration role. Any authenticated user with an active corporate/enterprise
+    // subscription (or who owns a CorporateAdminProfile) may visit. Pages handle the
+    // empty/no-capability state gracefully.
     '/insurance': ['insurance'],
     '/referral-partner': ['referral-partner'],
     '/caregiver': ['caregiver'],
@@ -80,17 +83,23 @@ export async function middleware(request: NextRequest) {
   }
 
   // Clean URLs (no role prefix): /feed → /provider/{slug}/feed via rewrite
-  const dashboardPages = ['/feed', '/practice', '/inventory', '/services', '/workflows',
-    '/billing', '/video', '/messages', '/ai-assistant', '/my-health', '/profile',
+  // NOTE: /profile is NOT in this list. /profile/[id] is a TOP-LEVEL unified
+  // profile page — not role-scoped — and must NOT be rewritten into a
+  // /provider/<slug>/profile/<id> path (which doesn't exist).
+  const dashboardPages = ['/practice', '/inventory', '/services', '/workflows',
+    '/billing', '/video', '/messages', '/ai-assistant', '/my-health',
     '/network', '/booking-requests', '/bookings', '/my-consultations', '/my-nurse-services',
     '/my-childcare', '/my-emergency', '/my-health-records', '/my-lab-results',
     '/my-insurance', '/my-prescriptions', '/posts', '/reviews',
-    '/pharmacy', '/book', '/my-company']
+    '/pharmacy', '/book', '/my-company', '/my-insurance-company']
   const isCleanDashboardRoute = dashboardPages.some(p => pathname === p || pathname.startsWith(p + '/'))
 
   if (isCleanDashboardRoute) {
     const token = request.cookies.get('mediwyz_token')
-    if (!token) return NextResponse.redirect(new URL('/login', request.url))
+
+    if (!token) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
     const payload = await verifyJWT(token.value)
     if (!payload) {
       const response = NextResponse.redirect(new URL('/login', request.url))
@@ -220,7 +229,6 @@ export const config = {
     '/optometrist/:path*',
     '/nutritionist/:path*',
     '/provider/:path*',
-    '/feed',
     '/practice/:path*',
     '/inventory/:path*',
     '/services/:path*',

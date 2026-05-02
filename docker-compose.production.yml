@@ -1,0 +1,73 @@
+# docker-compose.production.yml
+# Production-ready compose for Cloud.mu / VPS deployment.
+# Does NOT include a database service — expects DATABASE_URL to point to a managed DB.
+#
+# Usage:
+#   docker compose -f docker-compose.production.yml up --build -d
+#
+# Required env vars (set in .env or CI secrets):
+#   DATABASE_URL, JWT_SECRET
+#
+# Optional:
+#   NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_SOCKET_URL, NEXT_PUBLIC_API_URL,
+#   GROQ_API_KEY, SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD
+
+services:
+  # ─── NestJS Backend API ─────────────────────────────────────────────────
+  api:
+    image: mediwyz-api:latest
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: mediwyz-api
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      API_PORT: "3001"
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ─── Next.js Frontend ──────────────────────────────────────────────────
+  app:
+    image: mediwyz-app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://mediwyz.com}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://mediwyz.com}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://mediwyz.com}
+    container_name: mediwyz-app
+    restart: always
+    ports:
+      - "3000:8080"
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      API_INTERNAL_URL: http://api:3001
+      NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://mediwyz.com}
+    volumes:
+      - uploads:/app/public/uploads
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8080').then(r=>{process.exit(r.ok||r.status===401?0:1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  uploads:
