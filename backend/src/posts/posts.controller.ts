@@ -12,14 +12,20 @@ export class PostsController {
 
   @Public()
   @Get()
-  async list(@Query('category') category?: string, @Query('page') page?: string, @Query('limit') limit?: string) {
+  async list(
+    @Query('category') category?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('sort') sort?: string,
+  ) {
     const take = Math.min(parseInt(limit || '20'), 50);
     const pageNum = Math.max(parseInt(page || '1'), 1);
     const skip = (pageNum - 1) * take;
+    const sortMode: 'popular' | 'recent' = sort === 'popular' ? 'popular' : 'recent';
     const where: any = { isPublished: true };
     if (category) where.category = category;
     try {
-      const { posts, total } = await this.postsService.list(where, take, skip);
+      const { posts, total } = await this.postsService.list(where, take, skip, sortMode);
       return { success: true, data: { posts, total, page: pageNum, totalPages: Math.ceil(total / take) } };
     } catch {
       return { success: true, data: { posts: [], total: 0, page: 1, totalPages: 0 } };

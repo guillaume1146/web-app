@@ -51,7 +51,7 @@ export default function CommunityPosts() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/posts?limit=6')
+    fetch('/api/posts?limit=6&sort=popular')
       .then(r => r.json())
       .then(json => {
         if (json.success && json.data?.posts) {

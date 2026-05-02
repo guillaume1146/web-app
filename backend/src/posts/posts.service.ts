@@ -7,14 +7,20 @@ const SYSTEM_USER_TYPES = new Set(['MEMBER', 'PATIENT', 'ADMIN', 'REGIONAL_ADMIN
 export class PostsService {
   constructor(private prisma: PrismaService) {}
 
-  async list(where: any, take: number, skip: number) {
+  async list(where: any, take: number, skip: number, sort: 'popular' | 'recent' = 'recent') {
     // Soft-deleted posts are hidden from the public feed.
     const safeWhere = { ...where, deletedAt: null };
+
+    // "popular" sorts by like count desc then by date; "recent" sorts by date only
+    const orderBy: any = sort === 'popular'
+      ? [{ likes: { _count: 'desc' } }, { createdAt: 'desc' }]
+      : { createdAt: 'desc' };
+
     const [posts, total] = await Promise.all([
       this.prisma.post.findMany({
-        where: safeWhere, orderBy: { createdAt: 'desc' }, take, skip,
+        where: safeWhere, orderBy, take, skip,
         include: {
-          author: { select: { id: true, firstName: true, lastName: true, profileImage: true, userType: true } },
+          author: { select: { id: true, firstName: true, lastName: true, profileImage: true, userType: true, verified: true } },
           company: { select: { id: true, companyName: true } },
           _count: { select: { likes: true, comments: true } },
         },
