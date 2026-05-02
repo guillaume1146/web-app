@@ -306,87 +306,8 @@ jobs:
             && echo "SMOKE TEST PASSED" \
             || echo "WARNING: Smoke test failed — check NestJS logs"
 
-          # ── Configure nginx for mediwyz.com (if nginx is installed) ─────────
-          if command -v nginx >/dev/null 2>&1 && [ -n "$APP_DOMAIN" ]; then
-            echo "=== Configuring nginx for $APP_DOMAIN ==="
-            cat > /etc/nginx/sites-available/mediwyz <<NGINXEOF
-server {
-    listen 80;
-    listen [::]:80;
-    server_name $APP_DOMAIN www.$APP_DOMAIN;
-
-    # ACME challenge for SSL cert renewal
-    location /.well-known/acme-challenge/ {
-        root /var/www/html;
-    }
-
-    # Redirect HTTP → HTTPS when cert exists
-    location / {
-        return 301 https://\$host\$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name $APP_DOMAIN www.$APP_DOMAIN;
-
-    ssl_certificate     /etc/letsencrypt/live/$APP_DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$APP_DOMAIN/privkey.pem;
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_ciphers         HIGH:!aNULL:!MD5;
-
-    # Frontend (Next.js)
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
-        client_max_body_size 50M;
-    }
-
-    # WebSocket for Socket.IO (NestJS)
-    location /socket.io/ {
-        proxy_pass http://localhost:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-    }
-}
-NGINXEOF
-            ln -sf /etc/nginx/sites-available/mediwyz /etc/nginx/sites-enabled/mediwyz
-            rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
-            if nginx -t 2>/dev/null; then
-              systemctl reload nginx && echo "nginx reloaded for $APP_DOMAIN"
-            else
-              echo "WARNING: nginx config test failed — skipping reload"
-            fi
-
-            # Get SSL cert if certbot is available and cert does not yet exist
-            if command -v certbot >/dev/null 2>&1; then
-              if [ ! -f "/etc/letsencrypt/live/$APP_DOMAIN/fullchain.pem" ]; then
-                echo "=== Requesting SSL certificate for $APP_DOMAIN ==="
-                certbot certonly --webroot -w /var/www/html \
-                  -d "$APP_DOMAIN" -d "www.$APP_DOMAIN" \
-                  --non-interactive --agree-tos \
-                  -m "${SUPER_ADMIN_EMAIL:-admin@mediwyz.com}" 2>&1 \
-                || echo "WARNING: certbot failed — app accessible on HTTP only"
-              else
-                echo "SSL cert already exists for $APP_DOMAIN"
-              fi
-              # Make nginx serve HTTPS after cert
-              nginx -t 2>/dev/null && systemctl reload nginx || true
-            fi
-          else
-            echo "nginx not found or APP_DOMAIN not set — skipping nginx config"
-          fi
+          # ── Configure nginx + SSL for mediwyz.com ────────────────────────
+          bash /root/$DEPLOY_DIR/scripts/setup-nginx.sh || true
 
           # ── Final cleanup ─────────────────────────────────────────────────
           docker image prune -f 2>/dev/null || true
@@ -408,6 +329,7 @@ NGINXEOF
           SUPER_ADMIN_LAST_NAME:  ${{ secrets.SUPER_ADMIN_LAST_NAME }}
           DEPLOY_DIR:          ${{ secrets.DEPLOY_DIR }}
           APP_DOMAIN:          ${{ secrets.APP_DOMAIN }}
+          ADMIN_EMAIL:         ${{ secrets.SUPER_ADMIN_EMAIL }}
 
       - name: Verify deployment
         run: |
