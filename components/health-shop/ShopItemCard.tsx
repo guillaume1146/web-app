@@ -1,7 +1,15 @@
 'use client'
 
+import { useState } from 'react'
 import { FaPlus, FaMinus, FaShoppingCart, FaPrescription } from 'react-icons/fa'
-import { useCart, type CartItem } from './CartContext'
+import { useCart } from './CartContext'
+
+const CATEGORY_EMOJI: Record<string, string> = {
+  medication: '💊', vitamins: '🧴', first_aid: '🩹', personal_care: '🧼',
+  dental_care: '🦷', baby_care: '👶', nutrition: '🥗', eyewear: '👓',
+  medical_devices: '🩺', monitoring: '❤️', supplements: '💪', rehab_equipment: '🏋️',
+  contact_lenses: '👁️',
+}
 
 interface Product {
   id: string
@@ -11,6 +19,7 @@ interface Product {
   genericName?: string
   category: string
   description?: string
+  imageUrl?: string
   unitOfMeasure: string
   strength?: string
   price: number
@@ -41,8 +50,30 @@ export default function ShopItemCard({ product }: { product: Product }) {
     })
   }
 
+  const [imgError, setImgError] = useState(false)
+
   return (
     <div className={`bg-white rounded-xl border ${product.isFeatured ? 'border-[#0C6780] ring-1 ring-[#0C6780]/20' : 'border-gray-200'} overflow-hidden hover:shadow-md transition-shadow`}>
+      {/* Product image / fallback */}
+      {product.imageUrl && !imgError ? (
+        <div className="h-32 bg-gray-100 overflow-hidden">
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+          />
+        </div>
+      ) : (
+        <div className="h-32 bg-gradient-to-br from-sky-50 to-teal-50 flex flex-col items-center justify-center gap-1">
+          {CATEGORY_EMOJI[product.category] ? (
+            <span className="text-4xl">{CATEGORY_EMOJI[product.category]}</span>
+          ) : (
+            <img src="/images/logo-icon.svg" alt="MediWyz" className="w-10 h-10 opacity-40" />
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">

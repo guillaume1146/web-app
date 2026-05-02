@@ -16,7 +16,7 @@ export default function FloatingCart() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 z-50 bg-[#0C6780] text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:bg-[#0a5568] transition-all"
+        className="fixed bottom-24 right-6 z-50 bg-[#0C6780] text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:bg-[#0a5568] transition-all"
       >
         <FaShoppingCart className="text-xl" />
         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
@@ -26,7 +26,7 @@ export default function FloatingCart() {
 
       {/* Cart panel */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 w-[360px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
+        <div className="fixed bottom-44 right-6 z-50 w-[360px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b bg-gray-50">
             <h3 className="font-bold text-gray-900 text-sm">Cart ({totalItems} items)</h3>

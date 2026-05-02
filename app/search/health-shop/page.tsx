@@ -13,6 +13,7 @@ interface ShopItem {
   genericName?: string
   category: string
   description?: string
+  imageUrl?: string
   unitOfMeasure: string
   strength?: string
   price: number

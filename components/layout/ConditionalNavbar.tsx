@@ -1,48 +1,56 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useUser } from '@/hooks/useUser'
 import Navbar from './Navbar'
 
 const DASHBOARD_PREFIXES = [
- // Legacy role-prefix routes
- '/patient/', '/doctor/', '/nurse/', '/nanny/', '/pharmacist/',
- '/lab-technician/', '/responder/', '/insurance/', '/corporate/',
- '/referral-partner/', '/admin/', '/regional/',
- '/caregiver/', '/physiotherapist/', '/dentist/', '/optometrist/', '/nutritionist/',
- // Dynamic provider route
- '/provider/',
- // Clean URL dashboard routes (no role prefix)
- // NOTE: '/feed' intentionally omitted — public page, guests need the marketing navbar
- '/practice', '/inventory', '/services', '/workflows',
- '/billing', '/video', '/messages', '/ai-assistant', '/my-health',
- '/profile', '/network', '/booking-requests', '/bookings/',
- '/my-consultations', '/my-nurse-services', '/my-childcare',
- '/my-emergency', '/my-health-records', '/my-lab-results',
- '/my-insurance', '/my-prescriptions', '/roles', '/administration',
- '/pharmacy', '/book', '/my-company',
+  // Role-prefix routes
+  '/patient/', '/doctor/', '/nurse/', '/nanny/', '/pharmacist/',
+  '/lab-technician/', '/responder/', '/insurance/', '/corporate/',
+  '/referral-partner/', '/admin/', '/regional/',
+  '/caregiver/', '/physiotherapist/', '/dentist/', '/optometrist/', '/nutritionist/',
+  // Dynamic provider route
+  '/provider/',
+  // Clean URL dashboard routes
+  '/practice', '/inventory', '/services', '/workflows',
+  '/billing', '/video', '/messages', '/ai-assistant', '/my-health',
+  '/profile', '/network', '/booking-requests', '/bookings/',
+  '/my-consultations', '/my-nurse-services', '/my-childcare',
+  '/my-emergency', '/my-health-records', '/my-lab-results',
+  '/my-insurance', '/my-prescriptions', '/roles', '/administration',
+  '/pharmacy', '/book', '/my-company',
+  // Auth pages — have their own minimal layout
+  '/login', '/signup', '/reset-password', '/verify',
 ]
 
+function isDashboardPath(pathname: string) {
+  return DASHBOARD_PREFIXES.some(p => pathname.startsWith(p))
+    || DASHBOARD_PREFIXES.some(p => pathname === p.replace(/\/$/, ''))
+}
+
 export default function ConditionalNavbar() {
- const pathname = usePathname() || ''
- const { user } = useUser()
+  const pathname = usePathname() || ''
+  const { user } = useUser()
+  // Tracks whether the client has checked the auth cookie after mount.
+  // null  = not yet checked (SSR + first paint)
+  // true  = authenticated (cookie present)
+  // false = definitely not authenticated
+  const [authCookie, setAuthCookie] = useState<boolean | null>(null)
 
- // 1. Fast synchronous check — mediwyz_userType is a non-httpOnly cookie
- //    set on login, readable without waiting for localStorage. Prevents
- //    the public Navbar flashing for one render cycle before useUser
- //    finishes reading from localStorage (double-header flash).
- if (typeof document !== 'undefined' && document.cookie.includes('mediwyz_userType=')) return null
+  useEffect(() => {
+    setAuthCookie(document.cookie.includes('mediwyz_userType='))
+  }, [pathname]) // re-check on every navigation (handles login/logout transitions)
 
- // 2. Any authenticated user is always inside the dashboard — show the
- //    role-specific header from `DashboardLayout`, never the marketing
- //    Navbar.
- if (user) return null
+  // Always suppress on dashboard / auth paths — works during SSR and client
+  if (isDashboardPath(pathname)) return null
 
- // 3. For anonymous visitors, hide on known dashboard-ish paths (login,
- //    signup do NOT want the marketing nav either).
- const isDashboard = DASHBOARD_PREFIXES.some((p) => pathname.startsWith(p))
- || DASHBOARD_PREFIXES.some((p) => pathname === p.slice(0, -1))
+  // If cookie check hasn't run yet (SSR or first paint), or cookie confirms auth → hide
+  if (authCookie !== false) return null
 
- if (isDashboard) return null
- return <Navbar />
+  // User loaded from localStorage also confirms auth
+  if (user) return null
+
+  return <Navbar />
 }
