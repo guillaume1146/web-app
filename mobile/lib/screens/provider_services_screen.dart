@@ -113,7 +113,7 @@ class _ProviderServicesScreenState extends ConsumerState<ProviderServicesScreen>
                           ),
                           trailing: Switch(
                             value: isActive,
-                            activeThumbColor: MediWyzColors.teal,
+                            activeColor: MediWyzColors.teal,
                             onChanged: (_) => _toggleActive(s),
                           ),
                           onTap: () => _editPrice(s),

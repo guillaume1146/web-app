@@ -209,7 +209,7 @@ class _InventoryEditorState extends State<_InventoryEditor> {
             title: const Text('Requires prescription'),
             value: _rx,
             onChanged: (v) => setState(() => _rx = v),
-            activeThumbColor: MediWyzColors.teal,
+            activeColor: MediWyzColors.teal,
             contentPadding: EdgeInsets.zero,
           ),
           const SizedBox(height: 10),

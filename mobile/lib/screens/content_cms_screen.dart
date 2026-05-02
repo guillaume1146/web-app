@@ -127,7 +127,7 @@ class _ContentCmsScreenState extends ConsumerState<ContentCmsScreen> with Single
                       ),
                       Switch(
                         value: active,
-                        activeThumbColor: MediWyzColors.teal,
+                        activeColor: MediWyzColors.teal,
                         onChanged: (_) => _toggleActive(type, it),
                       ),
                     ],
