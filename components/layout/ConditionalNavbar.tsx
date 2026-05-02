@@ -27,14 +27,18 @@ export default function ConditionalNavbar() {
  const pathname = usePathname() || ''
  const { user } = useUser()
 
- // 1. Any authenticated user is always inside the dashboard — show the
+ // 1. Fast synchronous check — mediwyz_userType is a non-httpOnly cookie
+ //    set on login, readable without waiting for localStorage. Prevents
+ //    the public Navbar flashing for one render cycle before useUser
+ //    finishes reading from localStorage (double-header flash).
+ if (typeof document !== 'undefined' && document.cookie.includes('mediwyz_userType=')) return null
+
+ // 2. Any authenticated user is always inside the dashboard — show the
  //    role-specific header from `DashboardLayout`, never the marketing
- //    Navbar. Previously path-based detection alone could miss routes
- //    (e.g. if a prefix list drifts), causing double headers. Auth state
- //    is the canonical signal.
+ //    Navbar.
  if (user) return null
 
- // 2. For anonymous visitors, hide on known dashboard-ish paths (login,
+ // 3. For anonymous visitors, hide on known dashboard-ish paths (login,
  //    signup do NOT want the marketing nav either).
  const isDashboard = DASHBOARD_PREFIXES.some((p) => pathname.startsWith(p))
  || DASHBOARD_PREFIXES.some((p) => pathname === p.slice(0, -1))

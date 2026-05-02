@@ -1,4 +1,4 @@
-import { FaHome, FaNewspaper, FaShieldAlt, FaComments, FaVideo, FaMoneyBillWave, FaSitemap, FaTag, FaUsersCog, FaBell, FaBook, FaInbox, FaUsers, FaClipboardCheck } from 'react-icons/fa'
+import { FaHome, FaNewspaper, FaShieldAlt, FaComments, FaVideo, FaPhone, FaMoneyBillWave, FaSitemap, FaTag, FaUsersCog, FaBell, FaBook, FaInbox, FaUsers, FaClipboardCheck } from 'react-icons/fa'
 import type { SidebarItem } from '@/components/dashboard/DashboardSidebar'
 import { createGetActiveSectionFromPath } from '@/lib/dashboard/getActiveSectionFromPath'
 import { getPatientHealthItems, getSearchItems, getInviteFriendsItem } from '@/lib/dashboard/patientHealthItems'
@@ -19,6 +19,7 @@ export const REGIONAL_ADMIN_SIDEBAR_ITEMS: SidebarItem[] = [
   { id: 'clinical-knowledge', label: 'AI Knowledge', labelKey: 'nav.clinicalKnowledge', icon: FaBook, color: 'text-indigo-600', bgColor: 'bg-indigo-50', href: `${base}/clinical-knowledge` },
   { id: 'billing', label: 'Billing', labelKey: 'nav.billing', icon: FaMoneyBillWave, color: 'text-emerald-600', bgColor: 'bg-emerald-50', href: `${base}/billing` },
   { id: 'video', label: 'Video Call', labelKey: 'nav.video', icon: FaVideo, color: 'text-green-600', bgColor: 'bg-green-50', href: `${base}/video` },
+  { id: 'audio', label: 'Audio Call', icon: FaPhone, color: 'text-cyan-600', bgColor: 'bg-cyan-50', href: `${base}/audio` },
   { id: 'messages', label: 'Messages', labelKey: 'nav.messages', icon: FaComments, color: 'text-pink-600', bgColor: 'bg-pink-50', href: `${base}/messages` },
   { id: 'notifications', label: 'Notifications', labelKey: 'nav.notifications', icon: FaBell, color: 'text-amber-600', bgColor: 'bg-amber-50', href: `${base}/notifications` },
   ...getPatientHealthItems(base),

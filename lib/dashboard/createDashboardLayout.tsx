@@ -121,9 +121,15 @@ export function createDashboardLayout(config: DashboardLayoutConfig) {
       ? `${namePrefix} ${userData.firstName} ${userData.lastName}`
       : `${userData.firstName} ${userData.lastName}`
 
-    // Replace static search items with dynamic DB-driven ones if configured
+    // Replace static search items with dynamic DB-driven ones only when
+    // the roles API returned actual role entries. If DB is empty / the
+    // hook hasn't loaded yet, keep the static hardcoded items so the
+    // sidebar isn't reduced to just a "Health Shop" link.
     let finalSidebarItems = sidebarItems
-    if (dynamicSearchBasePath && dynamicSearch.length > 0) {
+    const dynamicHasRoles = dynamicSearch.some(
+      item => !item.divider && item.id !== 'divider-search' && item.id !== 'search-health-shop' && item.id !== 'search-insurance'
+    )
+    if (dynamicSearchBasePath && dynamicHasRoles) {
       // Remove static search items (ids starting with 'search-' or divider-search)
       const coreItems = sidebarItems.filter(
         item => !item.id.startsWith('search-') && item.id !== 'divider-search'
