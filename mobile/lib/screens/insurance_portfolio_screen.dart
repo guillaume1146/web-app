@@ -65,7 +65,7 @@ class _InsurancePortfolioScreenState extends ConsumerState<InsurancePortfolioScr
               ),
               const SizedBox(height: 10),
               DropdownButtonFormField<String?>(
-                initialValue: selectedPlan,
+                value: selectedPlan,
                 decoration: const InputDecoration(labelText: 'Plan (optional)', border: OutlineInputBorder()),
                 items: [
                   const DropdownMenuItem(value: null, child: Text('No plan')),

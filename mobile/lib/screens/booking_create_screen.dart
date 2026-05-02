@@ -125,7 +125,7 @@ class _BookingCreateScreenState extends ConsumerState<BookingCreateScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      initialValue: _selectedServiceId,
+                      value: _selectedServiceId,
                       decoration: const InputDecoration(labelText: 'Service', border: OutlineInputBorder()),
                       items: _services.map((s) {
                         final price = (s['priceOverride'] ?? s['defaultPrice'] ?? 0) as num;
@@ -138,7 +138,7 @@ class _BookingCreateScreenState extends ConsumerState<BookingCreateScreen> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      initialValue: _mode,
+                      value: _mode,
                       decoration: const InputDecoration(labelText: 'Mode', border: OutlineInputBorder()),
                       items: const [
                         DropdownMenuItem(value: 'in-person', child: Text('In person')),

@@ -136,7 +136,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
-                      initialValue: _gender,
+                      value: _gender,
                       decoration: const InputDecoration(labelText: 'Gender', prefixIcon: Icon(Icons.person)),
                       items: const [
                         DropdownMenuItem(value: 'Male', child: Text('Male')),
@@ -153,7 +153,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
-                      initialValue: _userType,
+                      value: _userType,
                       decoration: const InputDecoration(labelText: 'I am a…', prefixIcon: Icon(Icons.badge_outlined)),
                       items: _roles.map((r) => DropdownMenuItem(
                         value: r['slug']?.toString(),

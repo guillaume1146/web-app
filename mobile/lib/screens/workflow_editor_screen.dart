@@ -160,7 +160,7 @@ class _WorkflowEditorScreenState extends ConsumerState<WorkflowEditorScreen> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  initialValue: _providerType,
+                  value: _providerType,
                   decoration: const InputDecoration(labelText: 'Provider type', border: OutlineInputBorder()),
                   items: _roles.map((r) => DropdownMenuItem(
                     value: r['code']?.toString(),
@@ -170,7 +170,7 @@ class _WorkflowEditorScreenState extends ConsumerState<WorkflowEditorScreen> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  initialValue: _serviceMode,
+                  value: _serviceMode,
                   decoration: const InputDecoration(labelText: 'Service mode', border: OutlineInputBorder()),
                   items: const [
                     DropdownMenuItem(value: 'in_person', child: Text('In person')),
