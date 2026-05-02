@@ -12,11 +12,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY backend/ ./
 
-# Copy Prisma schema from root (shared with Next.js)
-COPY prisma/ ../prisma/
+# Copy Prisma schema inside backend directory so Prisma finds /app/package.json
+# (avoids the "could not find package.json at root /" auto-install failure)
+COPY prisma/ ./prisma/
 
-# Generate Prisma client into backend's node_modules
-RUN npx prisma generate --schema=../prisma/schema.prisma
+# Generate Prisma client
+RUN npx prisma generate --schema=./prisma/schema.prisma
 
 # Build NestJS
 ENV NODE_ENV=production
@@ -37,7 +38,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 
 # Copy Prisma schema + generated client (needed at runtime)
-COPY --from=builder /app/../prisma ../prisma
+COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
