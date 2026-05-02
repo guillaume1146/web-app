@@ -46,6 +46,9 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
+# Copy root lib files needed by seed scripts at runtime (ts-node resolves ../../lib/*)
+COPY --from=builder /app/lib ./lib
+
 RUN chown -R nestjs:nodejs /app
 USER nestjs
 
