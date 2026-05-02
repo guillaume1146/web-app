@@ -151,6 +151,9 @@ jobs:
           DEPLOY_DIR="${{ secrets.DEPLOY_DIR || 'healthtech-app' }}"
           cd /root/$DEPLOY_DIR
 
+          # Ensure remote points to new org URL (idempotent after repo transfer)
+          git remote set-url origin https://github.com/Mediwyz/platform.git 2>/dev/null || true
+
           # Pull latest code (docker-compose.yml, prisma schema, seeds)
           git pull origin main 2>/dev/null || true
 
