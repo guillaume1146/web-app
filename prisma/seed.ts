@@ -48,6 +48,7 @@ import { seedWorkflowStepDurations } from './seeds/46-workflow-step-durations.se
 import { seedInsuranceFavoritesStreaks } from './seeds/47-insurance-favorites-streaks.seed'
 import { seedWorkflowStepLibrary } from './seeds/49-workflow-step-library.seed'
 import { seedWorkflowDomainTemplates } from './seeds/50-workflow-domain-templates.seed'
+import { seedSarahJohnsonAndServices } from './seeds/55-sarah-johnson-services.seed'
 
 const prisma = new PrismaClient()
 
@@ -252,6 +253,7 @@ async function main() {
   await seedExpandedWorkflowsServices(prisma)
   await seedRoleProfileFields(prisma)
   await seedWorkflowStepDurations(prisma)
+  await seedSarahJohnsonAndServices(prisma)  // must run before seed 47 (insurance company owner)
   await seedInsuranceFavoritesStreaks(prisma)
   await seedWorkflowStepLibrary(prisma)
   await seedWorkflowDomainTemplates(prisma)
