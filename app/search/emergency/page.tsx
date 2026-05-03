@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { FaSearch, FaAmbulance, FaStar, FaMapMarkerAlt, FaClock, FaExclamationTriangle, FaHospital, FaFireExtinguisher, FaHeartbeat, FaShieldAlt, FaCheckCircle, FaBell, FaHelicopter, FaTruck, FaWifi } from 'react-icons/fa'
+import { initialsAvatar } from '@/lib/utils/avatar'
 
 import { IconType } from 'react-icons'
 import AuthBookingLink from '@/components/booking/AuthBookingLink'
@@ -240,7 +241,7 @@ export default function EmergencyPage() {
  verified: !!s.verified,
  governmentApproved: !!s.verified,
  bio: s.bio || '',
- avatar: s.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(displayName)}&backgroundColor=3b82f6`,
+ avatar: s.profileImage || initialsAvatar(s.firstName ?? displayName, s.lastName ?? ''),
  }
  })
  setAllServices(mapped)

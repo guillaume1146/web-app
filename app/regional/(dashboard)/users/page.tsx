@@ -6,6 +6,7 @@ import {
  FaUsers, FaSearch, FaSpinner, FaCheck, FaBan, FaUserTimes,
  FaFilter, FaUserShield, FaEnvelope
 } from 'react-icons/fa'
+import { initialsAvatar, avatarSrc } from '@/lib/utils/avatar'
 
 interface UserRecord {
  id: string
@@ -51,10 +52,6 @@ const statusColors: Record<string, string> = {
  rejected: 'bg-red-100 text-red-700',
 }
 
-function dicebearUrl(firstName: string, lastName: string): string {
- const seed = encodeURIComponent(`${firstName} ${lastName}`)
- return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=0c6780,001e40,0a3d62&fontFamily=Arial&fontSize=40&radius=50`
-}
 
 export default function RegionalUsersPage() {
  const router = useRouter()
@@ -243,12 +240,10 @@ export default function RegionalUsersPage() {
        >
         <div className="flex items-center gap-4 flex-1">
          <img
-          src={user.profileImage || dicebearUrl(user.firstName, user.lastName)}
+          src={avatarSrc(user.profileImage, user.firstName, user.lastName)}
           alt={`${user.firstName} ${user.lastName}`}
           className="w-12 h-12 rounded-full object-cover border border-gray-200 bg-gray-100 flex-shrink-0"
-          onError={e => {
-           e.currentTarget.src = dicebearUrl(user.firstName, user.lastName)
-          }}
+          onError={e => { e.currentTarget.src = initialsAvatar(user.firstName, user.lastName) }}
          />
          <div className="min-w-0">
           <h3 className="font-semibold text-gray-900">

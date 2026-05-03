@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { FaUserPlus, FaUserMd, FaUserNurse, FaChild, FaFlask, FaAmbulance } from 'react-icons/fa'
 import { getUserTypeColor, getUserTypeLabel } from '@/lib/constants/userTypeStyles'
+import { initialsAvatar, avatarSrc } from '@/lib/utils/avatar'
 
 interface SuggestedUser {
  id: string
@@ -30,10 +31,7 @@ const typeIcons: Record<string, React.ReactNode> = {
 }
 
 function avatarUrl(user: SuggestedUser): string {
- if (user.profileImage) return user.profileImage
- // Generate a consistent branded avatar when no photo is uploaded
- const seed = encodeURIComponent(`${user.firstName} ${user.lastName}`)
- return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=0c6780,001e40,0a3d62&fontFamily=Arial&fontSize=40&radius=50`
+ return avatarSrc(user.profileImage, user.firstName, user.lastName)
 }
 
 export default function UserSuggestions({ currentUserId, maxResults = 7, className = '' }: UserSuggestionsProps) {
@@ -132,10 +130,7 @@ export default function UserSuggestions({ currentUserId, maxResults = 7, classNa
  src={avatarUrl(user)}
  alt={`${user.firstName} ${user.lastName}`}
  className="w-10 h-10 rounded-full object-cover border-2 border-gray-100 bg-gray-100"
- onError={e => {
-   const el = e.currentTarget
-   el.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.firstName + ' ' + user.lastName)}&backgroundColor=0c6780&fontFamily=Arial&radius=50`
- }}
+ onError={e => { e.currentTarget.src = initialsAvatar(user.firstName, user.lastName) }}
  />
  </Link>
  <div className="flex-1 min-w-0">

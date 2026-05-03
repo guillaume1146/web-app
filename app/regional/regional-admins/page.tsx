@@ -10,6 +10,7 @@ import {
  FaChartBar, FaStar, FaExclamationTriangle,
  FaThLarge, FaBan, FaClipboardCheck, FaSpinner
 } from 'react-icons/fa'
+import { initialsAvatar } from '@/lib/utils/avatar'
 
 interface RegionalAdmin {
  id: string
@@ -211,7 +212,7 @@ export default function RegionalAdminsPage() {
  <div className="flex items-start justify-between mb-4">
  <div className="flex items-center gap-4">
  <img
- src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${admin.name}`}
+ src={initialsAvatar(admin.name.split(' ')[0] ?? admin.name, admin.name.split(' ')[1] ?? '')}
  alt={admin.name}
  width={60}
  height={60}

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
  FaSearch, FaCheck, FaTimes, FaBan, FaThLarge, FaClock, FaCheckCircle, FaSpinner, FaUsers
 } from 'react-icons/fa'
+import { avatarSrc } from '@/lib/utils/avatar'
 import type { Admin } from '@/types/regional-admin'
 
 interface RawAdminRecord {
@@ -39,7 +40,7 @@ function mapToAdmin(raw: RawAdminRecord): Admin {
  : 'pending',
  joinDate: new Date(raw.createdAt).toLocaleDateString(),
  lastLogin: '—',
- avatar: raw.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(raw.firstName + ' ' + raw.lastName)}`,
+ avatar: avatarSrc(raw.profileImage as string | null, raw.firstName as string, raw.lastName as string),
  permissions: {
  canManageCMS: false,
  canManageFinances: false,

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { FaComments, FaCircle } from 'react-icons/fa'
 import Link from 'next/link'
+import { initialsAvatar, avatarSrc } from '@/lib/utils/avatar'
 
 interface Participant {
  userId: string
@@ -55,9 +56,7 @@ const USER_TYPE_LABELS: Record<string, string> = {
 }
 
 function avatarUrl(p: Participant): string {
- if (p.avatarUrl) return p.avatarUrl
- const seed = encodeURIComponent(`${p.firstName} ${p.lastName}`)
- return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=0c6780,001e40,0a3d62&fontFamily=Arial&fontSize=40&radius=50`
+ return avatarSrc(p.avatarUrl, p.firstName, p.lastName)
 }
 
 function timeAgo(dateStr: string): string {
@@ -151,10 +150,7 @@ export default function ChatContactsSidebar({ currentUserId, messagesPath }: Cha
    src={avatarUrl(other)}
    alt={`${other.firstName} ${other.lastName}`}
    className="w-9 h-9 rounded-full object-cover border border-gray-100 bg-gray-100"
-   onError={e => {
-     const el = e.currentTarget
-     el.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(other.firstName + ' ' + other.lastName)}&backgroundColor=0c6780&fontFamily=Arial&radius=50`
-   }}
+   onError={e => { e.currentTarget.src = initialsAvatar(other.firstName, other.lastName) }}
  />
  {conv.unreadCount > 0 && (
  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
