@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { FaSearch, FaConciergeBell, FaClock, FaArrowRight } from 'react-icons/fa'
 import HorizontalScrollRow from '@/components/shared/HorizontalScrollRow'
@@ -24,14 +25,28 @@ interface RoleData {
   color: string
 }
 
-// Category emoji for service cards
-const CATEGORY_EMOJI: Record<string, string> = {
-  consultation: '🩺', 'home visit': '🏠', 'video consultation': '📹',
-  prescription: '💊', 'lab test': '🧪', vaccination: '💉',
-  emergency: '🚑', childcare: '🧸', nursing: '💉',
-  pharmacy: '💊', dental: '🦷', eye: '👁️', optical: '👁️',
-  physiotherapy: '🏃', nutrition: '🥗', caregiver: '🤝',
-  custom: '⚕️',
+// Maps providerType → public/images folder + how many images exist
+const PROVIDER_IMAGE_FOLDERS: Record<string, { folder: string; count: number }> = {
+  DOCTOR:           { folder: 'doctors',           count: 50 },
+  NURSE:            { folder: 'nurses',            count: 30 },
+  NANNY:            { folder: 'nannies',           count: 30 },
+  PHARMACIST:       { folder: 'pharmacists',       count: 4  },
+  LAB_TECHNICIAN:   { folder: 'lab-technicians',   count: 4  },
+  EMERGENCY_WORKER: { folder: 'emergency-workers', count: 4  },
+  CAREGIVER:        { folder: 'caregivers',        count: 4  },
+  PHYSIOTHERAPIST:  { folder: 'physiotherapists',  count: 4  },
+  DENTIST:          { folder: 'dentists',          count: 4  },
+  OPTOMETRIST:      { folder: 'optometrists',      count: 4  },
+  NUTRITIONIST:     { folder: 'nutritionists',     count: 4  },
+}
+
+function resolveServiceImage(providerType: string, serviceId: string): string {
+  const info = PROVIDER_IMAGE_FOLDERS[providerType]
+  if (!info) return '/images/hero/doctor-1.jpg'
+  let hash = 0
+  for (let i = 0; i < serviceId.length; i++) hash = serviceId.charCodeAt(i) + ((hash << 5) - hash)
+  const index = (Math.abs(hash) % info.count) + 1
+  return `/images/${info.folder}/${index}.jpg`
 }
 
 const PROVIDER_EMOJI: Record<string, string> = {
@@ -39,21 +54,6 @@ const PROVIDER_EMOJI: Record<string, string> = {
   LAB_TECHNICIAN: '🧪', EMERGENCY_WORKER: '🚑', CAREGIVER: '🤝',
   PHYSIOTHERAPIST: '🏃', DENTIST: '🦷', OPTOMETRIST: '👁️',
   NUTRITIONIST: '🥗',
-}
-
-function resolveCategoryEmoji(category: string, providerType: string): string {
-  const lower = category.toLowerCase()
-  for (const [key, emoji] of Object.entries(CATEGORY_EMOJI)) {
-    if (lower.includes(key)) return emoji
-  }
-  return PROVIDER_EMOJI[providerType] ?? '⚕️'
-}
-
-function hex2rgba(hex: string, alpha = 0.12) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r},${g},${b},${alpha})`
 }
 
 export default function ServicesSection() {
@@ -74,7 +74,6 @@ export default function ServicesSection() {
     }).catch(() => setFetchError(true)).finally(() => setLoading(false))
   }, [])
 
-  // Filter services by search query + active role chip
   const filtered = useMemo(() => {
     let list = services
     if (activeRole !== 'ALL') list = list.filter(s => s.providerType === activeRole)
@@ -89,7 +88,6 @@ export default function ServicesSection() {
     return list
   }, [services, activeRole, searchQuery])
 
-  // Group by providerType — each role gets its own scroll row
   const groupedByRole = useMemo(() => {
     const map: Record<string, ServiceItem[]> = {}
     for (const svc of filtered) {
@@ -99,7 +97,6 @@ export default function ServicesSection() {
     return map
   }, [filtered])
 
-  // Get display info (label, color, slug) for a given role code
   const roleInfo = useMemo(() => {
     const info: Record<string, RoleData> = {}
     for (const r of roles) info[r.code] = r
@@ -130,9 +127,7 @@ export default function ServicesSection() {
             </Link>
           </div>
 
-          {/* Search + role filter row */}
           <div className="flex flex-col sm:flex-row gap-2">
-            {/* Search input */}
             <div className="relative flex-shrink-0 sm:w-64">
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
               <input
@@ -144,7 +139,6 @@ export default function ServicesSection() {
               />
             </div>
 
-            {/* Role filter chips */}
             <div className="flex gap-1.5 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden">
               <button
                 onClick={() => setActiveRole('ALL')}
@@ -180,19 +174,25 @@ export default function ServicesSection() {
                 <div className="h-5 bg-gray-200 rounded w-40 mb-4" />
                 <div className="flex gap-4">
                   {[1, 2, 3, 4, 5].map(j => (
-                    <div key={j} className="flex-shrink-0 w-[160px] sm:w-52 h-44 bg-gray-100 rounded-2xl" />
+                    <div key={j} className="flex-shrink-0 w-[160px] sm:w-52 h-52 bg-gray-100 rounded-2xl" />
                   ))}
                 </div>
               </div>
             ))}
           </div>
-        ) : Object.keys(groupedByRole).length === 0 ? (
+        ) : fetchError || Object.keys(groupedByRole).length === 0 ? (
           <div className="text-center py-16">
             <FaConciergeBell className="text-4xl text-gray-300 mx-auto mb-3" />
-            <p className="text-sm font-medium text-gray-600">No services match your search.</p>
-            <button onClick={() => { setSearchQuery(''); setActiveRole('ALL') }} className="mt-2 text-xs text-[#0C6780] hover:underline">
-              Clear filters
-            </button>
+            {fetchError ? (
+              <p className="text-sm font-medium text-gray-600">Could not load services — check that the backend is running.</p>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-gray-600">No services match your search.</p>
+                <button onClick={() => { setSearchQuery(''); setActiveRole('ALL') }} className="mt-2 text-xs text-[#0C6780] hover:underline">
+                  Clear filters
+                </button>
+              </>
+            )}
           </div>
         ) : (
           Object.entries(groupedByRole).map(([roleCode, roleServices]) => {
@@ -218,7 +218,6 @@ export default function ServicesSection() {
           })
         )}
 
-        {/* Mobile see-all link */}
         <div className="text-center mt-4 sm:hidden">
           <Link
             href="/search/services"
@@ -233,32 +232,32 @@ export default function ServicesSection() {
 }
 
 function ServiceCard({ service, color, slug }: { service: ServiceItem; color: string; slug: string }) {
-  const emoji = resolveCategoryEmoji(service.category, service.providerType)
-  const iconBg = hex2rgba(color, 0.12)
+  const imageUrl = resolveServiceImage(service.providerType, service.id)
 
   return (
     <Link
       href={`/search/${slug}`}
       className="group flex-shrink-0 snap-start w-[160px] sm:w-52 flex flex-col bg-white rounded-2xl border border-gray-100
         hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
-      style={{ borderTopWidth: 3, borderTopColor: color }}
     >
-      {/* Icon area */}
-      <div className="p-3 sm:p-4 flex-1 flex flex-col">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 flex-shrink-0"
-          style={{ background: iconBg }}
-        >
-          <span className="text-xl leading-none">{emoji}</span>
-        </div>
+      {/* Photo header */}
+      <div className="relative w-full h-28 sm:h-32 overflow-hidden flex-shrink-0">
+        <Image
+          src={imageUrl}
+          alt={service.serviceName}
+          fill
+          className="object-cover group-hover:scale-105 transition-transform duration-300"
+          sizes="(max-width: 640px) 160px, 208px"
+        />
+        {/* Colored bottom accent */}
+        <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: color }} />
+      </div>
 
-        <h4
-          className="text-sm font-bold leading-snug line-clamp-2 mb-1.5"
-          style={{ color }}
-        >
+      {/* Text */}
+      <div className="p-3 sm:p-4 flex-1 flex flex-col">
+        <h4 className="text-sm font-bold leading-snug line-clamp-2 mb-1" style={{ color }}>
           {service.serviceName}
         </h4>
-
         {service.description && (
           <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2 flex-1">
             {service.description}
