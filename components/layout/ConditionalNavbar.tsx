@@ -5,6 +5,9 @@ import { usePathname } from 'next/navigation'
 import { useUser } from '@/hooks/useUser'
 import Navbar from './Navbar'
 
+// These public entry-points always show the navbar — regardless of auth state.
+const ALWAYS_SHOW = new Set(['/', '/login', '/signup'])
+
 const DASHBOARD_PREFIXES = [
   // Role-prefix routes
   '/patient/', '/doctor/', '/nurse/', '/nanny/', '/pharmacist/',
@@ -21,8 +24,8 @@ const DASHBOARD_PREFIXES = [
   '/my-emergency', '/my-health-records', '/my-lab-results',
   '/my-insurance', '/my-prescriptions', '/roles', '/administration',
   '/pharmacy', '/book', '/my-company',
-  // Auth pages — have their own minimal layout
-  '/login', '/signup', '/reset-password', '/verify',
+  // Password-reset / verification — have their own minimal layout
+  '/reset-password', '/verify',
 ]
 
 function isDashboardPath(pathname: string) {
@@ -33,23 +36,20 @@ function isDashboardPath(pathname: string) {
 export default function ConditionalNavbar() {
   const pathname = usePathname() || ''
   const { user } = useUser()
-  // Tracks whether the client has checked the auth cookie after mount.
-  // null  = not yet checked (SSR + first paint)
-  // true  = authenticated (cookie present)
-  // false = definitely not authenticated
   const [authCookie, setAuthCookie] = useState<boolean | null>(null)
 
   useEffect(() => {
     setAuthCookie(document.cookie.includes('mediwyz_userType='))
-  }, [pathname]) // re-check on every navigation (handles login/logout transitions)
+  }, [pathname])
 
-  // Always suppress on dashboard / auth paths — works during SSR and client
+  // Landing page, login, and signup always get the navbar — no auth check.
+  if (ALWAYS_SHOW.has(pathname)) return <Navbar />
+
+  // All dashboard / internal paths — suppress entirely.
   if (isDashboardPath(pathname)) return null
 
-  // If cookie check hasn't run yet (SSR or first paint), or cookie confirms auth → hide
+  // Other public paths: only show when definitely not authenticated.
   if (authCookie !== false) return null
-
-  // User loaded from localStorage also confirms auth
   if (user) return null
 
   return <Navbar />

@@ -197,7 +197,7 @@ const Navbar: React.FC = () => {
  Skip to main content
  </a>
  <div className="container mx-auto px-3 sm:px-4 lg:px-6">
- <div className="flex justify-between items-center h-12 lg:h-14">
+ <div className="flex justify-between items-center h-10 lg:h-11">
  {/* Logo */}
  <Link href="/" className="flex items-center space-x-2 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal rounded-md">
  <HealthwyzLogo

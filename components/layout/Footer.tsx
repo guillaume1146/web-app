@@ -53,9 +53,9 @@ const Footer: React.FC = () => {
  <div className="h-1 bg-brand-teal " />
  {/* Footer Content — reduced vertical padding to prioritise the
      marketplace above; visitors should reach the footer quickly. */}
- <div className="py-8">
+ <div className="py-5">
  <div className="container mx-auto px-4">
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
  {/* Company Info */}
  <div>
  <div className="flex items-center space-x-3 mb-4">
@@ -124,7 +124,7 @@ const Footer: React.FC = () => {
  </div>
 
  {/* Social Links and Follow */}
- <div className="border-t border-gray-700 mt-6 pt-5">
+ <div className="border-t border-gray-700 mt-4 pt-4">
  <div className="flex flex-col md:flex-row justify-between items-center">
  <div className="mb-4 md:mb-0">
  <p className="text-gray-400 mb-2">Follow us:</p>
