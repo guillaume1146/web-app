@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { FaSearch, FaConciergeBell, FaClock, FaArrowRight } from 'react-icons/fa'
 import HorizontalScrollRow from '@/components/shared/HorizontalScrollRow'
@@ -25,28 +24,55 @@ interface RoleData {
   color: string
 }
 
-// Maps providerType → public/images folder + how many images exist
-const PROVIDER_IMAGE_FOLDERS: Record<string, { folder: string; count: number }> = {
-  DOCTOR:           { folder: 'doctors',           count: 50 },
-  NURSE:            { folder: 'nurses',            count: 30 },
-  NANNY:            { folder: 'nannies',           count: 30 },
-  PHARMACIST:       { folder: 'pharmacists',       count: 4  },
-  LAB_TECHNICIAN:   { folder: 'lab-technicians',   count: 4  },
-  EMERGENCY_WORKER: { folder: 'emergency-workers', count: 4  },
-  CAREGIVER:        { folder: 'caregivers',        count: 4  },
-  PHYSIOTHERAPIST:  { folder: 'physiotherapists',  count: 4  },
-  DENTIST:          { folder: 'dentists',          count: 4  },
-  OPTOMETRIST:      { folder: 'optometrists',      count: 4  },
-  NUTRITIONIST:     { folder: 'nutritionists',     count: 4  },
+function hex2rgba(hex: string, alpha = 0.12) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
 }
 
-function resolveServiceImage(providerType: string, serviceId: string): string {
-  const info = PROVIDER_IMAGE_FOLDERS[providerType]
-  if (!info) return '/images/hero/doctor-1.jpg'
-  let hash = 0
-  for (let i = 0; i < serviceId.length; i++) hash = serviceId.charCodeAt(i) + ((hash << 5) - hash)
-  const index = (Math.abs(hash) % info.count) + 1
-  return `/images/${info.folder}/${index}.jpg`
+function resolveServiceEmoji(name: string, category: string, providerType: string): string {
+  const text = `${name} ${category}`.toLowerCase()
+  if (/cardio|heart/.test(text)) return '🫀'
+  if (/lung|pulmon|respir|chest|breath/.test(text)) return '🫁'
+  if (/brain|neuro|stroke|cereb/.test(text)) return '🧠'
+  if (/dental|teeth|tooth|oral|mouth/.test(text)) return '🦷'
+  if (/eye|vision|optom|ophth|sight|retina/.test(text)) return '👁️'
+  if (/bone|ortho|joint|spine|fracture|arthrit/.test(text)) return '🦴'
+  if (/blood test|hematol|anemia|transfus/.test(text)) return '🩸'
+  if (/lab|sample|culture|swab|biopsy|pathol/.test(text)) return '🧪'
+  if (/vaccine|immuniz|vaccin|shot/.test(text)) return '💉'
+  if (/prescription|medicine|medication|drug|pharmacy|dispens/.test(text)) return '💊'
+  if (/home visit|house call|domicil|home care/.test(text)) return '🏠'
+  if (/video|telehealth|telemedicine|online consult|remote|virtual/.test(text)) return '📹'
+  if (/emergency|ambulance|urgent|trauma|rescue/.test(text)) return '🚑'
+  if (/physio|rehabilit|exercise|movement|mobility/.test(text)) return '🏃'
+  if (/nutrition|diet|food|meal|weight|obesity/.test(text)) return '🥗'
+  if (/caregiver|elder|geriat|elderly|senior care/.test(text)) return '🤝'
+  if (/child|pediatr|baby|infant|newborn|neonat/.test(text)) return '👶'
+  if (/pregnan|obstetric|maternal|antenatal|prenatal|birth|deliver/.test(text)) return '🤰'
+  if (/mental|psych|anxiety|depress|counsel|therap/.test(text)) return '🧠'
+  if (/skin|derma|acne|rash/.test(text)) return '🧴'
+  if (/ear|hearing|ent|audiol/.test(text)) return '👂'
+  if (/kidney|renal|urol|bladder/.test(text)) return '🫘'
+  if (/stomach|gastro|digest|bowel|colon|intestin/.test(text)) return '🫃'
+  if (/liver|hepat|gallblad/.test(text)) return '🫀'
+  if (/diabetes|glucose|insulin|endocrin|thyroid/.test(text)) return '💓'
+  if (/nanny|childcare|babysit/.test(text)) return '🧸'
+  if (/x.ray|imaging|scan|mri|ultrasound|radiol/.test(text)) return '🩻'
+  if (/wound|dress|injury|bandage/.test(text)) return '🩹'
+  if (/blood pressure|hypertens|cardiovas/.test(text)) return '💓'
+  if (/oxygen|asthma|inhaler/.test(text)) return '💨'
+  if (/cancer|oncol|tumor/.test(text)) return '🎗️'
+  if (/surgery|operat|procedure/.test(text)) return '🔬'
+  if (/consult|checkup|check-up|appointment|visit|general/.test(text)) return '🩺'
+  const FALLBACK: Record<string, string> = {
+    DOCTOR: '🩺', NURSE: '💉', NANNY: '🧸', PHARMACIST: '💊',
+    LAB_TECHNICIAN: '🧪', EMERGENCY_WORKER: '🚑', CAREGIVER: '🤝',
+    PHYSIOTHERAPIST: '🏃', DENTIST: '🦷', OPTOMETRIST: '👁️',
+    NUTRITIONIST: '🥗',
+  }
+  return FALLBACK[providerType] ?? '⚕️'
 }
 
 const PROVIDER_EMOJI: Record<string, string> = {
@@ -204,7 +230,7 @@ export default function ServicesSection() {
             return (
               <HorizontalScrollRow
                 key={roleCode}
-                title={label}
+                title={`From ${label}`}
                 subtitle={`${roleServices.length} service${roleServices.length !== 1 ? 's' : ''}`}
                 icon={<span className="text-xl">{PROVIDER_EMOJI[roleCode] ?? '⚕️'}</span>}
                 seeAllHref={`/search/${slug}`}
@@ -232,7 +258,9 @@ export default function ServicesSection() {
 }
 
 function ServiceCard({ service, color, slug }: { service: ServiceItem; color: string; slug: string }) {
-  const imageUrl = resolveServiceImage(service.providerType, service.id)
+  const emoji = resolveServiceEmoji(service.serviceName, service.category, service.providerType)
+  const bgLight  = hex2rgba(color, 0.10)
+  const bgMedium = hex2rgba(color, 0.20)
 
   return (
     <Link
@@ -240,16 +268,18 @@ function ServiceCard({ service, color, slug }: { service: ServiceItem; color: st
       className="group flex-shrink-0 snap-start w-[160px] sm:w-52 flex flex-col bg-white rounded-2xl border border-gray-100
         hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
     >
-      {/* Photo header */}
-      <div className="relative w-full h-28 sm:h-32 overflow-hidden flex-shrink-0">
-        <Image
-          src={imageUrl}
-          alt={service.serviceName}
-          fill
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
-          sizes="(max-width: 640px) 160px, 208px"
-        />
-        {/* Colored bottom accent */}
+      {/* Emoji illustration header */}
+      <div
+        className="relative w-full h-28 sm:h-32 flex-shrink-0 flex items-center justify-center overflow-hidden"
+        style={{ background: `linear-gradient(135deg, ${bgMedium} 0%, ${bgLight} 100%)` }}
+      >
+        <span
+          className="text-5xl sm:text-6xl select-none group-hover:scale-110 transition-transform duration-300"
+          role="img"
+          aria-label={service.serviceName}
+        >
+          {emoji}
+        </span>
         <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: color }} />
       </div>
 
