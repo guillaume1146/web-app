@@ -44,9 +44,14 @@ export class ProvidersService {
             id: true, serviceName: true, description: true, defaultPrice: true, duration: true, category: true,
             workflowTemplates: {
               where: { isActive: true },
-              select: { id: true, serviceMode: true, name: true },
+              select: {
+                id: true,
+                name: true,
+                serviceMode: true,
+                isDefault: true,
+                steps: true,
+              },
               orderBy: { isDefault: 'desc' },
-              take: 1,
             },
           },
         },
@@ -63,7 +68,21 @@ export class ProvidersService {
         description: c.platformService.description,
         price: c.priceOverride ?? c.platformService.defaultPrice,
         duration: c.platformService.duration,
-        serviceMode: c.platformService.workflowTemplates[0]?.serviceMode ?? 'office',
+        workflows: c.platformService.workflowTemplates.map(wf => {
+          // `steps` is a JSON array stored on the template; normalise to typed objects.
+          const rawSteps: any[] = Array.isArray(wf.steps) ? wf.steps : [];
+          const sortedSteps = [...rawSteps].sort((a, b) => (a.stepOrder ?? a.order ?? 0) - (b.stepOrder ?? b.order ?? 0));
+          return {
+            id: wf.id,
+            name: wf.name,
+            serviceMode: wf.serviceMode,
+            steps: sortedSteps.map(s => ({
+              order: s.stepOrder ?? s.order ?? 0,
+              label: s.label ?? '',
+              statusCode: s.statusCode ?? '',
+            })),
+          };
+        }),
       }));
   }
 

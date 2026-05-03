@@ -1,0 +1,1778 @@
+PHASE 1 — Regional admin nav + queue + analytics
+- i see the  - Role Requests (amber inbox icon) - Analytics (chart icon) in the menu sidebar 
+- after  i clikc the Role request option and redirected to the folowing page  : http://localhost:3000/regional/workflows/role-requests , it shows the following : Template not found 
+- when i click on analytics and was redirected to the following page : http://localhost:3000/regional/analytics and shows the following content : 
+Analyses des workflows
+L'utilisation de chaque modèle dans votre région. Triez par volume ; surveillez les taux d'abandon.
+
+0
+
+Aujourd'hui
+
+216
+
+7 derniers jours
+
+0
+
+Terminés
+
+1%
+
+Taux d'abandon
+
+Templates by volume
+Doctor Consultation - Office
+
+DOCTOR · officedefault
+
+0 today
+45 7d
+45 total
+2% drop-off
+Caregiver Session - Office
+
+CAREGIVER · officedefault
+
+0 today
+22 7d
+22 total
+0% drop-off
+Doctor Consultation - Video
+
+DOCTOR · videodefault
+
+0 today
+19 7d
+19 total
+11% drop-off
+Nurse Care - Home
+
+- i do not find any button called workflows templates but i can see a button calles workflows and it redirect me to the following page : http://localhost:3000/regional/workflows with the following content : 
+Workflow Templates
+Manage status workflows for all provider types. 58 templates configured.
+
+Role requests
+Analytics
+Browse library
+Start from template
+Create workflow
+
+All Provider Types
+58 templates
+DOCTOR
+(22 workflows)
+Office
+Denorm Test
+4 steps
+no runs yet
+
+1
+✅
+Pending
+→
+2
+✅
+Confirmed
+→
+3
+🕐
+Done
+❌
+Cancelled
+Office
+Admin Default
+4 steps
+no runs yet
+
+1
+✅
+Pending
+→
+2
+✅
+Confirmed
+→
+3
+🕐
+Done
+❌
+Cancelled
+Office
+My Own
+4 steps
+no runs yet
+
+1
+✅
+Pending
+→
+2
+✅
+Confirmed
+→
+3
+🕐
+Done
+❌
+Cancelled
+Office
+First
+4 steps
+no runs yet
+
+1
+✅
+Pending
+→
+2
+✅
+Confirmed
+→
+3
+🕐
+Done
+❌
+Cancelled
+Office
+15-step workflow
+15 steps
+no runs yet
+
+1
+✅
+Step 1
+→
+2
+✅
+Step 2
+→
+3
+✅
+Step 3
+→
+4
+✅
+Step 4
+→
+5
+✅
+Step 5
+→
+6
+✅
+Step 6
+→
+7
+✅
+Step 7
+→
+8
+✅
+Step 8
+→
+9
+✅
+Step 9
+→
+10
+✅
+Step 10
+→
+11
+✅
+Step 11
+→
+12
+✅
+Step 12
+→
+13
+✅
+Step 13
+→
+14
+✅
+Step 14
+→
+15
+🕐
+Step 15
+Office
+All Flags
+4 steps
+no runs yet
+
+1
+✅
+Pending
+→
+2
+📹
+Confirmed
+→
+3
+🕐
+Done
+❌
+Cancelled
+Office
+Custom Status Test
+4 steps
+no runs yet
+
+1
+✅
+Pending
+→
+2
+✅
+Awaiting Quorum
+→
+3
+🕐
+Done
+❌
+Cancelled
+Office
+Test Basic 1777006566386
+4 steps
+no runs yet
+
+1
+✅
+Pending
+→
+2
+✅
+Confirmed
+→
+3
+🕐
+Done
+❌
+Cancelled
+Office
+Relink Test
+4 steps
+no runs yet
+
+1
+✅
+Pending
+→
+2
+✅
+Confirmed
+→
+3
+🕐
+Done
+❌
+Cancelled
+Office
+Browse Link Workflow
+4 steps
+no runs yet
+
+1
+✅
+Pending
+→
+2
+✅
+Confirmed
+→
+3
+🕐
+Done
+❌
+Cancelled
+Office
+Linked Workflow
+4 steps
+no runs yet
+
+1
+✅
+Pending
+→
+2
+✅
+Confirmed
+→
+3
+🕐
+Done
+❌
+Cancelled
+Video Call
+QA Test — Doctor Clone
+11 steps
+no runs yet
+
+1
+✅
+Request received
+→
+2
+💳
+Confirmed — paid & chat open
+→
+3
+🚗
+On the way
+→
+4
+🏠
+Arrived at patient home
+→
+5
+📹
+Video call (remote specialist)
+→
+6
+🧫
+Taking sample
+→
+7
+🔬
+Lab analysis
+→
+8
+📄
+Lab results ready
+→
+9
+💊
+Prescription
+→
+10
+⭐
+Completed — please review
+❌
+Cancelled — refunded
+Home Visit
+QA — All Triggers Coverage (my copy)
+11 steps
+no runs yet
+
+1
+✅
+Request received
+→
+2
+💳
+Confirmed — paid & chat open
+→
+3
+🚗
+On the way
+→
+4
+🏠
+Arrived at patient home
+→
+5
+📹
+Video call (remote specialist)
+→
+6
+🧫
+Taking sample
+→
+7
+🔬
+Lab analysis
+→
+8
+📄
+Lab results ready
+→
+9
+💊
+Prescription
+→
+10
+⭐
+Completed — please review
+❌
+Cancelled — refunded
+Video Call
+QA Test — Doctor Clone
+11 steps
+no runs yet
+
+1
+✅
+Request received
+→
+2
+💳
+Confirmed — paid & chat open
+→
+3
+🚗
+On the way
+→
+4
+🏠
+Arrived at patient home
+→
+5
+📹
+Video call (remote specialist)
+→
+6
+🧫
+Taking sample
+→
+7
+🔬
+Lab analysis
+→
+8
+📄
+Lab results ready
+→
+9
+💊
+Prescription
+→
+10
+⭐
+Completed — please review
+❌
+Cancelled — refunded
+Office
+Doctor In-Person Consultation Workflow
+5 steps
+no runs yet
+1
+🕐
+Pending
+→
+2
+💳
+Accepted
+→
+3
+🕐
+Patient Checked In
+→
+4
+🕐
+In Consultation
+→
+5
+⭐
+Completed
+Video Call
+Doctor Video Consultation Workflow
+6 steps
+no runs yet
+1
+🕐
+Pending
+→
+2
+💳
+Accepted
+→
+3
+✅
+Payment Confirmed
+→
+4
+📹
+In Consultation
+→
+5
+💊
+Prescription Issued
+→
+6
+⭐
+Completed
+Home Visit
+QA — All Triggers Coverage
+11 steps
+no runs yet
+
+1
+✅
+Request received
+→
+2
+💳
+Confirmed — paid & chat open
+→
+3
+🚗
+On the way
+→
+4
+🏠
+Arrived at patient home
+→
+5
+📹
+Video call (remote specialist)
+→
+6
+🧫
+Taking sample
+→
+7
+🔬
+Lab analysis
+→
+8
+📄
+Lab results ready
+→
+9
+💊
+Prescription
+→
+10
+⭐
+Completed — please review
+❌
+Cancelled — refunded
+Office
+Doctor Diagnostic - Office
+6 steps
+no runs yet
+1
+✅
+Demande envoyee
+→
+2
+💳
+Bilan confirme
+→
+3
+✅
+Examen en cours
+→
+4
+📄
+Resultats disponibles
+→
+5
+⭐
+Bilan termine
+❌
+Annule
+Office
+Doctor Surgery - Office
+9 steps
+no runs yet
+1
+✅
+Demande envoyee
+→
+2
+💳
+Procedure confirmee
+→
+3
+✅
+Evaluation pre-operatoire
+→
+4
+🩺
+Pret pour l'intervention
+→
+5
+🩺
+Intervention en cours
+→
+6
+✅
+Observation post-op
+→
+7
+📄
+Instructions de recuperation
+→
+8
+⭐
+Procedure terminee
+❌
+Annulee
+Video Call
+Doctor Consultation - Video
+6 steps
+0
+today
+·
+19
+7d
+·
+19
+total
+·
+11%
+drop-off
+1
+✅
+Demande envoyee
+→
+2
+💳
+Teleconsultation confirmee
+→
+3
+📹
+Salle prete
+→
+4
+✅
+Appel en cours
+→
+5
+⭐
+Doctor Consultation terminee
+❌
+Annulee
+Home Visit
+Doctor Consultation - Home
+7 steps
+no runs yet
+1
+✅
+Demande envoyee
+→
+2
+💳
+Visite confirmee
+→
+3
+🚗
+Doctor en deplacement
+→
+4
+🏠
+Doctor arrive(e)
+→
+5
+✅
+Doctor Consultation en cours
+→
+6
+⭐
+Doctor Consultation terminee
+❌
+Annulee
+Office
+Doctor Consultation - Office
+7 steps
+0
+today
+·
+45
+7d
+·
+45
+total
+·
+2%
+drop-off
+1
+✅
+Demande envoyee
+→
+2
+💳
+Doctor Consultation confirmee
+→
+3
+✅
+En salle d'attente
+→
+4
+✅
+Doctor Consultation en cours
+→
+5
+📄
+Redaction des notes
+→
+6
+⭐
+Doctor Consultation terminee
+❌
+Annulee
+REFLEXOLOGIST 1777006562784
+(1 workflows)
+Office
+Workflow for REFLEXOLOGIST_1777006562784
+2 steps
+no runs yet
+
+1
+✅
+Pending
+→
+2
+🕐
+Done
+OPTOMETRIST
+(5 workflows)
+
+with the follwoing error : ## Error Type
+Console Error
+
+## Error Message
+Each child in a list should have a unique "key" prop.
+
+Check the render method of `div`. It was passed a child from WorkflowStepper. See https://react.dev/link/warning-keys for more information.
+
+
+    at div (<anonymous>:null:null)
+    at eval (components\workflow\WorkflowStepper.tsx:72:13)
+    at Array.map (<anonymous>:null:null)
+    at WorkflowStepper (components\workflow\WorkflowStepper.tsx:60:20)
+    at eval (app\regional\(dashboard)\workflows\page.tsx:306:23)
+    at Array.map (<anonymous>:null:null)
+    at eval (app\regional\(dashboard)\workflows\page.tsx:229:23)
+    at Array.map (<anonymous>:null:null)
+    at RegionalWorkflowsPage (app\regional\(dashboard)\workflows\page.tsx:220:36)
+
+## Code Frame
+  70 |
+  71 |           return (
+> 72 |             <div key={step.statusCode} className="flex items-center gap-1 flex-shrink-0">
+     |             ^
+  73 |               <div
+  74 |                 className={`flex items-center gap-1 px-2 py-1 rounded-full border ${
+  75 |                   isCurrent
+
+Next.js version: 15.5.12 (Webpack)
+
+
+
+- after i clikc on the button browse library , i am redirected to the following page : http://localhost:3000/regional/workflows/library with the follwing content : 
+Workflow Library
+Browse every workflow on the platform — system defaults, regional admin templates, and provider customisations. Clone any to use as your own starting point.
+
+Search name, slug, description...
+
+All provider roles
+
+All service modes
+
+All sources
+Contains status (e.g. sample_collected, en_route)
+Everyone
+Mine
+Reset
+58 results
+Nutrition Consultation - Video
+NUTRITIONIST
+·
+video
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Teleconsultation confirmee
+→
+3
+📹
+Salle prete
+→
+4
+✅
+Appel en cours
+→
+5
+⭐
+Nutrition Consultation terminee
+❌
+Annulee
+Nutrition Consultation - Home
+NUTRITIONIST
+·
+home
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Visite confirmee
+→
+3
+🚗
+Nutritionist en deplacement
+→
+4
+🏠
+Nutritionist arrive(e)
+→
+5
+✅
+Nutrition Consultation en cours
+→
+6
+⭐
+Nutrition Consultation terminee
+❌
+Annulee
+Nutrition Consultation - Office
+NUTRITIONIST
+·
+office
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Nutrition Consultation confirmee
+→
+3
+✅
+En salle d'attente
+→
+4
+✅
+Nutrition Consultation en cours
+→
+5
+📄
+Redaction des notes
+→
+6
+⭐
+Nutrition Consultation terminee
+❌
+Annulee
+Fundus Exam - Office
+OPTOMETRIST
+·
+office
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Confirme
+→
+3
+✅
+Dilatation pupillaire
+→
+4
+✅
+Fond d'oeil
+→
+5
+📄
+Rapport disponible
+→
+6
+⭐
+Examen termine
+❌
+Annule
+Eye Examination - Video
+OPTOMETRIST
+·
+video
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Teleconsultation confirmee
+→
+3
+📹
+Salle prete
+→
+4
+✅
+Appel en cours
+→
+5
+⭐
+Eye Examination terminee
+❌
+Annulee
+Eye Examination - Home
+OPTOMETRIST
+·
+home
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Visite confirmee
+→
+3
+🚗
+Optometrist en deplacement
+→
+4
+🏠
+Optometrist arrive(e)
+→
+5
+i see all nav items 
+
+
+PHASE 2 — Provider workflow page (buttons + counts)
+- i clikc on worklows and redirected to the following page : http://localhost:3000/provider/doctors/workflows , with the following content : 
+My Workflows
+Manage how bookings progress through status steps. 12 custom + 7 default templates.
+
+Browse library
+Create workflow
+My Custom Workflows
+
+Office
+Denorm Test
+4 steps
+Custom
+
+Office
+My Own
+4 steps
+Custom
+
+Office
+First
+4 steps
+Custom
+
+Office
+15-step workflow
+15 steps
+Custom
+
+Office
+All Flags
+4 steps
+Custom
+
+Office
+Custom Status Test
+4 steps
+Custom
+
+Office
+Test Basic 1777006566386
+4 steps
+Custom
+
+Office
+Relink Test
+4 steps
+Custom
+
+Office
+Browse Link Workflow
+4 steps
+Custom
+
+- i click on browse Library , and was redirected to the folowing : http://localhost:3000/provider/doctors/workflows/library , 
+Workflow Library
+Browse every workflow on the platform — system defaults, regional admin templates, and provider customisations. Clone any to use as your own starting point.
+
+Search name, slug, description...
+
+All provider roles
+
+All service modes
+
+All sources
+Contains status (e.g. sample_collected, en_route)
+Everyone
+Mine
+Reset
+58 results
+Nutrition Consultation - Video
+NUTRITIONIST
+·
+video
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Teleconsultation confirmee
+→
+3
+📹
+Salle prete
+→
+4
+✅
+Appel en cours
+→
+5
+⭐
+Nutrition Consultation terminee
+❌
+Annulee
+Nutrition Consultation - Home
+NUTRITIONIST
+·
+home
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Visite confirmee
+→
+3
+🚗
+Nutritionist en deplacement
+→
+4
+🏠
+Nutritionist arrive(e)
+→
+5
+✅
+Nutrition Consultation en cours
+→
+6
+⭐
+Nutrition Consultation terminee
+❌
+Annulee
+Nutrition Consultation - Office
+NUTRITIONIST
+·
+office
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Nutrition Consultation confirmee
+→
+3
+✅
+En salle d'attente
+→
+4
+✅
+Nutrition Consultation en cours
+→
+5
+📄
+Redaction des notes
+→
+6
+⭐
+Nutrition Consultation terminee
+❌
+Annulee
+Fundus Exam - Office
+OPTOMETRIST
+·
+office
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Confirme
+→
+3
+✅
+Dilatation pupillaire
+→
+4
+✅
+Fond d'oeil
+→
+5
+📄
+Rapport disponible
+→
+6
+⭐
+Examen termine
+❌
+Annule
+Eye Examination - Video
+OPTOMETRIST
+·
+video
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Teleconsultation confirmee
+→
+3
+📹
+Salle prete
+→
+4
+✅
+Appel en cours
+→
+5
+⭐
+Eye Examination terminee
+❌
+Annulee
+Eye Examination - Home
+OPTOMETRIST
+·
+home
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Visite confirmee
+→
+3
+🚗
+Optometrist en deplacement
+→
+4
+🏠
+Optometrist arrive(e)
+→
+5
+✅
+Eye Examination en cours
+→
+6
+⭐
+Eye Examination terminee
+❌
+Annulee
+Eye Examination - Office
+OPTOMETRIST
+·
+office
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Eye Examination confirmee
+→
+3
+✅
+En salle d'attente
+→
+4
+✅
+Eye Examination en cours
+→
+5
+📄
+Redaction des notes
+→
+6
+⭐
+Eye Examination terminee
+❌
+Annulee
+Dental Procedure - Office
+DENTIST
+·
+office
+·
+System default
+Clone & use
+1
+✅
+Demande envoyee
+→
+2
+💳
+Soin confirme
+→
+3
+✅
+Anesthesie
+→
+4
+🩺
+Soin en cours
+→
+5
+📄
+Post-soin
+→
+
+PHASE 3 — Book + accept: SINGLE toast, no home-visit labels on video
+
+- on browser B , i click on find a doctor and get the follwing error : ## Error Type
+Console Error
+
+## Error Message
+In HTML, <button> cannot be a descendant of <button>.
+This will cause a hydration error.
+
+  ...
+    <SegmentViewNode type="page" pagePath="search/doc...">
+      <SegmentTrieNode>
+      <ClientPageRoot Component={function DoctorSearchPage} searchParams={{}} params={{}}>
+        <DoctorSearchPage params={Promise} searchParams={Promise}>
+          <ProviderSearchPage config={{...}}>
+            <Suspense fallback={<div>}>
+              <ProviderSearchContent config={{...}}>
+                <div className="min-h-scre...">
+                  <div className="container ...">
+                    <div className="relative z-10">
+                      <div className="bg-white r...">
+                        <form onSubmit={function handleSearch} className="flex flex-...">
+                          <div className="relative f...">
+                            <input>
+                            <FaSearch>
+                            <div className="absolute z...">
+                              <div>
+>                             <button
+>                               type="button"
+>                               onMouseDown={function onMouseDown}
+>                               onClick={function onClick}
+>                               className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-gra..."
+>                             >
+                                <span>
+>                               <button
+>                                 type="button"
+>                                 onMouseDown={function onMouseDown}
+>                                 onClick={function onClick}
+>                                 className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transi..."
+>                               >
+                          ...
+                    ...
+
+
+
+    at button (<anonymous>:null:null)
+    at eval (components\search\ProviderSearchPage.tsx:244:2)
+    at Array.map (<anonymous>:null:null)
+    at ProviderSearchContent (components\search\ProviderSearchPage.tsx:238:11)
+    at ProviderSearchPage (components\search\ProviderSearchPage.tsx:326:2)
+    at DoctorSearchPage (app\search\doctors\page.tsx:7:5)
+
+## Code Frame
+  242 |  <FaHistory className="text-xs text-gray-300" /> {entry.query}
+  243 |  </span>
+> 244 |  <button type="button" onMouseDown={e => e.preventDefault()}
+      |  ^
+  245 |  onClick={e => { e.stopPropagation(); removeFromHistory(entry.query) }}
+  246 |  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition">
+  247 |  <FaTimes className="text-xs" />
+
+Next.js version: 15.5.12 (Webpack)
+
+then i search sarah and book appointement with video consultation services : 
+i notice multiple toast redundant : New booking
+
+Your booking is now: Demande envoyee
+
+
+New booking
+
+Your booking is now: Demande envoyee
+
+
+New booking
+
+Your booking is now: Demande envoyee
+
+
+Nouvelle teleconsultation
+
+Emma Johnson demande une teleconsultation
+
+
+Nouvelle teleconsultation
+
+Emma Johnson demande une teleconsultation 
+
+also insid etneh My practice as a doctor , i get Unkwon patient for all name of patient : 
+My Practice
+Needs your action
+
+7 bookings waiting on you
+
+Show pending only
+
+0
+
+Pending
+
+
+0
+
+Today
+
+
+7
+
+Active
+
+
+6
+
+Completed
+
+Search patient, service, reason...
+
+All Status
+Active (7)
+Patient	Service	Date & Time	Type	Status	Price	Actions
+	
+UP
+Unknown Patient
+General Consultation
+
+General Consultation — video consultation
+
+21/04/2026
+
+09:00 am
+
+video	in progress	Rs 800	
+Complete
+	
+UP
+Unknown Patient
+Consultation
+
+23/04/2026
+
+upcoming	-	
+Complete
+Start
+	
+UP
+Unknown Patient
+Consultation
+
+23/04/2026
+
+upcoming	-	
+Complete
+Start
+	
+UP
+Unknown Patient
+Consultation
+
+23/04/2026
+
+upcoming	-	
+Complete
+Start
+	
+UP
+Unknown Patient
+Consultation
+
+23/04/2026
+
+upcoming	-	
+Complete
+Start
+	
+UP
+Unknown Patient
+Consultation
+
+23/04/2026
+
+upcoming	-	
+Complete
+Start
+	
+UP
+Unknown Patient
+Consultation
+
+23/04/2026
+
+upcoming	-	
+Complete
+Start
+Completed (6)
+
+i see the follwoig in the my health with badge yellow pending : Doctors
+Book
+Sarah Johnson
+
+Video Consultation
+
+24/04/2026
+
+pending
+
+i do not find the label Demande envoyee 
+
+on browser A , ij click on accept : 
+
+and i show 3 redundant toasts : Accept — done
+Booking Updated
+
+Booking status changed to: Teleconsultation confirmee
+
+
+Booking Updated
+
+Booking status changed to: Teleconsultation confirmee
+
+
+Booking Updated
+
+Booking status changed to: Teleconsultation confirmee
+
+also in the browser B more redundant toast : Booking Updated
+
+Booking status changed to: Teleconsultation confirmee
+
+
+Booking Updated
+
+Booking status changed to: Teleconsultation confirmee
+
+
+Teleconsultation confirmee
+
+Votre teleconsultation avec Sarah Johnson est confirmee. Montant:
+
+
+Teleconsultation confirmee
+
+Votre teleconsultation avec Sarah Johnson est confirmee. Montant:
+
+
+Teleconsultation confirmee
+
+Votre teleconsultation avec Sarah Johnson est confirmee. Montant:
+
+
+Teleconsultation confirmee
+
+Votre teleconsultation avec Sarah Johnson est confirmee. Montant:
+
+
+-after accepting , i do not find any label that sais teleconsultation confirmed : 
+My Practice
+Needs your action
+
+8 bookings waiting on you
+
+Show pending only
+
+0
+
+Pending
+
+
+1
+
+Today
+
+
+8
+
+Active
+
+
+6
+
+Completed
+
+Search patient, service, reason...
+
+All Status
+Active (8)
+Patient	Service	Date & Time	Type	Status	Price	Actions
+	
+EJ
+Emma Johnson
+Video Consultation
+
+Video Consultation
+
+24/04/2026
+
+09:00 am
+
+video	confirmed	Rs 600	
+Complete
+Start
+	
+UP
+Unknown Patient
+General Consultation
+
+General Consultation — video consultation
+
+21/04/2026
+
+09:00 am
+
+video	in progress	Rs 800	
+Complete
+	
+UP
+Unknown Patient
+Consultation
+
+23/04/2026
+
+upcoming	-	
+Complete
+Start
+	
+UP
+Unknown Patient
+Consultation
+
+23/04/2026
+
+upcoming	-	
+Complete
+Start
+	
+UP
+Unknown Patient
+Consultation
+
+23/04/2026
+
+upcoming	-	
+Complete
+Start
+	
+UP
+Unknown Patient
+Consultation
+
+23/04/2026
+
+upcoming	-	
+Complete
+ 
+PHASE 4 — Video call banner + room
+
+- the row is not clickable and without button that said opn boking detais : 
+My Practice
+Needs your action
+
+8 bookings waiting on you
+
+Show pending only
+1 selected
+Accept selected
+Complete selected
+Decline selected
+Clear
+
+0
+
+Pending
+
+
+1
+
+Today
+
+
+8
+
+Active
+
+
+6
+
+Completed
+
+Search patient, service, reason...
+
+All Status
+Active (8)
+Patient	Service	Date & Time	Type	Status	Price	Actions
+	
+EJ
+Emma Johnson
+Video Consultation
+
+Video Consultation
+
+24/04/2026
+
+09:00 am
+
+video	confirmed	Rs 600	
+Complete
+Start
+i only showss button complet and start 
+after clikc on start , i get the toast  : Start — done 
+but i do not find a belu banner : Blue banner "Video Call Available — Join Call" 
+
+- for both on the video call page , i notice the followoing : 
+
+Video Consultations
+Manage your video call rooms and join consultations
+
+All (12)
+Upcoming (7)
+Past (5)
+Sarah Johnson
+Next Consultation
+
+Sarah Johnson
+Thu, Apr 23
+06:20 PM
+Consultation
+
+Join Call
+Sarah Johnson
+Sarah Johnson
+Fri, Apr 24, 2026
+09:28 AM
+30 min
+Consultation
+
+Upcoming
+Click to select
+
+also the same for sarah : 
+Video Consultations
+Manage your video call rooms and join consultations
+
+All (10)
+Upcoming (8)
+Past (2)
+Emma Johnson
+Next Consultation
+
+Emma Johnson
+Thu, Apr 23
+06:20 PM
+Consultation
+
+Join Call
+Emma Johnson
+Emma Johnson
+Fri, Apr 24, 2026
+09:28 AM
+30 min
+Consultation
+so there are new line on video call : 
+
+my question is , do we really need this button Start to create the new line on the video ?? is this a good user experience ? 
+ PHASE 5 — Emma's booking list (duplicates gone)
+when going back to Doctor bookings  / consultation 
+here is the content : 
+
+Doctors
+Book
+Sarah Johnson
+
+Video Consultation
+
+24/04/2026
+
+start
+
+
+PHASE 6 — Role request end-to-end
+i click on I don't see my role — propose a new one 
+
+modal opens
+Propose a new provider role
+Your request goes to a regional admin for approval. While you wait, you can complete signup as a patient and switch later.
+
+Role name *
+Osteopath Manual Test
+What does this role do?
+Musculoskeletal specialist
+Cancel
+Submit request
+
+i click on submit request 
+i relog in as kofi the redirected to the feed page and notice the followign error : ## Error Type
+Console Error
+
+## Error Message
+Each child in a list should have a unique "key" prop.
+
+Check the render method of `DashboardLayout`. See https://react.dev/link/warning-keys for more information.
+
+Next.js version: 15.5.12 (Webpack)
+
+now clikc on Role requests  and redirected to the following : http://localhost:3000/regional/workflows/role-requests
+but it shows the follwing in the content : Template not found
+so i do not find at all the role request 
+
+
+-
+-
+-
+-
+
+-

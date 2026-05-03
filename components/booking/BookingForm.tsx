@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import WeeklySlotPicker from '@/components/booking/WeeklySlotPicker'
+import { useUser } from '@/hooks/useUser'
 import {
  FaCalendarAlt,
  FaClock,
@@ -10,19 +13,21 @@ import {
  FaArrowRight,
  FaCheck,
  FaSpinner,
+ FaLock,
+ FaArrowRight as FaChevronRight,
 } from 'react-icons/fa'
+import { FiArrowRight } from 'react-icons/fi'
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
 export interface BookingSubmitData {
- // consultationType is no longer collected from the patient — the workflow
- // linked to the selected service defines the delivery mode server-side.
  scheduledDate: string
  scheduledTime: string
  reason: string
  notes?: string
  duration?: number
- serviceId?: string        // platformServiceId of the selected service
+ serviceId?: string           // platformServiceId of the selected service
+ workflowTemplateId?: string  // specific workflow template chosen by the patient
  // Lab-specific
  testName?: string
  sampleType?: string
@@ -35,25 +40,39 @@ export interface BookingSubmitData {
  children?: string[]
 }
 
-interface ServiceOption {
+interface WorkflowStep {
+ order: number
+ label: string
+ statusCode: string
+}
+
+interface WorkflowOption {
+ id: string
+ name: string
+ serviceMode: string // 'office' | 'home' | 'video'
+ steps: WorkflowStep[]
+}
+
+export interface ServiceOption {
  id: string
  serviceName: string
  category: string
  description: string
  price: number
  duration?: number
- serviceMode?: string // delivery mode derived from the linked workflow
+ /** All linked workflow templates — patient picks one when there are multiple */
+ workflows: WorkflowOption[]
 }
 
 interface BookingFormProps {
  providerType: 'doctor' | 'nurse' | 'nanny' | 'lab-test' | 'emergency'
- providerId?: string // profile ID for availability check
+ providerId?: string
  providerName?: string
  providerSpecialty?: string
  providerImage?: string
  providerLocation?: string
- price?: number // consultation fee
- services?: ServiceOption[] // provider's service catalog
+ price?: number
+ services?: ServiceOption[]
  onSubmit: (data: BookingSubmitData) => Promise<void>
  isSubmitting?: boolean
  walletBalance?: number
@@ -61,6 +80,12 @@ interface BookingFormProps {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
+const MODE_LABELS: Record<string, string> = { office: 'In-Person', home: 'Home Visit', video: 'Video' }
+const MODE_COLORS: Record<string, string> = {
+ office: 'bg-sky-100 text-sky-700',
+ home: 'bg-orange-100 text-orange-700',
+ video: 'bg-purple-100 text-purple-700',
+}
 
 // Intentionally static — standard emergency classification categories
 const EMERGENCY_TYPES = [
@@ -179,12 +204,28 @@ export default function BookingForm({
  isSubmitting = false,
  walletBalance,
 }: BookingFormProps) {
+ const { user, loading: authLoading } = useUser()
+ const pathname = usePathname()
+ const loginUrl = `/login?redirect=${encodeURIComponent(pathname)}`
+
  const [step, setStep] = useState(1)
 
  // Form state
  const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined)
+ const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | undefined>(undefined)
+
  const selectedService = services?.find(s => s.id === selectedServiceId)
+ // The active workflow: explicitly chosen by user, or the only one available, or default
+ const activeWorkflow = useMemo(() => {
+  if (!selectedService) return undefined
+  if (selectedWorkflowId) return selectedService.workflows.find(w => w.id === selectedWorkflowId)
+  if (selectedService.workflows.length === 1) return selectedService.workflows[0]
+  return selectedService.workflows.find(w => w.id === (selectedService as any).defaultWorkflowId) ?? selectedService.workflows[0]
+ }, [selectedService, selectedWorkflowId])
+
  const displayPrice = selectedService?.price ?? price
+ const serviceDuration = selectedService?.duration ?? 30
+
  const [scheduledDate, setScheduledDate] = useState(providerType === 'emergency' ? todayISO() : '')
  const [scheduledTime, setScheduledTime] = useState('')
  const [reason, setReason] = useState('')
@@ -215,10 +256,13 @@ export default function BookingForm({
  switch (providerType) {
  case 'doctor':
  case 'nurse':
- case 'nanny':
- // Service selection is now required — the selected service's linked
- // workflow defines the delivery mode (no separate type selection).
- return !!selectedServiceId
+ case 'nanny': {
+ if (!selectedServiceId) return false
+ // If the selected service has multiple workflows, the user must also pick one
+ const svc = services?.find(s => s.id === selectedServiceId)
+ if (svc && svc.workflows.length > 1 && !selectedWorkflowId) return false
+ return true
+ }
  case 'lab-test':
  return testName.trim().length > 0 && sampleType.trim().length > 0
  case 'emergency':
@@ -228,7 +272,7 @@ export default function BookingForm({
  contactNumber.trim().length > 0
  )
  }
- }, [providerType, selectedServiceId, testName, sampleType, emergencyType, location, contactNumber])
+ }, [providerType, selectedServiceId, selectedWorkflowId, services, testName, sampleType, emergencyType, location, contactNumber])
 
  const canAdvanceStep2 = useMemo(() => {
  const hasDate = scheduledDate.length > 0
@@ -280,6 +324,7 @@ export default function BookingForm({
  ...(notes ? { notes } : {}),
  duration: selectedService?.duration ?? duration,
  serviceId: selectedServiceId,
+ workflowTemplateId: activeWorkflow?.id,
  }
  if (providerType === 'lab-test') {
  data.testName = testName
@@ -324,6 +369,33 @@ export default function BookingForm({
  }
 
  // ── JSX ─────────────────────────────────────────────────────────────────────
+
+ // Auth gate — show sign-in prompt if not authenticated
+ if (!authLoading && !user) {
+  return (
+   <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 max-w-md mx-auto text-center space-y-5">
+    <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
+     <FaLock className="text-blue-600 text-xl" />
+    </div>
+    <div>
+     <h2 className="text-xl font-bold text-gray-900 mb-2">Sign in to book</h2>
+     <p className="text-gray-500 text-sm">
+      You need to be signed in to book an appointment with {providerName || 'this provider'}.
+     </p>
+    </div>
+    <Link
+     href={loginUrl}
+     className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+    >
+     Sign in to continue <FiArrowRight />
+    </Link>
+    <p className="text-xs text-gray-400">
+     Don&apos;t have an account?{' '}
+     <Link href="/signup" className="text-blue-600 hover:underline">Sign up free</Link>
+    </p>
+   </div>
+  )
+ }
 
  return (
  <div className="space-y-6">
@@ -422,59 +494,137 @@ export default function BookingForm({
 
  {/* Doctor / Nurse / Nanny — service selection (required) */}
  {(providerType === 'doctor' || providerType === 'nurse' || providerType === 'nanny') && (
- <>
- {services && services.length > 0 ? (
- <div className="grid sm:grid-cols-2 gap-3">
- {services.map((svc) => {
- const isSelected = selectedServiceId === svc.id
- const modeLabel = svc.serviceMode === 'video' ? 'Video' : svc.serviceMode === 'home' ? 'Home Visit' : 'In-Person'
- const modeColor = svc.serviceMode === 'video' ? 'bg-purple-100 text-purple-700' : svc.serviceMode === 'home' ? 'bg-orange-100 text-orange-700' : 'bg-sky-100 text-sky-700'
- return (
- <button
- key={svc.id}
- type="button"
- onClick={() => setSelectedServiceId(svc.id)}
- className={`text-left p-4 rounded-xl border-2 transition-all ${
- isSelected
- ? 'border-[#0C6780] bg-sky-50 ring-2 ring-[#0C6780] ring-offset-1'
- : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
- }`}
- >
- <div className="flex justify-between items-start gap-2">
- <div className="min-w-0 flex-1">
- <div className="flex items-center gap-2 mb-1">
- <p className={`font-semibold text-sm ${isSelected ? 'text-[#0C6780]' : 'text-gray-900'}`}>
- {svc.serviceName}
- </p>
- {svc.serviceMode && (
- <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${modeColor}`}>{modeLabel}</span>
- )}
+ <div className="space-y-5">
+  {!services || services.length === 0 ? (
+   <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-center">
+    <p className="text-sm font-medium text-amber-800">No services available</p>
+    <p className="text-xs text-amber-600 mt-1">This provider has no services with a configured workflow. Please try another provider.</p>
+   </div>
+  ) : (
+   <div className="space-y-3">
+    {services.map((svc) => {
+     const isSelected = selectedServiceId === svc.id
+     const primaryWorkflow = svc.workflows[0]
+     return (
+      <div
+       key={svc.id}
+       className={`rounded-xl border-2 transition-all ${
+        isSelected
+         ? 'border-[#0C6780] bg-sky-50 ring-2 ring-[#0C6780]/20'
+         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+       }`}
+      >
+       {/* Service header row — clickable to select */}
+       <button
+        type="button"
+        onClick={() => {
+         setSelectedServiceId(svc.id)
+         // Reset workflow selection when changing service
+         setSelectedWorkflowId(undefined)
+        }}
+        className="w-full text-left p-4"
+       >
+        <div className="flex justify-between items-start gap-2">
+         <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5 mb-1">
+           <p className={`font-semibold text-sm ${isSelected ? 'text-[#0C6780]' : 'text-gray-900'}`}>
+            {svc.serviceName}
+           </p>
+           {/* Mode badges — one per workflow */}
+           {svc.workflows.map(wf => (
+            <span key={wf.id} className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${MODE_COLORS[wf.serviceMode] || 'bg-gray-100 text-gray-600'}`}>
+             {MODE_LABELS[wf.serviceMode] || wf.serviceMode}
+            </span>
+           ))}
+          </div>
+          <p className="text-xs text-gray-500">{svc.category}</p>
+          {svc.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{svc.description}</p>}
+         </div>
+         <div className="flex-shrink-0 text-right">
+          <p className={`font-bold text-sm ${isSelected ? 'text-green-600' : 'text-gray-700'}`}>
+           Rs {(svc.price ?? 0).toLocaleString()}
+          </p>
+          {svc.duration && <p className="text-xs text-gray-400">{svc.duration} min</p>}
+         </div>
+        </div>
+       </button>
+
+       {/* Expanded details when selected */}
+       {isSelected && (
+        <div className="px-4 pb-4 space-y-3 border-t border-[#0C6780]/10 pt-3">
+
+         {/* Workflow step timeline — show for the active / first workflow */}
+         {primaryWorkflow && primaryWorkflow.steps.length > 0 && (
+          <div>
+           <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            How this works
+           </p>
+           <div className="flex flex-wrap items-center gap-1">
+            {[...primaryWorkflow.steps]
+             .sort((a, b) => a.order - b.order)
+             .map((s, i, arr) => (
+              <div key={s.statusCode} className="flex items-center">
+               <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[10px] text-gray-600 whitespace-nowrap shadow-sm">
+                {s.label}
+               </span>
+               {i < arr.length - 1 && (
+                <FiArrowRight className="w-3 h-3 text-[#0C6780] mx-0.5 flex-shrink-0" />
+               )}
+              </div>
+            ))}
+           </div>
+          </div>
+         )}
+
+         {/* Multiple-workflow delivery-mode picker */}
+         {svc.workflows.length > 1 && (
+          <div>
+           <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            Choose delivery mode <span className="text-red-400">*</span>
+           </p>
+           <div className="flex flex-wrap gap-2">
+            {svc.workflows.map(wf => {
+             const isWfSelected = selectedWorkflowId === wf.id || (svc.workflows.length === 1 && !selectedWorkflowId)
+             return (
+              <button
+               key={wf.id}
+               type="button"
+               onClick={() => setSelectedWorkflowId(wf.id)}
+               className={`flex items-start gap-2 px-3 py-2 rounded-lg border-2 text-left transition-all ${
+                isWfSelected
+                 ? 'border-[#0C6780] bg-white shadow-sm'
+                 : 'border-gray-200 hover:border-gray-300'
+               }`}
+              >
+               <div>
+                <div className="flex items-center gap-1.5">
+                 <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${MODE_COLORS[wf.serviceMode] || 'bg-gray-100 text-gray-600'}`}>
+                  {MODE_LABELS[wf.serviceMode] || wf.serviceMode}
+                 </span>
+                 {isWfSelected && <FaCheck className="w-2.5 h-2.5 text-[#0C6780]" />}
+                </div>
+                <p className="text-xs text-gray-700 font-medium mt-0.5">{wf.name}</p>
+                {/* Mini step list for this specific workflow */}
+                {wf.steps.length > 0 && (
+                 <p className="text-[9px] text-gray-400 mt-0.5 max-w-[160px]">
+                  {[...wf.steps].sort((a,b)=>a.order-b.order).map(s=>s.label).join(' → ')}
+                 </p>
+                )}
+               </div>
+              </button>
+             )
+            })}
+           </div>
+          </div>
+         )}
+        </div>
+       )}
+      </div>
+     )
+    })}
+   </div>
+  )}
  </div>
- <p className="text-xs text-gray-500">{svc.category}</p>
- {svc.description && (
- <p className="text-xs text-gray-400 mt-1 line-clamp-2">{svc.description}</p>
- )}
- </div>
- <div className="flex-shrink-0 text-right">
- <p className={`font-bold text-sm ${isSelected ? 'text-green-600' : 'text-gray-700'}`}>
- Rs {(svc.price ?? 0).toLocaleString()}
- </p>
- {svc.duration && (
- <p className="text-xs text-gray-400">{svc.duration} min</p>
- )}
- </div>
- </div>
- </button>
- )
- })}
- </div>
- ) : (
- <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-center">
- <p className="text-sm font-medium text-amber-800">No services available</p>
- <p className="text-xs text-amber-600 mt-1">This provider has no services with a configured workflow. Please try another provider.</p>
- </div>
- )}
- </>
  )}
 
  {/* Lab-test — test name and sample type inputs */}
@@ -599,6 +749,7 @@ export default function BookingForm({
  selectedDate={scheduledDate}
  selectedTime={scheduledTime}
  accentColor="blue"
+ serviceDuration={serviceDuration}
  />
  ) : useEmergencySlots ? (
  <>
@@ -710,18 +861,28 @@ export default function BookingForm({
  </div>
  )}
 
- {/* Selected service */}
+ {/* Selected service + delivery mode */}
  {selectedService && (
  <div>
  <span className="text-gray-500">Service</span>
- <p className="font-semibold text-gray-900 flex items-center gap-2">
+ <p className="font-semibold text-gray-900 flex flex-wrap items-center gap-2">
  {selectedService.serviceName}
- {selectedService.serviceMode && (
- <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700">
- {selectedService.serviceMode === 'video' ? 'Video' : selectedService.serviceMode === 'home' ? 'Home Visit' : 'In-Person'}
+ {activeWorkflow && (
+ <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${MODE_COLORS[activeWorkflow.serviceMode] || 'bg-gray-100 text-gray-600'}`}>
+  {MODE_LABELS[activeWorkflow.serviceMode] || activeWorkflow.serviceMode}
  </span>
  )}
  </p>
+ {activeWorkflow && activeWorkflow.steps.length > 0 && (
+ <div className="flex flex-wrap items-center gap-0.5 mt-1">
+  {[...activeWorkflow.steps].sort((a,b)=>a.order-b.order).map((s,i,arr)=>(
+   <span key={s.statusCode} className="flex items-center gap-0.5">
+    <span className="text-[9px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{s.label}</span>
+    {i < arr.length-1 && <FiArrowRight className="w-2 h-2 text-gray-300" />}
+   </span>
+  ))}
+ </div>
+ )}
  </div>
  )}
 

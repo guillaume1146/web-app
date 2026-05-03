@@ -230,7 +230,20 @@
       "Bash(Get-ChildItem *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Github Repositories\\\\healthways-typescript\" -Directory)",
       "Bash(Select-Object Name)",
-      "Bash(awk '{print $NF}')"
+      "Bash(awk '{print $NF}')",
+      "Bash(gh api *)",
+      "Bash(ls \"app/provider/[slug]/\\(dashboard\\)/audio\")",
+      "Bash(ls \"app/regional/\\(dashboard\\)/video\")",
+      "Bash(cat app/error.tsx)",
+      "Bash(cat app/global-error.tsx)",
+      "Bash(gh repo *)",
+      "Bash(Start-Sleep -Seconds 5)",
+      "PowerShell(Rename-Item *)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "PowerShell(flutter *)",
+      "PowerShell(git *)",
+      "Bash(gh workflow *)"
     ]
   }
 }

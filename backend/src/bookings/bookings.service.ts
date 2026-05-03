@@ -116,6 +116,8 @@ export class BookingsService {
     children?: any[]; sampleType?: string; priority?: string;
     testName?: string; location?: string; contactNumber?: string; specialty?: string;
     platformServiceId?: string;
+    /** Optional: pin to a specific workflow template, bypassing the registry cascade. */
+    workflowTemplateId?: string;
   }) {
     const providerType = data.providerType.toUpperCase();
 
@@ -187,6 +189,31 @@ export class BookingsService {
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       },
     });
+
+    // Block ALL 30-min chunks for the full service duration immediately on
+    // booking creation, so other patients never see overlapping slots.
+    try {
+      const bookingDate = new Date(data.scheduledDate + 'T00:00:00');
+      const durationMins = data.duration || 30;
+      const startMins = this.timeToMinutes(data.scheduledTime);
+      const slotUpserts: Promise<any>[] = [];
+      for (let t = startMins; t < startMins + durationMins; t += 30) {
+        const slotStartTime = this.minutesToTime(t);
+        const slotEndTime   = this.minutesToTime(t + 30);
+        slotUpserts.push(
+          this.prisma.bookedSlot.upsert({
+            where: { providerUserId_date_startTime: {
+              providerUserId: data.providerUserId,
+              date: bookingDate,
+              startTime: slotStartTime,
+            }},
+            create: { providerUserId: data.providerUserId, bookingId: booking.id, date: bookingDate, startTime: slotStartTime, endTime: slotEndTime, status: 'booked' },
+            update: { bookingId: booking.id, status: 'booked' },
+          })
+        );
+      }
+      await Promise.all(slotUpserts);
+    } catch { /* non-fatal — slot blocking is a UX optimisation, not a hard constraint */ }
 
     // Resolve the service mode from the linked workflow template when a
     // platformServiceId is given. This ensures the mode is always
@@ -357,33 +384,61 @@ export class BookingsService {
     }
   }
 
+  // ─── Time helpers ──────────────────────────────────────────────────────
+
+  private timeToMinutes(t: string): number {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  }
+
+  private minutesToTime(mins: number): string {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  }
+
   // ─── Available Slots ───────────────────────────────────────────────────
 
-  async getAvailableSlots(providerUserId: string, date: string) {
-    const dayOfWeek = new Date(date).getDay();
-    const [slots, bookedSlots] = await Promise.all([
+  async getAvailableSlots(providerUserId: string, date: string, serviceDurationMin = 30) {
+    // Use noon on the target date to avoid DST shifts when computing dayOfWeek
+    const dayOfWeek = new Date(date + 'T12:00:00').getDay();
+
+    const [availabilities, bookedSlots] = await Promise.all([
       this.prisma.providerAvailability.findMany({
         where: { userId: providerUserId, dayOfWeek, isActive: true },
         select: { startTime: true, endTime: true },
         orderBy: { startTime: 'asc' },
       }),
       this.prisma.bookedSlot.findMany({
-        where: {
-          providerUserId,
-          date: new Date(date),
-          status: 'booked',
-        },
-        select: { startTime: true, endTime: true },
+        where: { providerUserId, date: new Date(date + 'T00:00:00'), status: 'booked' },
+        select: { startTime: true },
       }),
     ]);
 
-    // Build a set of booked start times for fast lookup
-    const bookedTimes = new Set(bookedSlots.map(b => b.startTime));
+    // All 30-min blocks that are occupied (start times only)
+    const bookedBlocks = new Set(bookedSlots.map(b => b.startTime));
 
-    // Filter out slots that are already booked
-    return slots
-      .filter(s => !bookedTimes.has(s.startTime))
-      .map(s => ({ startTime: s.startTime, endTime: s.endTime }));
+    const availableStarts: string[] = [];
+
+    for (const avail of availabilities) {
+      const windowStart = this.timeToMinutes(avail.startTime);
+      const windowEnd   = this.timeToMinutes(avail.endTime);
+
+      // Candidate start times in 30-min increments
+      for (let t = windowStart; t + serviceDurationMin <= windowEnd; t += 30) {
+        // All 30-min chunks within [t, t+serviceDuration) must be free
+        let allFree = true;
+        for (let chunk = t; chunk < t + serviceDurationMin; chunk += 30) {
+          if (bookedBlocks.has(this.minutesToTime(chunk))) {
+            allFree = false;
+            break;
+          }
+        }
+        if (allFree) availableStarts.push(this.minutesToTime(t));
+      }
+    }
+
+    return availableStarts;
   }
 
   // ─── Reschedule ────────────────────────────────────────────────────────

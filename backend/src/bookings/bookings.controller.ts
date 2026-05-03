@@ -83,12 +83,11 @@ export class BookingsController {
     @Query('providerUserId') providerUserId: string,
     @Query('providerId') providerIdAlias: string,
     @Query('date') date: string,
+    @Query('duration') durationStr: string,
   ) {
     // Accept legacy ?providerId= alias.
     const resolved = providerUserId || providerIdAlias;
-    const data = await this.bookingsService.getAvailableSlots(resolved, date);
-    // Return a flat string[] alongside the object list for backward-compat.
-    const slots = Array.isArray(data) ? data.map((s: any) => s?.startTime || s).filter(Boolean) : [];
-    return { success: true, data, slots };
+    const slots = await this.bookingsService.getAvailableSlots(resolved, date, parseInt(durationStr) || 30);
+    return { success: true, slots };
   }
 }

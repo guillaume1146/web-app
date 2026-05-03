@@ -1,0 +1,20 @@
+
+> mediwyz@0.1.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use by an unknown process, using available port 3002 instead.
+   ▲ Next.js 15.5.12
+   - Local:        http://localhost:3002
+   - Network:      http://169.254.83.107:3002
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 64.1s
+ ⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+   ▲ Next.js 15.5.12
+   - Local:        http://localhost:3002
+   - Network:      http://169.254.83.107:3002
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 25.5s

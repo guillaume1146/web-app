@@ -6,18 +6,8 @@ import { usePathname } from 'next/navigation'
 import { FaArrowLeft } from 'react-icons/fa'
 import BookingForm from '@/components/booking/BookingForm'
 import BookingSuccessTicket from '@/components/booking/BookingSuccessTicket'
-import type { BookingSubmitData } from '@/components/booking/BookingForm'
+import type { BookingSubmitData, ServiceOption } from '@/components/booking/BookingForm'
 import { getUserId } from '@/hooks/useUser'
-
-interface ServiceOption {
- id: string
- serviceName: string
- category: string
- description: string
- price: number
- duration?: number
- serviceMode?: string
-}
 
 interface NurseInfo {
  id: string
@@ -110,6 +100,7 @@ export default function GenericBookNursePage({ params }: { params: Promise<{ id:
  providerType: 'NURSE',
  nurseId: id,
  platformServiceId: data.serviceId,
+ workflowTemplateId: data.workflowTemplateId,
  scheduledDate: data.scheduledDate,
  scheduledTime: data.scheduledTime,
  reason: data.reason,

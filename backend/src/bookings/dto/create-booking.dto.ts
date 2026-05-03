@@ -116,4 +116,13 @@ export class CreateBookingDto {
   @IsOptional()
   @IsString()
   platformServiceId?: string;
+
+  // Optional hint to pin the booking to a specific workflow template,
+  // bypassing the registry cascade (provider-custom > regional > system-default).
+  // Useful when the patient explicitly picks a workflow in the booking UI.
+  // Future: WorkflowEngineService.attachWorkflow() will consume this once a
+  // templateId override param is wired into the resolution cascade.
+  @IsOptional()
+  @IsString()
+  workflowTemplateId?: string;
 }
