@@ -109,15 +109,14 @@ export default function GenericBookDoctorPage({ params }: { params: Promise<{ id
  credentials: 'include',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({
- providerType: 'DOCTOR',
- doctorId: id,
- consultationType: data.consultationType,
- scheduledDate: data.scheduledDate,
- scheduledTime: data.scheduledTime,
- reason: data.reason,
- notes: data.notes,
- duration: data.duration,
- serviceId: data.serviceId,
+      providerType: 'DOCTOR',
+      doctorId: id,
+      platformServiceId: data.serviceId,
+      scheduledDate: data.scheduledDate,
+      scheduledTime: data.scheduledTime,
+      reason: data.reason,
+      notes: data.notes,
+      duration: data.duration,
  }),
  })
 
@@ -202,13 +201,7 @@ export default function GenericBookDoctorPage({ params }: { params: Promise<{ id
  providerSpecialty={doctor.specialty.join(', ')}
  providerImage={doctor.profileImage}
  providerLocation={doctor.location}
- showConsultationType={true}
- price={doctor.consultationFee}
  services={services}
- providerCapabilities={{
-  homeVisitAvailable: doctor.homeVisitAvailable,
-  telemedicineAvailable: doctor.telemedicineAvailable,
- }}
  onSubmit={handleSubmit}
  isSubmitting={isSubmitting}
  walletBalance={walletBalance}

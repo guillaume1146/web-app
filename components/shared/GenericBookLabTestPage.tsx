@@ -202,7 +202,6 @@ export default function GenericBookLabTestPage({ params }: { params: Promise<{ i
  providerName={labTest.lab}
  providerSpecialty={labTest.category}
  providerImage={labTest.labTechnician.profileImage || undefined}
- showConsultationType={false}
  price={labTest.price}
  onSubmit={handleSubmit}
  isSubmitting={isSubmitting}

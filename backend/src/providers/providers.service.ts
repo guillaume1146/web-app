@@ -31,13 +31,40 @@ export class ProvidersService {
   }
 
   // ─── GET /providers/:id/services ───────────────────────────────────────
+  // Only returns services that have at least one workflow template explicitly
+  // linked (via WorkflowTemplate.platformServiceId). Services without a
+  // workflow are not bookable and are excluded from the patient-facing list.
 
   async getServices(userId: string) {
-    return this.prisma.providerServiceConfig.findMany({
+    const configs = await this.prisma.providerServiceConfig.findMany({
       where: { providerUserId: userId, isActive: true },
-      include: { platformService: { select: { id: true, serviceName: true, description: true, defaultPrice: true, duration: true, category: true } } },
+      include: {
+        platformService: {
+          select: {
+            id: true, serviceName: true, description: true, defaultPrice: true, duration: true, category: true,
+            workflowTemplates: {
+              where: { isActive: true },
+              select: { id: true, serviceMode: true, name: true },
+              orderBy: { isDefault: 'desc' },
+              take: 1,
+            },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
+
+    return configs
+      .filter(c => c.platformService.workflowTemplates.length > 0)
+      .map(c => ({
+        id: c.platformService.id,
+        serviceName: c.platformService.serviceName,
+        category: c.platformService.category,
+        description: c.platformService.description,
+        price: c.priceOverride ?? c.platformService.defaultPrice,
+        duration: c.platformService.duration,
+        serviceMode: c.platformService.workflowTemplates[0]?.serviceMode ?? 'office',
+      }));
   }
 
   // ─── GET /providers/:id/reviews ────────────────────────────────────────

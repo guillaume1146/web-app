@@ -98,17 +98,6 @@ export default function BookingSuccessTicket({
  <p className="font-semibold">{submitData?.scheduledTime || ''}</p>
  </div>
  </div>
- {submitData?.consultationType && (
- <div className="flex items-center gap-2">
- <FaStethoscope className="text-white/70" />
- <div>
- <p className="text-white/70 text-xs">Type</p>
- <p className="font-semibold capitalize">
- {submitData.consultationType.replace(/_/g, ' ')}
- </p>
- </div>
- </div>
- )}
  {walletBalance !== undefined && (
  <div className="flex items-center gap-2">
  <FaWallet className="text-white/70" />

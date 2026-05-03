@@ -9,6 +9,16 @@ import BookingSuccessTicket from '@/components/booking/BookingSuccessTicket'
 import type { BookingSubmitData } from '@/components/booking/BookingForm'
 import { getUserId } from '@/hooks/useUser'
 
+interface ServiceOption {
+ id: string
+ serviceName: string
+ category: string
+ description: string
+ price: number
+ duration?: number
+ serviceMode?: string
+}
+
 interface NannyInfo {
  id: string
  firstName: string
@@ -32,6 +42,7 @@ export default function GenericBookNannyPage({ params }: { params: Promise<{ id:
  const baseSlug = pathname.split('/')[1]
 
  const [nanny, setNanny] = useState<NannyInfo | null>(null)
+ const [services, setServices] = useState<ServiceOption[]>([])
  const [walletBalance, setWalletBalance] = useState<number | undefined>(undefined)
  const [loading, setLoading] = useState(true)
  const [error, setError] = useState<string | null>(null)
@@ -56,6 +67,16 @@ export default function GenericBookNannyPage({ params }: { params: Promise<{ id:
  }
  } else {
  setError('Failed to load nanny information')
+ }
+
+ try {
+ const servicesRes = await fetch(`/api/providers/${id}/services`, { credentials: 'include' })
+ const servicesData = await servicesRes.json()
+ if (servicesData.success && servicesData.data) {
+ setServices(servicesData.data)
+ }
+ } catch {
+ // Services optional for display
  }
 
  const userId = getUserId()
@@ -88,7 +109,7 @@ export default function GenericBookNannyPage({ params }: { params: Promise<{ id:
  body: JSON.stringify({
  providerType: 'NANNY',
  nannyId: id,
- consultationType: data.consultationType,
+ platformServiceId: data.serviceId,
  scheduledDate: data.scheduledDate,
  scheduledTime: data.scheduledTime,
  reason: data.reason,
@@ -179,8 +200,7 @@ export default function GenericBookNannyPage({ params }: { params: Promise<{ id:
  providerSpecialty={nanny.specialization.join(', ')}
  providerImage={nanny.profileImage}
  providerLocation={nanny.location}
- showConsultationType={true}
- price={nanny.hourlyRate}
+ services={services}
  onSubmit={handleSubmit}
  isSubmitting={isSubmitting}
  walletBalance={walletBalance}

@@ -3,9 +3,6 @@
 import { useState, useMemo } from 'react'
 import WeeklySlotPicker from '@/components/booking/WeeklySlotPicker'
 import {
- FaHospital,
- FaHome,
- FaVideo,
  FaCalendarAlt,
  FaClock,
  FaWallet,
@@ -18,13 +15,14 @@ import {
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
 export interface BookingSubmitData {
- consultationType?: 'in_person' | 'home_visit' | 'video'
+ // consultationType is no longer collected from the patient — the workflow
+ // linked to the selected service defines the delivery mode server-side.
  scheduledDate: string
  scheduledTime: string
  reason: string
  notes?: string
  duration?: number
- serviceId?: string
+ serviceId?: string        // platformServiceId of the selected service
  // Lab-specific
  testName?: string
  sampleType?: string
@@ -44,11 +42,7 @@ interface ServiceOption {
  description: string
  price: number
  duration?: number
-}
-
-interface ProviderCapabilities {
- homeVisitAvailable?: boolean
- telemedicineAvailable?: boolean
+ serviceMode?: string // delivery mode derived from the linked workflow
 }
 
 interface BookingFormProps {
@@ -58,10 +52,8 @@ interface BookingFormProps {
  providerSpecialty?: string
  providerImage?: string
  providerLocation?: string
- showConsultationType?: boolean // true for doctor/nurse/nanny
  price?: number // consultation fee
  services?: ServiceOption[] // provider's service catalog
- providerCapabilities?: ProviderCapabilities // filter consultation types based on provider settings
  onSubmit: (data: BookingSubmitData) => Promise<void>
  isSubmitting?: boolean
  walletBalance?: number
@@ -69,29 +61,6 @@ interface BookingFormProps {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
-const CONSULTATION_TYPES = [
- {
- value: 'in_person' as const,
- label: 'In-Person',
- description: 'Visit at the clinic or hospital',
- icon: FaHospital,
- color: 'blue',
- },
- {
- value: 'home_visit' as const,
- label: 'Home Visit',
- description: 'Provider comes to your location',
- icon: FaHome,
- color: 'teal',
- },
- {
- value: 'video' as const,
- label: 'Video Call',
- description: 'Secure online video consultation',
- icon: FaVideo,
- color: 'green',
- },
-]
 
 // Intentionally static — standard emergency classification categories
 const EMERGENCY_TYPES = [
@@ -187,7 +156,7 @@ function getStepLabels(providerType: BookingFormProps['providerType']): string[]
  case 'doctor':
  case 'nurse':
  case 'nanny':
- return ['Consultation Type', 'Schedule', 'Review & Submit']
+ return ['Select a Service', 'Schedule', 'Review & Submit']
  case 'lab-test':
  return ['Test Details', 'Schedule', 'Review & Submit']
  case 'emergency':
@@ -204,31 +173,15 @@ export default function BookingForm({
  providerSpecialty,
  providerImage,
  providerLocation,
- showConsultationType,
  price,
  services,
- providerCapabilities,
  onSubmit,
  isSubmitting = false,
  walletBalance,
 }: BookingFormProps) {
- // Filter consultation types based on provider capabilities.
- // If providerCapabilities is not provided, all types are shown (backward compatible).
- const availableConsultationTypes = useMemo(() => {
-  if (!providerCapabilities) return CONSULTATION_TYPES
-  return CONSULTATION_TYPES.filter((ct) => {
-   if (ct.value === 'home_visit' && providerCapabilities.homeVisitAvailable === false) return false
-   if (ct.value === 'video' && providerCapabilities.telemedicineAvailable === false) return false
-   return true
-  })
- }, [providerCapabilities])
-
  const [step, setStep] = useState(1)
 
  // Form state
- const [consultationType, setConsultationType] = useState<
- 'in_person' | 'home_visit' | 'video' | undefined
- >(undefined)
  const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined)
  const selectedService = services?.find(s => s.id === selectedServiceId)
  const displayPrice = selectedService?.price ?? price
@@ -263,7 +216,9 @@ export default function BookingForm({
  case 'doctor':
  case 'nurse':
  case 'nanny':
- return !!consultationType
+ // Service selection is now required — the selected service's linked
+ // workflow defines the delivery mode (no separate type selection).
+ return !!selectedServiceId
  case 'lab-test':
  return testName.trim().length > 0 && sampleType.trim().length > 0
  case 'emergency':
@@ -273,7 +228,7 @@ export default function BookingForm({
  contactNumber.trim().length > 0
  )
  }
- }, [providerType, consultationType, testName, sampleType, emergencyType, location, contactNumber])
+ }, [providerType, selectedServiceId, testName, sampleType, emergencyType, location, contactNumber])
 
  const canAdvanceStep2 = useMemo(() => {
  const hasDate = scheduledDate.length > 0
@@ -289,7 +244,7 @@ export default function BookingForm({
  case 'doctor':
  case 'nurse':
  case 'nanny':
- return 'Please select a consultation type'
+ return 'Please select a service'
  case 'lab-test': {
  const missing: string[] = []
  if (!testName.trim()) missing.push('test name')
@@ -313,7 +268,7 @@ export default function BookingForm({
  return `Please select ${missing.join(' and ')}`
  }
  return null
- }, [step, canAdvanceStep1, canAdvanceStep2, providerType, consultationType, testName, sampleType, emergencyType, location, contactNumber, scheduledDate, scheduledTime, reason, isReasonRequired])
+ }, [step, canAdvanceStep1, canAdvanceStep2, providerType, selectedServiceId, testName, sampleType, emergencyType, location, contactNumber, scheduledDate, scheduledTime, reason, isReasonRequired])
 
  // ── Build submit data ───────────────────────────────────────────────────────
 
@@ -325,9 +280,6 @@ export default function BookingForm({
  ...(notes ? { notes } : {}),
  duration: selectedService?.duration ?? duration,
  serviceId: selectedServiceId,
- }
- if (showConsultationType || providerType === 'doctor' || providerType === 'nurse' || providerType === 'nanny') {
- data.consultationType = consultationType
  }
  if (providerType === 'lab-test') {
  data.testName = testName
@@ -465,85 +417,40 @@ export default function BookingForm({
  ? 'Test Details'
  : providerType === 'emergency'
  ? 'Emergency Details'
- : 'Select Consultation Type'}
+ : 'Select a Service'}
  </h2>
 
- {/* Doctor / Nurse / Nanny — consultation type cards */}
+ {/* Doctor / Nurse / Nanny — service selection (required) */}
  {(providerType === 'doctor' || providerType === 'nurse' || providerType === 'nanny') && (
- <div className="grid sm:grid-cols-3 gap-4">
- {availableConsultationTypes.map((ct) => {
- const isSelected = consultationType === ct.value
- const colors = colorMap[ct.color]
- const Icon = ct.icon
- return (
- <button
- key={ct.value}
- type="button"
- onClick={() => setConsultationType(ct.value)}
- className={`relative flex flex-col items-center p-6 rounded-xl border-2 transition-all cursor-pointer ${
- isSelected
- ? `${colors.border} ${colors.bg} ring-2 ${colors.ring} ring-offset-1`
- : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
- }`}
- >
- <div
- className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 ${
- isSelected ? colors.bg : 'bg-gray-100'
- }`}
- >
- <Icon
- className={`text-2xl ${isSelected ? colors.text : 'text-gray-400'}`}
- />
- </div>
- <span
- className={`font-semibold text-sm ${
- isSelected ? colors.text : 'text-gray-700'
- }`}
- >
- {ct.label}
- </span>
- <span className="text-xs text-gray-500 mt-1 text-center">{ct.description}</span>
-
- {/* Radio dot */}
- <div
- className={`absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
- isSelected ? `${colors.border}` : 'border-gray-300'
- }`}
- >
- {isSelected && (
- <div className={`w-2.5 h-2.5 rounded-full ${colors.text.replace('text-', 'bg-')}`} />
- )}
- </div>
- </button>
- )
- })}
- </div>
- )}
-
- {/* Service selection (when provider has a service catalog) */}
- {services && services.length > 0 && (providerType === 'doctor' || providerType === 'nurse' || providerType === 'nanny') && (
- <div className={consultationType ? 'mt-6' : ''}>
- <h3 className="text-sm font-semibold text-gray-700 mb-3">Select a Service (optional)</h3>
+ <>
+ {services && services.length > 0 ? (
  <div className="grid sm:grid-cols-2 gap-3">
  {services.map((svc) => {
  const isSelected = selectedServiceId === svc.id
+ const modeLabel = svc.serviceMode === 'video' ? 'Video' : svc.serviceMode === 'home' ? 'Home Visit' : 'In-Person'
+ const modeColor = svc.serviceMode === 'video' ? 'bg-purple-100 text-purple-700' : svc.serviceMode === 'home' ? 'bg-orange-100 text-orange-700' : 'bg-sky-100 text-sky-700'
  return (
  <button
  key={svc.id}
  type="button"
- onClick={() => setSelectedServiceId(isSelected ? undefined : svc.id)}
+ onClick={() => setSelectedServiceId(svc.id)}
  className={`text-left p-4 rounded-xl border-2 transition-all ${
  isSelected
- ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-600 ring-offset-1'
+ ? 'border-[#0C6780] bg-sky-50 ring-2 ring-[#0C6780] ring-offset-1'
  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
  }`}
  >
  <div className="flex justify-between items-start gap-2">
- <div className="min-w-0">
- <p className={`font-semibold text-sm ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>
+ <div className="min-w-0 flex-1">
+ <div className="flex items-center gap-2 mb-1">
+ <p className={`font-semibold text-sm ${isSelected ? 'text-[#0C6780]' : 'text-gray-900'}`}>
  {svc.serviceName}
  </p>
- <p className="text-xs text-gray-500 mt-0.5">{svc.category}</p>
+ {svc.serviceMode && (
+ <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${modeColor}`}>{modeLabel}</span>
+ )}
+ </div>
+ <p className="text-xs text-gray-500">{svc.category}</p>
  {svc.description && (
  <p className="text-xs text-gray-400 mt-1 line-clamp-2">{svc.description}</p>
  )}
@@ -561,7 +468,13 @@ export default function BookingForm({
  )
  })}
  </div>
+ ) : (
+ <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-center">
+ <p className="text-sm font-medium text-amber-800">No services available</p>
+ <p className="text-xs text-amber-600 mt-1">This provider has no services with a configured workflow. Please try another provider.</p>
  </div>
+ )}
+ </>
  )}
 
  {/* Lab-test — test name and sample type inputs */}
@@ -797,16 +710,17 @@ export default function BookingForm({
  </div>
  )}
 
- {/* Consultation type (doctor/nurse/nanny) */}
- {consultationType && (
+ {/* Selected service */}
+ {selectedService && (
  <div>
- <span className="text-gray-500">Consultation Type</span>
- <p className="font-semibold text-gray-900">
- {consultationType === 'in_person'
- ? 'In-Person'
- : consultationType === 'home_visit'
- ? 'Home Visit'
- : 'Video Call'}
+ <span className="text-gray-500">Service</span>
+ <p className="font-semibold text-gray-900 flex items-center gap-2">
+ {selectedService.serviceName}
+ {selectedService.serviceMode && (
+ <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700">
+ {selectedService.serviceMode === 'video' ? 'Video' : selectedService.serviceMode === 'home' ? 'Home Visit' : 'In-Person'}
+ </span>
+ )}
  </p>
  </div>
  )}

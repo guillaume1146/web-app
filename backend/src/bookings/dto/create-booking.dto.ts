@@ -109,4 +109,11 @@ export class CreateBookingDto {
   @IsOptional()
   @IsString()
   specialty?: string;
+
+  // The platform service catalog entry the patient selected.
+  // When provided the backend derives serviceMode from its linked workflow
+  // template instead of trusting the client-supplied `type` / `consultationType`.
+  @IsOptional()
+  @IsString()
+  platformServiceId?: string;
 }

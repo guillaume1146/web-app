@@ -115,6 +115,7 @@ export class BookingsService {
     serviceName?: string; servicePrice?: number; consultationType?: string;
     children?: any[]; sampleType?: string; priority?: string;
     testName?: string; location?: string; contactNumber?: string; specialty?: string;
+    platformServiceId?: string;
   }) {
     const providerType = data.providerType.toUpperCase();
 
@@ -155,6 +156,16 @@ export class BookingsService {
     if (data.testName) metadata.testName = data.testName;
     if (data.contactNumber) metadata.contactNumber = data.contactNumber;
 
+    // Resolve service name from platformServiceId when available
+    let resolvedServiceName = data.serviceName;
+    if (data.platformServiceId && !resolvedServiceName) {
+      const svc = await this.prisma.platformService.findUnique({
+        where: { id: data.platformServiceId },
+        select: { serviceName: true },
+      });
+      if (svc) resolvedServiceName = svc.serviceName;
+    }
+
     // Create unified ServiceBooking for ALL provider types
     const booking = await this.prisma.serviceBooking.create({
       data: {
@@ -166,9 +177,9 @@ export class BookingsService {
         duration: data.duration || 30,
         type: data.type || 'in_person',
         status: 'pending',
-        reason: data.reason || data.serviceName,
+        reason: data.reason || resolvedServiceName,
         notes: data.notes,
-        serviceName: data.serviceName,
+        serviceName: resolvedServiceName,
         servicePrice: fee,
         specialty: data.specialty,
         location: data.location,
@@ -177,12 +188,28 @@ export class BookingsService {
       },
     });
 
+    // Resolve the service mode from the linked workflow template when a
+    // platformServiceId is given. This ensures the mode is always
+    // authoritative (server-side from the workflow) and never client-supplied.
+    let derivedConsultationType = data.consultationType || data.type;
+    if (data.platformServiceId) {
+      const linkedTemplate = await this.prisma.workflowTemplate.findFirst({
+        where: { platformServiceId: data.platformServiceId, isActive: true },
+        select: { serviceMode: true },
+        orderBy: { isDefault: 'desc' },
+      });
+      if (linkedTemplate) {
+        derivedConsultationType = linkedTemplate.serviceMode;
+      }
+    }
+
     // Attach workflow (uses 'service' as the universal booking route)
     const wf = await this.workflowEngine.attachWorkflow({
       bookingId: booking.id, bookingRoute: 'service', patientUserId,
       providerUserId: data.providerUserId, providerType,
-      consultationType: data.consultationType || data.type,
+      consultationType: derivedConsultationType,
       servicePrice: fee, regionCode: provider.regionId,
+      platformServiceId: data.platformServiceId,
     });
 
     if (!wf.workflowInstanceId) {

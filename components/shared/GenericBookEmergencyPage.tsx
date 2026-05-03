@@ -110,7 +110,6 @@ export default function GenericBookEmergencyPage() {
 
  <BookingForm
  providerType="emergency"
- showConsultationType={false}
  onSubmit={handleSubmit}
  isSubmitting={isSubmitting}
  />
