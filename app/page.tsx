@@ -1,7 +1,8 @@
 import HeroSection from '@/components/home/HeroSection'
-import ProviderTypesSection from '@/components/home/ProviderTypesSection'
-import MarketplaceTwoColumn from '@/components/home/MarketplaceTwoColumn'
+import ServicesSection from '@/components/home/ServicesSection'
+import HealthShopMarketplace from '@/components/home/HealthShopMarketplace'
 import CommunityPosts from '@/components/home/CommunityPosts'
+import ProvidersSection from '@/components/home/ProvidersSection'
 import LandingPageContent from '@/components/home/LandingPageContent'
 import { HeroContent, HeroSlide } from '@/types'
 
@@ -29,7 +30,6 @@ export default async function HomePage() {
  const { sectionMap, heroSlides } = await getCmsData()
 
  const heroContent = sectionMap['hero'] as HeroContent | undefined
- const statsContent = sectionMap['stats'] as { items: { number: string; label: string; color?: string }[] } | undefined
 
  const slides: HeroSlide[] = heroSlides.map((s: { id: string; title: string; subtitle: string | null; imageUrl: string; sortOrder: number }) => ({
  id: s.id,
@@ -39,19 +39,15 @@ export default async function HomePage() {
  sortOrder: s.sortOrder,
  }))
 
- // Priority order: book-a-provider + shop-health-products at the top
- // (primary marketplace), then stats + community suggestions, then AI
- // agent (replaces static FAQ) and value proposition.
- // The MediWyzAgentSection (static FAQ/chat) has been removed — replaced
- // by the FloatingChatWidget available on every page (see app/layout.tsx).
  const sections = [
  <HeroSection key="hero" content={heroContent} slides={slides.length > 0 ? slides : undefined} />,
- <ProviderTypesSection key="services" />,
- <MarketplaceTwoColumn key="marketplace" />,
+ <ServicesSection key="services" />,
+ <HealthShopMarketplace key="health-shop" />,
  <CommunityPosts key="community" />,
+ <ProvidersSection key="providers" />,
  ]
 
- const labels = ['Welcome', 'Services', 'Marketplace', 'Community']
+ const labels = ['Welcome', 'Services', 'Health Shop', 'Community', 'Providers']
 
  return (
  <LandingPageContent sections={sections} labels={labels} />

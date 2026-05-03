@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { FaHeart, FaComment, FaCheckCircle, FaArrowRight } from 'react-icons/fa'
+import { FaHeart, FaComment, FaCheckCircle, FaArrowRight, FaSearch } from 'react-icons/fa'
 
 interface PostPreview {
   id: string
@@ -49,9 +49,20 @@ const ROLE_LABELS: Record<string, string> = {
 export default function CommunityPosts() {
   const [posts, setPosts] = useState<PostPreview[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredPosts = useMemo(() => {
+    if (!searchQuery.trim()) return posts
+    const q = searchQuery.toLowerCase()
+    return posts.filter(p =>
+      p.content.toLowerCase().includes(q) ||
+      (p.category?.toLowerCase().includes(q)) ||
+      `${p.author.firstName} ${p.author.lastName}`.toLowerCase().includes(q)
+    )
+  }, [posts, searchQuery])
 
   useEffect(() => {
-    fetch('/api/posts?limit=6&sort=popular')
+    fetch('/api/posts?limit=12&sort=popular')
       .then(r => r.json())
       .then(json => {
         if (json.success && json.data?.posts) {
@@ -88,16 +99,16 @@ export default function CommunityPosts() {
             scrolls past the community grid. Negative horizontal margins +
             matching padding give it an edge-to-edge backdrop. */}
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-10 xl:-mx-14 px-4 sm:px-6 lg:px-10 xl:px-14 py-4 mb-6 bg-white/95 backdrop-blur-sm border-b border-gray-100">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-4 mb-2">
             <div>
               <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">From the Community</h2>
-              <p className="text-sm sm:text-base text-gray-600 mt-1">
+              <p className="text-sm sm:text-base text-gray-600 mt-0.5">
                 Most reacted posts on MediWyz — browse freely, no account needed
               </p>
             </div>
             <Link
               href="/feed"
-              className="hidden sm:flex flex-col items-end gap-0.5 group"
+              className="hidden sm:flex flex-col items-end gap-0.5 group mt-1"
             >
               <span className="flex items-center gap-1.5 text-sm font-medium text-[#0C6780] group-hover:text-[#001E40] transition-colors">
                 See All <FaArrowRight className="text-xs" />
@@ -105,10 +116,27 @@ export default function CommunityPosts() {
               <span className="text-[10px] text-gray-400 group-hover:text-gray-600 transition-colors">No login needed</span>
             </Link>
           </div>
+          {/* Search input */}
+          <div className="relative sm:w-64">
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+            <input
+              type="text"
+              placeholder="Search posts..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0C6780]/30 focus:border-[#0C6780] bg-gray-50"
+            />
+          </div>
         </div>
 
+        {filteredPosts.length === 0 && !loading ? (
+          <div className="text-center py-12">
+            <p className="text-sm text-gray-500">No posts match &ldquo;{searchQuery}&rdquo;</p>
+            <button onClick={() => setSearchQuery('')} className="mt-2 text-xs text-[#0C6780] hover:underline">Clear search</button>
+          </div>
+        ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-          {posts.map(post => (
+          {filteredPosts.map(post => (
             <article
               key={post.id}
               className="bg-white rounded-2xl border border-gray-200 hover:shadow-lg transition-all overflow-hidden group"
@@ -176,6 +204,7 @@ export default function CommunityPosts() {
             </article>
           ))}
         </div>
+        )}
 
         {/* Mobile "See All" link */}
         <div className="text-center mt-6 sm:hidden">

@@ -10,6 +10,7 @@ import {
  FaSignOutAlt,
  FaCheckDouble,
  FaUserFriends,
+ FaHome,
 } from 'react-icons/fa'
 import HealthwyzLogo from '@/components/ui/HealthwyzLogo'
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher'
@@ -505,6 +506,16 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  <div className="hidden sm:block">
  <LanguageSwitcher variant="header" />
  </div>
+
+ {/* Home button — always visible, returns to landing page */}
+ <Link
+   href="/"
+   className="p-2 sm:px-3 sm:py-2 rounded-lg bg-gray-100 hover:bg-sky-100 text-gray-600 hover:text-brand-teal flex items-center gap-1.5 transition flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+   aria-label="Return to home page"
+ >
+   <FaHome className="text-sm" aria-hidden="true" />
+   <span className="hidden sm:inline text-xs font-medium">Home</span>
+ </Link>
 
  {/* Logout button */}
  <button

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Query, Body, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Query, Body, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
 import { Public } from '../auth/decorators/public.decorator';
@@ -50,6 +50,25 @@ export class ServicesController {
 
     const data = Object.entries(grouped).map(([category, items]) => ({ category, services: items }));
     return { success: true, data };
+  }
+
+  /** GET /api/services/provider/:userId — public: provider's active services for profile tab */
+  @Public()
+  @Get('provider/:userId')
+  async providerServices(@Param('userId') userId: string) {
+    const configs = await this.prisma.providerServiceConfig.findMany({
+      where: { providerUserId: userId, isActive: true },
+      include: {
+        platformService: {
+          select: {
+            id: true, serviceName: true, category: true,
+            description: true, defaultPrice: true, duration: true, providerType: true,
+          },
+        },
+      },
+      orderBy: [{ platformService: { category: 'asc' } }],
+    });
+    return { success: true, data: configs };
   }
 
   /** GET /api/services/my-services — provider's configured services */

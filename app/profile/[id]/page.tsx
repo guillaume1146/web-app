@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import {
   FaInfoCircle, FaNewspaper, FaStar, FaHeartbeat, FaCog, FaLock,
+  FaConciergeBell, FaClock, FaArrowRight,
 } from 'react-icons/fa'
 import { useUser } from '@/hooks/useUser'
 import ProfileHero from '@/components/profile/ProfileHero'
@@ -29,7 +31,7 @@ const ProviderReviews = dynamic(() => import('@/components/shared/ProviderReview
 const ProfileGoalsTab = dynamic(() => import('@/components/health-tracker/tabs/ProfileGoalsTab'), { ssr: false })
 const UserProfile = dynamic(() => import('@/components/profile/UserProfile'), { ssr: false })
 
-type TabId = 'about' | 'posts' | 'reviews' | 'health' | 'settings'
+type TabId = 'about' | 'posts' | 'reviews' | 'services' | 'health' | 'settings'
 
 interface ProfileData {
   id: string
@@ -98,6 +100,7 @@ export default function UnifiedProfilePage() {
       { id: 'posts', label: 'Posts', icon: FaNewspaper },
     ]
     if (profile?.isProvider) {
+      publicTabs.push({ id: 'services', label: 'Services', icon: FaConciergeBell })
       publicTabs.push({ id: 'reviews', label: 'Reviews', icon: FaStar })
     }
     if (isSelf) {
@@ -166,6 +169,9 @@ export default function UnifiedProfilePage() {
               {isSelf && <CreatePostForm onPostCreated={() => { /* PostFeed refetches on mount */ }} />}
               <PostFeed currentUserId={currentUser?.id ?? ''} currentUserType={currentUser?.userType ?? ''} />
             </div>
+          )}
+          {activeTab === 'services' && profile.isProvider && (
+            <ProfileServicesTab userId={profile.id} userType={profile.userType} />
           )}
           {activeTab === 'reviews' && profile.isProvider && (
             <ProviderReviews providerUserId={profile.id} />
@@ -278,6 +284,103 @@ function AboutTab({ profile, isSelf, onSaved }: { profile: ProfileData; isSelf: 
           <p className="mt-3 text-[11px] text-gray-500">Contact details are kept private. Message through MediWyz to reach {profile.firstName}.</p>
         )}
       </Section>
+    </div>
+  )
+}
+
+interface ServiceConfig {
+  id: string
+  priceOverride: number | null
+  platformService: {
+    id: string
+    serviceName: string
+    category: string
+    description: string | null
+    defaultPrice: number
+    duration: number | null
+    providerType: string
+  }
+}
+
+function ProfileServicesTab({ userId, userType }: { userId: string; userType: string }) {
+  const [configs, setConfigs] = useState<ServiceConfig[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch(`/api/services/provider/${userId}`)
+      .then(r => r.json())
+      .then(json => { if (json.success) setConfigs(json.data) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [userId])
+
+  if (loading) return (
+    <div className="space-y-3">
+      {[1, 2, 3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)}
+    </div>
+  )
+
+  if (configs.length === 0) return (
+    <div className="text-center py-10">
+      <FaConciergeBell className="text-3xl text-gray-300 mx-auto mb-2" />
+      <p className="text-sm font-medium text-gray-600">No services listed yet.</p>
+      <p className="text-xs text-gray-400 mt-1">Ask this provider about their services directly.</p>
+    </div>
+  )
+
+  // Group by category
+  const grouped: Record<string, ServiceConfig[]> = {}
+  for (const cfg of configs) {
+    const cat = cfg.platformService.category
+    if (!grouped[cat]) grouped[cat] = []
+    grouped[cat].push(cfg)
+  }
+
+  const roleSlug = userType.toLowerCase().replace(/_/g, '-')
+
+  return (
+    <div className="space-y-6">
+      {Object.entries(grouped).map(([category, items]) => (
+        <div key={category}>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3 capitalize">
+            {category.replace(/_/g, ' ')}
+          </h4>
+          <div className="space-y-2">
+            {items.map(cfg => {
+              const svc = cfg.platformService
+              const price = cfg.priceOverride ?? svc.defaultPrice
+              return (
+                <div key={cfg.id} className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-gray-900">{svc.serviceName}</span>
+                    </div>
+                    {svc.description && (
+                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{svc.description}</p>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <div className="text-sm font-bold text-gray-900">Rs {price.toLocaleString()}</div>
+                    {svc.duration && (
+                      <div className="flex items-center gap-0.5 text-[11px] text-gray-400 justify-end mt-0.5">
+                        <FaClock className="text-[9px]" /> {svc.duration}m
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+      <div className="pt-2 text-center">
+        <Link
+          href={`/search/${roleSlug}`}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0C6780] hover:text-[#001E40] transition-colors"
+        >
+          Book this provider <FaArrowRight className="text-xs" />
+        </Link>
+      </div>
     </div>
   )
 }

@@ -7,7 +7,7 @@ import {
   FaPills, FaLeaf, FaFirstAid, FaHeart, FaGlasses, FaEye,
   FaTooth, FaBaby, FaStethoscope, FaHeartbeat, FaDumbbell,
   FaAppleAlt, FaBox, FaShoppingCart, FaPrescription, FaLock,
-  FaChevronLeft, FaChevronRight,
+  FaChevronLeft, FaChevronRight, FaSearch,
 } from 'react-icons/fa'
 import HorizontalScrollRow from '@/components/shared/HorizontalScrollRow'
 
@@ -78,6 +78,7 @@ export default function HealthShopMarketplace({ embedded = false }: { embedded?:
   const [categories, setCategories] = useState<CategoryWithItems[]>([])
   const [loading, setLoading] = useState(true)
   const [authenticated, setAuthenticated] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const router = useRouter()
   const catScrollRef = useRef<HTMLDivElement>(null)
   const [catCanLeft, setCatCanLeft] = useState(false)
@@ -233,7 +234,19 @@ export default function HealthShopMarketplace({ embedded = false }: { embedded?:
     )
   }
 
-  const categoriesContent = categories.map(cat => {
+  // Client-side search filter across all item names
+  const filteredCategories = searchQuery.trim()
+    ? categories.map(cat => ({
+        ...cat,
+        items: cat.items.filter(item =>
+          item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (item.genericName?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (item.description?.toLowerCase().includes(searchQuery.toLowerCase()))
+        ),
+      })).filter(cat => cat.items.length > 0)
+    : categories
+
+  const categoriesContent = filteredCategories.map(cat => {
     const Icon = CATEGORY_ICONS[cat.key] || FaBox
     const iconColor = CATEGORY_COLORS[cat.key] || 'text-gray-600'
 
@@ -406,14 +419,40 @@ export default function HealthShopMarketplace({ embedded = false }: { embedded?:
 
   return (
     <section className="py-8 sm:py-12 bg-gray-50 overflow-hidden">
-      <div className="w-full px-6 sm:px-12 lg:px-20 xl:px-28">
-        <div className="sticky top-0 z-20 -mx-6 sm:-mx-12 lg:-mx-20 xl:-mx-28 px-6 sm:px-12 lg:px-20 xl:px-28
-          pt-6 sm:pt-8 pb-3 sm:pb-4 mb-4 sm:mb-6 bg-white/95 backdrop-blur-sm border-b border-gray-100">
-          <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-            <FaShoppingCart className="text-xl sm:text-2xl text-[#0C6780]" />
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Health Shop</h2>
+      <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-14">
+        <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-10 xl:-mx-14 px-4 sm:px-6 lg:px-10 xl:px-14
+          pt-4 sm:pt-6 pb-3 sm:pb-4 mb-4 sm:mb-6 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+          <div className="flex items-start justify-between gap-4 mb-1 sm:mb-2">
+            <div>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <FaShoppingCart className="text-xl sm:text-2xl text-[#0C6780]" />
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Health Shop</h2>
+              </div>
+              <p className="text-sm sm:text-base text-gray-600 mt-0.5">Order medicines, supplements &amp; health products</p>
+            </div>
+            {/* Search input */}
+            <div className="relative hidden sm:block w-56">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0C6780]/30 focus:border-[#0C6780] bg-gray-50"
+              />
+            </div>
           </div>
-          <p className="text-sm sm:text-base text-gray-600">Order medicines, supplements &amp; health products from verified providers</p>
+          {/* Mobile search */}
+          <div className="relative sm:hidden mt-2">
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0C6780]/30 focus:border-[#0C6780] bg-gray-50"
+            />
+          </div>
         </div>
 
         {/* Category Quick Links */}
