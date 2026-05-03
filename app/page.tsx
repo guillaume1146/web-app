@@ -1,7 +1,6 @@
 import HeroSection from '@/components/home/HeroSection'
 import CompanyTrustBar from '@/components/home/CompanyTrustBar'
 import DiscoverSection from '@/components/home/DiscoverSection'
-import LandingAuthWrapper from '@/components/home/LandingAuthWrapper'
 import { HeroContent, HeroSlide } from '@/types'
 
 export const revalidate = 60
@@ -40,10 +39,10 @@ export default async function HomePage() {
   }))
 
   return (
-    <LandingAuthWrapper>
+    <>
       <HeroSection content={heroContent} slides={slides.length > 0 ? slides : undefined} />
       <CompanyTrustBar />
       <DiscoverSection />
-    </LandingAuthWrapper>
+    </>
   )
 }
