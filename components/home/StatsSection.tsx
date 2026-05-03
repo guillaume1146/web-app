@@ -39,21 +39,21 @@ export default function StatsSection() {
   }, [])
 
   return (
-    <section className="bg-white py-8 sm:py-12">
+    <section className="bg-white py-5 sm:py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
           {stats.map((stat, i) => (
             <div
               key={i}
-              className="bg-gray-50 rounded-2xl p-4 sm:p-5 text-center hover:shadow-md transition-shadow"
+              className="bg-gray-50 rounded-xl p-3 sm:p-4 text-center hover:shadow-md transition-shadow"
             >
               {stat.icon && (
-                <span className="text-2xl sm:text-3xl block mb-1">{stat.icon}</span>
+                <span className="text-xl sm:text-2xl block mb-0.5">{stat.icon}</span>
               )}
-              <div className={`text-2xl sm:text-3xl font-bold ${stat.color || 'text-gray-900'}`}>
+              <div className={`text-xl sm:text-2xl font-bold ${stat.color || 'text-gray-900'}`}>
                 {formatNumber(stat.number)}
               </div>
-              <div className="text-xs sm:text-sm text-gray-500 mt-1 leading-tight">
+              <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5 leading-tight">
                 {stat.label}
               </div>
             </div>

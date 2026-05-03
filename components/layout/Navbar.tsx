@@ -188,7 +188,7 @@ const Navbar: React.FC = () => {
  {isCapacitor && <div className="bg-white h-14" />}
  {/* Brand gradient accent line */}
  <div className="h-1 bg-brand-teal " />
- <div className="bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100">
+ <div className="bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100 py-1.5">
  {/* Skip to content link */}
  <a
  href="#main-content"

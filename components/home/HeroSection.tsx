@@ -108,47 +108,55 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
  {
  src: "/images/hero/gemini-doctor-3-removebg-1.png",
  alt: "Specialist Medical Doctor",
- title: "Medical Specialists"
+ title: "Medical Specialists",
+ description: "Consult verified specialists across 15+ fields"
  },
  {
  src: "/images/hero/medicine-1.png",
  alt: "Browse and purchase medicines with doctor's prescription. Fast delivery across Mauritius.",
- title: "Medicine Store"
+ title: "Medicine Store",
+ description: "Order prescriptions & wellness products online"
  },
  {
  src: "/images/hero/doctor-1.png",
  alt: "Professional Doctor Consultation",
- title: "Expert Medical Care"
+ title: "Expert Medical Care",
+ description: "Qualified professionals at your service"
  },
  {
  src: "/images/hero/ambulance-1.png",
  alt: "Emergency Ambulance Service",
- title: "Emergency Services"
+ title: "Emergency Services",
+ description: "Rapid response when every second counts"
  },
  {
  src: "/images/hero/insurance-1.png",
  alt: "Health Insurance Coverage",
- title: "Insurance Protection"
+ title: "Insurance Protection",
+ description: "Coverage plans for individuals & families"
  },
  {
  src: "/images/hero/nurse-1.png",
  alt: "Professional Nurse Care",
- title: "Nursing Excellence"
+ title: "Nursing Excellence",
+ description: "Home visits & ongoing health monitoring"
  },
  {
  src: "/images/hero/doctor-2.png",
  alt: "Experienced Medical Doctor",
- title: "Healthcare Professionals"
+ title: "Healthcare Professionals",
+ description: "Trusted providers verified by MediWyz"
  },
  {
  src: "/images/hero/patient-1.png",
  alt: "Patient Care Services",
- title: "Patient-Centered Care"
+ title: "Patient-Centered Care",
+ description: "Your health journey, our commitment"
  }
  ]
 
  const heroImages = slides
- ? slides.map((s) => ({ src: s.imageUrl, alt: s.subtitle || s.title, title: s.title }))
+ ? slides.map((s) => ({ src: s.imageUrl, alt: s.subtitle || s.title, title: s.title, description: s.subtitle ?? undefined }))
  : defaultHeroImages
 
  useEffect(() => {
@@ -293,6 +301,11 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
                    <p className="text-xs font-bold text-gray-900 truncate">
                      {heroImages[currentImageIndex].title}
                    </p>
+                   {heroImages[currentImageIndex].description && (
+                     <p className="text-[10px] text-gray-500 truncate mt-0.5">
+                       {heroImages[currentImageIndex].description}
+                     </p>
+                   )}
                  </div>
                </div>
              </div>
@@ -362,8 +375,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
     sm:grid sm:grid-cols-5 lg:grid-cols-10 justify-items-center">
    {heroStats.map((s, i) => (
     <div key={i} className="flex-shrink-0 text-center min-w-[64px]">
-     {s.icon && <div className="text-lg sm:text-xl mb-0.5">{s.icon}</div>}
-     <div className="text-base sm:text-lg font-bold text-white">
+     {s.icon && <div className="text-base sm:text-lg mb-0.5">{s.icon}</div>}
+     <div className="text-sm sm:text-base font-bold text-white">
       {fmtNum(s.number)}
      </div>
      <div className="text-[10px] sm:text-xs text-white/55 leading-tight mt-0.5">
