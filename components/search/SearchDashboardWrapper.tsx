@@ -13,7 +13,7 @@ import { useRoleFeatureConfig, filterSidebarByFeatures } from '@/hooks/useRoleFe
 import { getSearchItems } from '@/lib/dashboard/patientHealthItems'
 import {
   FaHome, FaRss, FaBriefcaseMedical, FaMoneyBillWave, FaCubes,
-  FaCogs, FaProjectDiagram, FaVideo, FaComments, FaBuilding,
+  FaCogs, FaProjectDiagram, FaVideo, FaPhone, FaComments, FaBuilding,
   FaBars,
 } from 'react-icons/fa'
 import { getPatientHealthItems } from '@/lib/dashboard/patientHealthItems'
@@ -30,6 +30,7 @@ function getProviderSidebarItems(base: string): SidebarItem[] {
     { id: 'inventory', label: 'My Inventory', icon: FaCubes, color: 'text-amber-600', bgColor: 'bg-amber-50', href: `${base}/inventory` },
     { id: 'workflows', label: 'Workflows', icon: FaProjectDiagram, color: 'text-indigo-600', bgColor: 'bg-indigo-50', href: `${base}/workflows` },
     { id: 'video', label: 'Video Call', icon: FaVideo, color: 'text-teal-600', bgColor: 'bg-teal-50', href: `${base}/video` },
+    { id: 'audio', label: 'Audio Call', icon: FaPhone, color: 'text-cyan-600', bgColor: 'bg-cyan-50', href: `${base}/audio` },
     { id: 'messages', label: 'Messages', icon: FaComments, color: 'text-pink-600', bgColor: 'bg-pink-50', href: `${base}/messages` },
     { id: 'my-company', label: 'My Company', icon: FaBuilding, color: 'text-slate-600', bgColor: 'bg-slate-50', href: `${base}/my-company` },
     ...getPatientHealthItems(base),

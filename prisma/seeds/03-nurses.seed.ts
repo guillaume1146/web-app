@@ -8,9 +8,9 @@ export async function seedNurses(prisma: PrismaClient) {
     {
       // User fields
       id: 'NUR001',
-      firstName: 'Priya',
-      lastName: 'Ramgoolam',
-      email: 'priya.ramgoolam@mediwyz.com',
+      firstName: 'Claire',
+      lastName: 'Leblanc',
+      email: 'nurse.claire@mediwyz.com',
       password: await hash('Nurse123!'),
       profileImage: '/images/nurses/1.jpg',
       phone: '+230 5567 8901',

@@ -10,9 +10,9 @@ export async function seedDoctors(prisma: PrismaClient) {
     {
       // User fields
       id: 'DOC001',
-      firstName: 'Sarah',
-      lastName: 'Johnson',
-      email: 'sarah.johnson@mediwyz.com',
+      firstName: 'Amara',
+      lastName: 'Diallo',
+      email: 'dr.amara.diallo@mediwyz.com',
       password: await hash('Doctor123!'),
       profileImage: '/images/doctors/1.jpg',
       phone: '+230 5234 5678',

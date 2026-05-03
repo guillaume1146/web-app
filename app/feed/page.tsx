@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   FaHeart, FaComment, FaCheckCircle, FaSignInAlt, FaUserPlus,
-  FaShoppingBag, FaUserMd, FaSearch, FaFire, FaArrowRight,
+  FaUserMd, FaFire, FaComments, FaArrowRight,
 } from 'react-icons/fa'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -29,19 +29,13 @@ interface Post {
   _count: { comments: number }
 }
 
-interface ProviderRole {
-  code: string
-  label: string
-  slug: string
-  icon: string
-}
-
-interface ShopItem {
+interface SuggestedUser {
   id: string
-  name: string
-  price: number
-  imageUrl: string | null
-  provider: { firstName: string; lastName: string }
+  firstName: string
+  lastName: string
+  userType: string
+  profileImage: string | null
+  verified: boolean
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -88,7 +82,6 @@ function PostCard({ post }: { post: Post }) {
         </div>
       )}
       <div className="p-4">
-        {/* Author */}
         <div className="flex items-center gap-2.5 mb-3">
           {post.author.profileImage ? (
             <img src={post.author.profileImage} alt="" className="w-9 h-9 rounded-full object-cover" />
@@ -110,18 +103,10 @@ function PostCard({ post }: { post: Post }) {
             </span>
           )}
         </div>
-
-        {/* Content */}
         <p className="text-sm text-gray-700 line-clamp-3 mb-3">{post.content}</p>
-
-        {/* Engagement */}
         <div className="flex items-center gap-4 text-xs text-gray-400">
-          <span className="flex items-center gap-1">
-            <FaHeart className="text-red-400" /> {post.likeCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <FaComment /> {post._count.comments}
-          </span>
+          <span className="flex items-center gap-1"><FaHeart className="text-red-400" /> {post.likeCount}</span>
+          <span className="flex items-center gap-1"><FaComment /> {post._count.comments}</span>
           <span className="ml-auto text-[#0C6780] font-medium cursor-default">Read more →</span>
         </div>
       </div>
@@ -129,89 +114,73 @@ function PostCard({ post }: { post: Post }) {
   )
 }
 
-function ProviderSidebar({ roles }: { roles: ProviderRole[] }) {
+function PeopleYouMayKnow({ users }: { users: SuggestedUser[] }) {
   return (
     <aside className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
       <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
         <FaUserMd className="text-[#0C6780] text-sm" />
-        <h2 className="text-sm font-bold text-gray-900">Find a Provider</h2>
+        <h2 className="text-sm font-bold text-gray-900">People You May Know</h2>
       </div>
       <div className="p-3 flex flex-col gap-1">
-        {roles.slice(0, 8).map(role => (
-          <Link
-            key={role.code}
-            href={`/search/results?category=${role.slug}`}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-[#0C6780]/5 transition-colors group"
-          >
-            <div className="w-8 h-8 rounded-lg bg-[#0C6780]/10 flex items-center justify-center text-sm flex-shrink-0">
-              🩺
+        {users.length > 0 ? users.map(u => (
+          <div key={u.id} className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors">
+            {u.profileImage ? (
+              <img src={u.profileImage} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-[#0C6780]/10 text-[#0C6780] flex items-center justify-center text-xs font-bold flex-shrink-0">
+                {getInitials(u.firstName, u.lastName)}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-gray-900 truncate flex items-center gap-1">
+                {u.firstName} {u.lastName}
+                {u.verified && <FaCheckCircle className="text-blue-500 text-[8px]" />}
+              </p>
+              <p className="text-[10px] text-gray-400 truncate">{u.userType.replace(/_/g, ' ').toLowerCase()}</p>
             </div>
-            <span className="text-sm text-gray-700 group-hover:text-[#0C6780] font-medium truncate">
-              {role.label}
-            </span>
-            <FaArrowRight className="text-[10px] text-gray-300 group-hover:text-[#0C6780] ml-auto flex-shrink-0" />
-          </Link>
-        ))}
+            <Link
+              href="/signup"
+              className="text-[10px] font-semibold text-[#0C6780] px-2 py-1 rounded-lg border border-[#0C6780]/30 hover:bg-[#0C6780]/5 transition-colors flex-shrink-0"
+            >
+              Connect
+            </Link>
+          </div>
+        )) : (
+          <div className="px-3 py-4 text-center">
+            <p className="text-xs text-gray-500">Find and connect with health professionals</p>
+          </div>
+        )}
       </div>
       <div className="p-3 border-t border-gray-100">
         <Link
-          href="/search/results?category=providers"
-          className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-[#0C6780] text-white text-sm font-semibold rounded-xl hover:bg-[#001E40] transition-colors"
+          href="/signup"
+          className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-[#0C6780] text-white text-xs font-semibold rounded-xl hover:bg-[#001E40] transition-colors"
         >
-          <FaSearch className="text-xs" /> Browse All Providers
+          <FaUserPlus className="text-[10px]" /> Join to connect
         </Link>
       </div>
     </aside>
   )
 }
 
-function HealthShopSidebar({ items }: { items: ShopItem[] }) {
+function MessagesPanel() {
   return (
     <aside className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
       <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-        <FaShoppingBag className="text-emerald-600 text-sm" />
-        <h2 className="text-sm font-bold text-gray-900">Health Shop</h2>
+        <FaComments className="text-pink-500 text-sm" />
+        <h2 className="text-sm font-bold text-gray-900">Messages</h2>
       </div>
-
-      {items.length > 0 ? (
-        <div className="p-3 flex flex-col gap-2">
-          {items.map(item => (
-            <div
-              key={item.id}
-              className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              {item.imageUrl ? (
-                <img src={item.imageUrl} alt={item.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-              ) : (
-                <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-lg flex-shrink-0">
-                  💊
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-gray-900 truncate">{item.name}</p>
-                <p className="text-[10px] text-gray-500 truncate">
-                  by {item.provider.firstName} {item.provider.lastName}
-                </p>
-              </div>
-              <span className="text-xs font-bold text-emerald-600 flex-shrink-0">
-                Rs {item.price.toLocaleString()}
-              </span>
-            </div>
-          ))}
+      <div className="p-4 text-center space-y-3">
+        <div className="w-12 h-12 rounded-full bg-pink-50 flex items-center justify-center mx-auto">
+          <FaComments className="text-pink-400 text-xl" />
         </div>
-      ) : (
-        <div className="p-6 text-center">
-          <div className="text-3xl mb-2">🛒</div>
-          <p className="text-sm text-gray-500">Medicines, supplements & health products from verified providers</p>
-        </div>
-      )}
-
-      <div className="p-3 border-t border-gray-100">
+        <p className="text-xs text-gray-600 font-medium">Chat with health professionals</p>
+        <p className="text-[11px] text-gray-400">Sign in to access your messages and connect with providers.</p>
         <Link
-          href="/search/health-shop"
-          className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-colors"
+          href="/login"
+          className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-pink-50 text-pink-700 text-xs font-semibold rounded-xl hover:bg-pink-100 transition-colors border border-pink-200"
         >
-          <FaShoppingBag className="text-xs" /> Shop Now
+          <FaSignInAlt className="text-[10px]" /> Sign in to message
         </Link>
       </div>
     </aside>
@@ -223,25 +192,21 @@ function HealthShopSidebar({ items }: { items: ShopItem[] }) {
 export default function PublicFeedPage() {
   const router = useRouter()
   const [posts, setPosts] = useState<Post[]>([])
-  const [roles, setRoles] = useState<ProviderRole[]>([])
-  const [shopItems, setShopItems] = useState<ShopItem[]>([])
+  const [suggestedUsers, setSuggestedUsers] = useState<SuggestedUser[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [activeCategory, setActiveCategory] = useState('')
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  // Prevent flash of public content before auth check completes
   const [authChecked, setAuthChecked] = useState(false)
 
-  // Detect auth — redirect to private dashboard if logged in
+  // Redirect authenticated users to their own dashboard feed
   useEffect(() => {
     try {
       const stored = localStorage.getItem('mediwyz_user')
       if (stored) {
         const parsed = JSON.parse(stored)
         if (parsed?.id) {
-          // Compute destination directly — never use /patient/feed (middleware strips it back to /feed)
           const DEDICATED: Record<string, string> = {
             insurance:          '/insurance/feed',
             corporate:          '/corporate/feed',
@@ -259,26 +224,31 @@ export default function PublicFeedPage() {
           const dest = DEDICATED[parsed.userType] ??
             `/provider/${SLUGS[parsed.userType] ?? 'patients'}/feed`
           router.replace(dest)
-          return // don't set authChecked — we're leaving
+          return
         }
       }
     } catch {
       // guest
     }
-    setIsAuthenticated(false)
     setAuthChecked(true)
   }, [router])
 
-  // Load sidebar data once
+  // Load suggested users (providers) for the right panel
   useEffect(() => {
-    fetch('/api/roles?searchEnabled=true')
+    fetch('/api/search/providers?type=DOCTOR&limit=5')
       .then(r => r.json())
-      .then(json => { if (json.success) setRoles(json.data) })
-      .catch(() => {})
-
-    fetch('/api/search/health-shop?limit=5')
-      .then(r => r.json())
-      .then(json => { if (json.success && json.data?.items) setShopItems(json.data.items) })
+      .then(json => {
+        if (json.success && Array.isArray(json.data)) {
+          setSuggestedUsers(json.data.slice(0, 5).map((u: Record<string, unknown>) => ({
+            id: u.id as string,
+            firstName: u.firstName as string,
+            lastName: u.lastName as string,
+            userType: (u.userType as string) || 'DOCTOR',
+            profileImage: (u.profileImage as string | null) ?? null,
+            verified: (u.verified as boolean) || false,
+          })))
+        }
+      })
       .catch(() => {})
   }, [])
 
@@ -286,10 +256,8 @@ export default function PublicFeedPage() {
     try {
       if (append) setLoadingMore(true)
       else setLoading(true)
-
       const params = new URLSearchParams({ page: String(pageNum), limit: '10', sortBy: 'reactions' })
       if (category) params.set('category', category)
-
       const res = await fetch(`/api/posts?${params}`)
       const json = await res.json()
       if (json.success) {
@@ -316,182 +284,142 @@ export default function PublicFeedPage() {
     fetchPosts(next, activeCategory, true)
   }
 
-  // Show spinner while checking auth (avoids flash of guest UI before redirect)
   if (!authChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="flex items-center justify-center py-20">
         <div className="w-8 h-8 border-2 border-[#0C6780] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Public top bar */}
-      <div className="bg-[#001E40] text-white py-3 px-4 sm:px-6 lg:px-10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <FaFire className="text-orange-400 text-base flex-shrink-0" />
-            <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-bold leading-tight">Community Health Feed</h1>
-              <p className="text-[10px] sm:text-xs text-white/65 truncate">
-                Most reacted posts from the MediWyz community — no account needed to browse
-              </p>
-            </div>
-          </div>
-          {!isAuthenticated && (
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Link
-                href="/login"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-white/30 rounded-lg hover:bg-white/10 transition-colors"
-              >
-                <FaSignInAlt /> Sign in
-              </Link>
-              <Link
-                href="/signup"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white text-[#001E40] rounded-lg hover:bg-white/90 transition-colors"
-              >
-                <FaUserPlus /> Join free
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
-      {/* Guest banner */}
-      {!isAuthenticated && (
-        <div className="bg-[#9AE1FF]/20 border-b border-[#9AE1FF]/40 py-2 px-4 sm:px-6 lg:px-10">
-          <p className="max-w-7xl mx-auto text-xs sm:text-sm text-[#001E40]">
+      {/* CENTER: Feed (8 cols) */}
+      <div className="lg:col-span-8">
+        {/* Page header */}
+        <div className="flex items-center gap-2 mb-4">
+          <FaFire className="text-orange-500" />
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">Community Health Feed</h1>
+            <p className="text-xs text-gray-500">Most reacted posts — no account needed to browse</p>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <Link
+              href="/login"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:border-[#0C6780] hover:text-[#0C6780] transition-colors"
+            >
+              <FaSignInAlt /> Sign in
+            </Link>
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0C6780] text-white rounded-lg hover:bg-[#001E40] transition-colors"
+            >
+              <FaUserPlus /> Join free
+            </Link>
+          </div>
+        </div>
+
+        {/* Guest banner */}
+        <div className="bg-[#9AE1FF]/20 border border-[#9AE1FF]/40 rounded-xl py-2 px-4 mb-4">
+          <p className="text-xs text-[#001E40]">
             <span className="font-semibold">You&apos;re browsing as a guest.</span>{' '}
             <Link href="/signup" className="underline font-medium hover:text-[#0C6780]">
               Create a free account
             </Link>{' '}
-            to like, comment, and share health tips with the community.
+            to like, comment, and share health tips.
           </p>
         </div>
-      )}
 
-      {/* Main 3-column layout */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Category tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
+          {CATEGORY_TABS.map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => setActiveCategory(tab.value)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                activeCategory === tab.value
+                  ? 'bg-[#0C6780] text-white shadow-sm'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-[#0C6780] hover:text-[#0C6780]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-          {/* LEFT: Provider promotions */}
-          <div className="hidden lg:block lg:col-span-3">
-            <div className="sticky top-4 space-y-4">
-              <ProviderSidebar roles={roles} />
-
-              {/* Book a consultation card */}
-              <div className="bg-gradient-to-br from-[#001E40] to-[#0C6780] rounded-2xl p-4 text-white">
-                <p className="text-xs font-semibold opacity-80 mb-1">Ready to get care?</p>
-                <p className="text-sm font-bold mb-3">Find and book a health provider in minutes</p>
-                <Link
-                  href="/search/results?category=providers"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white text-[#001E40] px-3 py-1.5 rounded-lg hover:bg-white/90 transition-colors"
-                >
-                  Book now <FaArrowRight className="text-[10px]" />
-                </Link>
+        {/* Posts */}
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 p-4 animate-pulse">
+                <div className="flex gap-3 mb-3">
+                  <div className="w-9 h-9 rounded-full bg-gray-200" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3.5 bg-gray-200 rounded w-1/3" />
+                    <div className="h-2.5 bg-gray-100 rounded w-1/5" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="h-3 bg-gray-200 rounded w-full" />
+                  <div className="h-3 bg-gray-200 rounded w-5/6" />
+                  <div className="h-3 bg-gray-100 rounded w-3/4" />
+                </div>
               </div>
-            </div>
+            ))}
           </div>
-
-          {/* CENTER: Feed */}
-          <div className="lg:col-span-6">
-            {/* Category tabs */}
-            <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
-              {CATEGORY_TABS.map(tab => (
+        ) : posts.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center">
+            <div className="text-4xl mb-3">📭</div>
+            <p className="text-gray-500 text-sm">No posts yet in this category.</p>
+            <button onClick={() => setActiveCategory('')} className="mt-3 text-sm text-[#0C6780] underline">
+              View all posts
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {posts.map(post => <PostCard key={post.id} post={post} />)}
+            {hasMore && (
+              <div className="text-center pt-2">
                 <button
-                  key={tab.value}
-                  onClick={() => setActiveCategory(tab.value)}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    activeCategory === tab.value
-                      ? 'bg-[#0C6780] text-white shadow-sm'
-                      : 'bg-white text-gray-600 border border-gray-200 hover:border-[#0C6780] hover:text-[#0C6780]'
-                  }`}
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="px-6 py-2.5 bg-white border border-gray-200 text-sm font-semibold text-gray-700 rounded-xl hover:border-[#0C6780] hover:text-[#0C6780] transition-colors disabled:opacity-50"
                 >
-                  {tab.label}
+                  {loadingMore ? 'Loading…' : 'Load more posts'}
                 </button>
-              ))}
-            </div>
-
-            {/* Posts */}
-            {loading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="bg-white rounded-2xl border border-gray-200 p-4 animate-pulse">
-                    <div className="flex gap-3 mb-3">
-                      <div className="w-9 h-9 rounded-full bg-gray-200" />
-                      <div className="flex-1 space-y-1.5">
-                        <div className="h-3.5 bg-gray-200 rounded w-1/3" />
-                        <div className="h-2.5 bg-gray-100 rounded w-1/5" />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="h-3 bg-gray-200 rounded w-full" />
-                      <div className="h-3 bg-gray-200 rounded w-5/6" />
-                      <div className="h-3 bg-gray-100 rounded w-3/4" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : posts.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center">
-                <div className="text-4xl mb-3">📭</div>
-                <p className="text-gray-500 text-sm">No posts yet in this category.</p>
-                <button
-                  onClick={() => setActiveCategory('')}
-                  className="mt-3 text-sm text-[#0C6780] underline"
-                >
-                  View all posts
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {posts.map(post => <PostCard key={post.id} post={post} />)}
-
-                {hasMore && (
-                  <div className="text-center pt-2">
-                    <button
-                      onClick={loadMore}
-                      disabled={loadingMore}
-                      className="px-6 py-2.5 bg-white border border-gray-200 text-sm font-semibold text-gray-700 rounded-xl hover:border-[#0C6780] hover:text-[#0C6780] transition-colors disabled:opacity-50"
-                    >
-                      {loadingMore ? 'Loading…' : 'Load more posts'}
-                    </button>
-                  </div>
-                )}
               </div>
             )}
           </div>
+        )}
+      </div>
 
-          {/* RIGHT: Health Shop promotions */}
-          <div className="hidden lg:block lg:col-span-3">
-            <div className="sticky top-4 space-y-4">
-              <HealthShopSidebar items={shopItems} />
+      {/* RIGHT: People You May Know + Messages (4 cols) */}
+      <div className="hidden lg:block lg:col-span-4">
+        <div className="sticky top-4 space-y-4">
+          <PeopleYouMayKnow users={suggestedUsers} />
+          <MessagesPanel />
 
-              {/* Join CTA */}
-              {!isAuthenticated && (
-                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white">
-                  <p className="text-xs font-semibold opacity-80 mb-1">Join MediWyz for free</p>
-                  <p className="text-sm font-bold mb-3">Like, comment & get personalised health tips</p>
-                  <Link
-                    href="/signup"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-white/90 transition-colors"
-                  >
-                    <FaUserPlus /> Sign up free
-                  </Link>
-                </div>
-              )}
-            </div>
+          {/* Book a consultation CTA */}
+          <div className="bg-gradient-to-br from-[#001E40] to-[#0C6780] rounded-2xl p-4 text-white">
+            <p className="text-xs font-semibold opacity-80 mb-1">Ready to get care?</p>
+            <p className="text-sm font-bold mb-3">Find and book a health provider in minutes</p>
+            <Link
+              href="/search/results?category=providers"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white text-[#001E40] px-3 py-1.5 rounded-lg hover:bg-white/90 transition-colors"
+            >
+              Book now <FaArrowRight className="text-[10px]" />
+            </Link>
           </div>
-
-        </div>
-
-        {/* Mobile sidebars (stacked below feed) */}
-        <div className="mt-6 grid sm:grid-cols-2 gap-4 lg:hidden">
-          <ProviderSidebar roles={roles} />
-          <HealthShopSidebar items={shopItems} />
         </div>
       </div>
+
+      {/* Mobile: right panel stacked below */}
+      <div className="mt-2 grid sm:grid-cols-2 gap-4 lg:hidden">
+        <PeopleYouMayKnow users={suggestedUsers} />
+        <MessagesPanel />
+      </div>
+
     </div>
   )
 }

@@ -11,9 +11,9 @@ export async function seedNewUserTypes(prisma: PrismaClient) {
   const pharmacists = [
     {
       id: 'PHARM001',
-      firstName: 'Rajesh',
-      lastName: 'Doorgakant',
-      email: 'rajesh.doorgakant@healthways.mu',
+      firstName: 'Jean',
+      lastName: 'Dumont',
+      email: 'pharma.jean@mediwyz.com',
       password: await hash('Pharma123!'),
       profileImage: '/images/pharmacists/1.jpg',
       phone: '+230 5789 0001',
@@ -76,9 +76,9 @@ export async function seedNewUserTypes(prisma: PrismaClient) {
   const labTechnicians = [
     {
       id: 'LAB001',
-      firstName: 'David',
-      lastName: 'Ah-Kee',
-      email: 'david.ahkee@healthways.mu',
+      firstName: 'Marie',
+      lastName: 'Fontaine',
+      email: 'lab.marie@mediwyz.com',
       password: await hash('Lab123!'),
       profileImage: '/images/lab-technicians/1.jpg',
       phone: '+230 5789 1001',
@@ -139,10 +139,10 @@ export async function seedNewUserTypes(prisma: PrismaClient) {
   const emergencyWorkers = [
     {
       id: 'EMW001',
-      firstName: 'Jean-Marc',
-      lastName: 'Lafleur',
-      email: 'jeanmarc.lafleur@healthways.mu',
-      password: await hash('Emergency123!'),
+      firstName: 'David',
+      lastName: 'Bernard',
+      email: 'emt.david@mediwyz.com',
+      password: await hash('EMT123!'),
       profileImage: '/images/emergency-workers/1.jpg',
       phone: '+230 5789 2001',
       userType: UserType.EMERGENCY_WORKER,
@@ -204,9 +204,9 @@ export async function seedNewUserTypes(prisma: PrismaClient) {
   const insuranceReps = [
     {
       id: 'INS001',
-      firstName: 'Vikram',
-      lastName: 'Doorgakant',
-      email: 'vikram.doorgakant@healthways.mu',
+      firstName: 'Insurance',
+      lastName: 'Rep',
+      email: 'insurance.rep@mediwyz.com',
       password: await hash('Insurance123!'),
       profileImage: null,
       phone: '+230 5789 3001',
@@ -267,9 +267,9 @@ export async function seedNewUserTypes(prisma: PrismaClient) {
   const corporateAdmins = [
     {
       id: 'CORP001',
-      firstName: 'Anil',
-      lastName: 'Doobur',
-      email: 'anil.doobur@healthways.mu',
+      firstName: 'Corporate',
+      lastName: 'Admin',
+      email: 'corporate.admin@mediwyz.com',
       password: await hash('Corporate123!'),
       profileImage: null,
       phone: '+230 5789 4001',
@@ -371,9 +371,9 @@ export async function seedNewUserTypes(prisma: PrismaClient) {
     },
     {
       id: 'RADM001',
-      firstName: 'Vikash',
-      lastName: 'Doorgakant',
-      email: 'vikash.doorgakant@healthways.mu',
+      firstName: 'Regional',
+      lastName: 'Admin MU',
+      email: 'regional.mu@mediwyz.com',
       password: await hash('Regional123!'),
       profileImage: null,
       phone: '+230 5789 6001',

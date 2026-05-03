@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { toast } from 'react-toastify'
+import Link from 'next/link'
 import { useDashboardUser } from '@/hooks/useDashboardUser'
 import { CATEGORY_BADGE, categoryFromLegacyStatus } from '@/components/workflow/stepCategoryStyles'
 import {
   FaSpinner, FaCalendarAlt, FaCheck, FaTimes, FaCheckCircle,
   FaSearch, FaClock, FaClipboardList, FaHistory, FaPlay,
-  FaVideo, FaUser, FaHome, FaHospital, FaBolt,
+  FaVideo, FaPhone, FaUser, FaHome, FaHospital, FaBolt, FaExternalLinkAlt,
 } from 'react-icons/fa'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -82,7 +83,6 @@ export default function UnifiedPracticePage() {
           credentials: 'include',
         })
         if (!wfRes.ok) {
-          // Fallback: direct status update for bookings without workflow
           await fetch('/api/bookings/action', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -91,7 +91,6 @@ export default function UnifiedPracticePage() {
           })
         }
       } else {
-        // accept/deny/start go through the action endpoint
         const res = await fetch('/api/bookings/action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -104,7 +103,37 @@ export default function UnifiedPracticePage() {
           return
         }
       }
+
       await fetchBookings()
+
+      if (action === 'accept') {
+        // Find the booking to determine if it's a video/audio call
+        const booking = bookings.find(b => b.id === bookingId)
+        const serviceType = booking?.type || booking?.bookingType || ''
+        if (serviceType === 'video' || serviceType.includes('video')) {
+          toast.success(
+            <span className="flex items-center gap-2">
+              Booking accepted!{' '}
+              <Link href="video" className="underline font-medium flex items-center gap-1">
+                View Video Call <FaExternalLinkAlt className="text-[10px]" />
+              </Link>
+            </span>
+          )
+          return
+        }
+        if (serviceType === 'audio' || serviceType.includes('audio')) {
+          toast.success(
+            <span className="flex items-center gap-2">
+              Booking accepted!{' '}
+              <Link href="audio" className="underline font-medium flex items-center gap-1">
+                View Audio Call <FaExternalLinkAlt className="text-[10px]" />
+              </Link>
+            </span>
+          )
+          return
+        }
+      }
+
       toast.success(`${action.charAt(0).toUpperCase() + action.slice(1)} — done`)
     } catch {
       toast.error('Action failed. Please try again.')
@@ -500,7 +529,11 @@ function StatusBadge({ status }: { status: string }) {
 
 function TypeBadge({ type }: { type?: string }) {
   if (!type) return null
-  const icon = type === 'video' ? FaVideo : type === 'home_visit' || type === 'home' ? FaHome : type === 'in_person' || type === 'office' ? FaHospital : FaUser
+  const icon = type === 'video' ? FaVideo
+    : type === 'audio' ? FaPhone
+    : type === 'home_visit' || type === 'home' ? FaHome
+    : type === 'in_person' || type === 'office' ? FaHospital
+    : FaUser
   const Icon = icon
   return (
     <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-[#0C6780]/10 text-[#0C6780] font-medium">

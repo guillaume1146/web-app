@@ -7,9 +7,9 @@ export async function seedNannies(prisma: PrismaClient) {
   const nannies = [
     {
       id: 'NAN001',
-      firstName: 'Anita',
-      lastName: 'Beeharry',
-      email: 'anita.beeharry@mediwyz.com',
+      firstName: 'Sophie',
+      lastName: 'Dubois',
+      email: 'nanny.sophie@mediwyz.com',
       password: await hash('Nanny123!'),
       profileImage: '/images/nannies/1.jpg',
       phone: '+230 5789 0123',
