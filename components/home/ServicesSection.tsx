@@ -60,6 +60,7 @@ export default function ServicesSection() {
   const [services, setServices] = useState<ServiceItem[]>([])
   const [roles, setRoles] = useState<RoleData[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeRole, setActiveRole] = useState<string>('ALL')
 
@@ -68,9 +69,9 @@ export default function ServicesSection() {
       fetch('/api/search/services?limit=200').then(r => r.json()),
       fetch('/api/roles?searchEnabled=true').then(r => r.json()),
     ]).then(([svcJson, rolesJson]) => {
-      if (svcJson.success && svcJson.data) setServices(svcJson.data)
-      if (rolesJson.success && rolesJson.data) setRoles(rolesJson.data)
-    }).catch(() => {}).finally(() => setLoading(false))
+      if (svcJson.success && Array.isArray(svcJson.data)) setServices(svcJson.data)
+      if (rolesJson.success && Array.isArray(rolesJson.data)) setRoles(rolesJson.data)
+    }).catch(() => setFetchError(true)).finally(() => setLoading(false))
   }, [])
 
   // Filter services by search query + active role chip
@@ -104,8 +105,6 @@ export default function ServicesSection() {
     for (const r of roles) info[r.code] = r
     return info
   }, [roles])
-
-  if (!loading && services.length === 0) return null
 
   return (
     <section className="py-8 sm:py-12 bg-white overflow-hidden">

@@ -151,35 +151,26 @@ export class SearchController {
         where, take, orderBy: { serviceName: 'asc' },
       });
 
-      // For each service, count active providers offering it (via ProviderServiceConfig).
-      const results = await Promise.all(services.map(async (svc) => {
-        const providers = await this.prisma.providerServiceConfig.findMany({
-          where: { platformServiceId: svc.id, isActive: true },
-          include: {
-            provider: {
-              select: { id: true, firstName: true, lastName: true, userType: true, profileImage: true },
-            },
-          },
-          take: 5,
-        });
-        return {
-          id: svc.id,
-          serviceName: svc.serviceName,
-          category: svc.category,
-          description: svc.description,
-          providerType: svc.providerType,
-          defaultPrice: svc.defaultPrice,
-          currency: svc.currency,
-          duration: svc.duration,
-          providerCount: providers.length,
-          sampleProviders: providers.map(p => ({
-            id: p.provider.id,
-            name: `${p.provider.firstName} ${p.provider.lastName}`.trim(),
-            userType: p.provider.userType,
-            profileImage: p.provider.profileImage,
-            price: p.priceOverride ?? svc.defaultPrice,
-          })),
-        };
+      // Count active providers per service in one grouped query (avoids N+1 and the broken `include: { provider }`)
+      const providerCounts = await this.prisma.providerServiceConfig.groupBy({
+        by: ['platformServiceId'],
+        where: { platformServiceId: { in: services.map(s => s.id) }, isActive: true },
+        _count: { id: true },
+      });
+      const countMap: Record<string, number> = {};
+      for (const pc of providerCounts) countMap[pc.platformServiceId] = pc._count.id;
+
+      const results = services.map(svc => ({
+        id: svc.id,
+        serviceName: svc.serviceName,
+        category: svc.category,
+        description: svc.description,
+        providerType: svc.providerType,
+        defaultPrice: svc.defaultPrice,
+        currency: svc.currency,
+        duration: svc.duration,
+        providerCount: countMap[svc.id] ?? 0,
+        sampleProviders: [],
       }));
 
       return { success: true, data: results, total: results.length };
