@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { FaCheck, FaTimes, FaUserMd, FaUserNurse, FaChild, FaFlask, FaAmbulance, FaUsers } from 'react-icons/fa'
-import { getUserTypeColor, getUserTypeLabel } from '@/lib/constants/userTypeStyles'
+import { getUserTypeLabel } from '@/lib/constants/userTypeStyles'
+import { avatarSrc } from '@/lib/utils/avatar'
 import UserSuggestions from './UserSuggestions'
+import SuggestionsGrid from './SuggestionsGrid'
 
 interface ConnectionPerson {
  id: string
@@ -166,24 +169,19 @@ export default function ConnectionRequestsList({ userId }: ConnectionRequestsLis
  ) : (
  <div className="divide-y">
  {requests.map(req => {
- const colors = getUserTypeColor(req.sender.userType)
  return (
  <div key={req.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition">
- {req.sender.profileImage ? (
+ <Link href={`/profile/${req.sender.id}`} className="flex-shrink-0">
  <img
- src={req.sender.profileImage}
+ src={avatarSrc(req.sender.profileImage, req.sender.firstName, req.sender.lastName)}
  alt={`${req.sender.firstName} ${req.sender.lastName}`}
- className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+ className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 bg-gray-100"
  />
- ) : (
- <div className={`w-12 h-12 rounded-full ${colors.gradient} flex items-center justify-center text-white font-bold`}>
- {req.sender.firstName[0]}{req.sender.lastName[0]}
- </div>
- )}
+ </Link>
  <div className="flex-1 min-w-0">
- <p className="font-medium text-gray-900">
+ <Link href={`/profile/${req.sender.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition">
  {req.sender.firstName} {req.sender.lastName}
- </p>
+ </Link>
  <div className="flex items-center gap-1.5">
  {typeIcons[req.sender.userType]}
  <span className="text-xs text-gray-500">{getUserTypeLabel(req.sender.userType)}</span>
@@ -224,25 +222,20 @@ export default function ConnectionRequestsList({ userId }: ConnectionRequestsLis
  <div className="divide-y">
  {connections.map(conn => {
  const person = conn.senderId === userId ? conn.receiver : conn.sender
- const colors = getUserTypeColor(person.userType)
  return (
  <div key={conn.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition">
- {person.profileImage ? (
+ <Link href={`/profile/${person.id}`} className="flex-shrink-0">
  <img
- src={person.profileImage}
+ src={avatarSrc(person.profileImage, person.firstName, person.lastName)}
  alt={`${person.firstName} ${person.lastName}`}
- className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+ className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 bg-gray-100"
  />
- ) : (
- <div className={`w-12 h-12 rounded-full ${colors.gradient} flex items-center justify-center text-white font-bold`}>
- {person.firstName[0]}{person.lastName[0]}
- </div>
- )}
+ </Link>
  <div className="flex-1 min-w-0">
- <p className="font-medium text-gray-900">
+ <Link href={`/profile/${person.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition">
  {person.firstName} {person.lastName}
- </p>
- <div className="flex items-center gap-1.5">
+ </Link>
+ <div className="flex items-center gap-1.5 mt-0.5">
  {typeIcons[person.userType]}
  <span className="text-xs text-gray-500">{getUserTypeLabel(person.userType)}</span>
  </div>
@@ -262,6 +255,9 @@ export default function ConnectionRequestsList({ userId }: ConnectionRequestsLis
  <UserSuggestions currentUserId={userId} maxResults={8} />
  </div>
  </div>
+
+ {/* Paginated suggestions grid — all users including MEMBER */}
+ <SuggestionsGrid currentUserId={userId} />
  </div>
  )
 }

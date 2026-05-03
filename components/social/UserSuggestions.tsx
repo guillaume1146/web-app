@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { FaUserPlus, FaUserMd, FaUserNurse, FaChild, FaFlask, FaAmbulance } from 'react-icons/fa'
-import { getUserTypeColor, getUserTypeLabel } from '@/lib/constants/userTypeStyles'
+import { getUserTypeLabel } from '@/lib/constants/userTypeStyles'
 import { initialsAvatar, avatarSrc } from '@/lib/utils/avatar'
 
 interface SuggestedUser {
@@ -122,7 +122,6 @@ export default function UserSuggestions({ currentUserId, maxResults = 7, classNa
  <h3 className="font-semibold text-gray-900 mb-3">People You May Know</h3>
  <div className="space-y-3">
  {suggestions.map(user => {
- const colors = getUserTypeColor(user.userType)
  return (
  <div key={user.id} className="flex items-center gap-3">
  <Link href={`/profile/${user.id}`} className="flex-shrink-0">
@@ -134,9 +133,9 @@ export default function UserSuggestions({ currentUserId, maxResults = 7, classNa
  />
  </Link>
  <div className="flex-1 min-w-0">
- <p className="text-sm font-medium text-gray-900 truncate">
+ <Link href={`/profile/${user.id}`} className="text-sm font-medium text-gray-900 hover:text-blue-600 transition truncate block">
  {user.firstName} {user.lastName}
- </p>
+ </Link>
  <div className="flex items-center gap-1.5">
  {typeIcons[user.userType] || null}
  <span className="text-xs text-gray-500">{getUserTypeLabel(user.userType)}</span>

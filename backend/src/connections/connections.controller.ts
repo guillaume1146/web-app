@@ -16,11 +16,17 @@ export class ConnectionsController {
   }
 
   @Get('suggestions')
-  async suggestions(@CurrentUser() user: JwtPayload, @Query('limit') limit?: string, @Query('userId') userId?: string) {
+  async suggestions(
+    @CurrentUser() user: JwtPayload,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('userId') userId?: string,
+  ) {
     const uid = userId || user.sub;
-    const take = Math.min(parseInt(limit || '10'), 20);
-    const suggestions = await this.connectionsService.suggestions(uid, take);
-    return { success: true, data: suggestions };
+    const take = Math.min(parseInt(limit || '12'), 50);
+    const skip = Math.max(parseInt(offset || '0'), 0);
+    const result = await this.connectionsService.suggestions(uid, take, skip);
+    return { success: true, data: result.data, total: result.total, hasMore: result.hasMore };
   }
 
   @Post()

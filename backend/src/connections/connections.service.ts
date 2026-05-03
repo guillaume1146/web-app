@@ -26,7 +26,7 @@ export class ConnectionsService {
     });
   }
 
-  async suggestions(userId: string, take: number) {
+  async suggestions(userId: string, take: number, skip = 0) {
     const currentUser = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { regionId: true },
@@ -43,16 +43,24 @@ export class ConnectionsService {
       excludeIds.add(c.receiverId);
     });
 
-    return this.prisma.user.findMany({
-      where: {
-        id: { notIn: Array.from(excludeIds) },
-        accountStatus: 'active',
-        ...(currentUser?.regionId ? { regionId: currentUser.regionId } : {}),
-      },
-      select: { ...USER_SELECT, address: true },
-      take,
-      orderBy: { createdAt: 'desc' },
-    });
+    const where = {
+      id: { notIn: Array.from(excludeIds) },
+      accountStatus: 'active',
+      ...(currentUser?.regionId ? { regionId: currentUser.regionId } : {}),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        select: { ...USER_SELECT, address: true },
+        take,
+        skip,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return { data, total, hasMore: skip + take < total };
   }
 
   async create(senderId: string, receiverId: string) {
