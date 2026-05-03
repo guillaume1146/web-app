@@ -1,4 +1,5 @@
 import HeroSection from '@/components/home/HeroSection'
+import ProviderTypesSection from '@/components/home/ProviderTypesSection'
 import MarketplaceTwoColumn from '@/components/home/MarketplaceTwoColumn'
 import CommunityPosts from '@/components/home/CommunityPosts'
 import LandingPageContent from '@/components/home/LandingPageContent'
@@ -45,11 +46,12 @@ export default async function HomePage() {
  // by the FloatingChatWidget available on every page (see app/layout.tsx).
  const sections = [
  <HeroSection key="hero" content={heroContent} slides={slides.length > 0 ? slides : undefined} />,
+ <ProviderTypesSection key="services" />,
  <MarketplaceTwoColumn key="marketplace" />,
  <CommunityPosts key="community" />,
  ]
 
- const labels = ['Welcome', 'Marketplace', 'Community']
+ const labels = ['Welcome', 'Services', 'Marketplace', 'Community']
 
  return (
  <LandingPageContent sections={sections} labels={labels} />
