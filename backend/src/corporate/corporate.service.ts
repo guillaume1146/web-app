@@ -251,6 +251,72 @@ export class CorporateService {
     });
   }
 
+  /**
+   * Returns ALL company partners — corporate companies + insurance companies
+   * from both CorporateAdminProfile and InsuranceRepProfile (legacy).
+   * type: 'all' | 'insurance' | 'corporate'
+   */
+  async searchAllCompanies(q?: string, type?: string) {
+    const qTrim = q?.trim();
+
+    // ── CorporateAdminProfile companies ───────────────────────────────────
+    const corpWhere: any = {};
+    if (type === 'insurance') corpWhere.isInsuranceCompany = true;
+    if (type === 'corporate') corpWhere.isInsuranceCompany = false;
+    if (qTrim) corpWhere.companyName = { contains: qTrim, mode: 'insensitive' };
+
+    const corpCompanies = await this.prisma.corporateAdminProfile.findMany({
+      where: corpWhere,
+      select: {
+        id: true, companyName: true, industry: true,
+        isInsuranceCompany: true, monthlyContribution: true,
+        coverageDescription: true,
+        user: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { companyName: 'asc' },
+    });
+
+    // ── InsuranceRepProfile companies (legacy) ──────────────���─────────────
+    // Only include when type is 'all' or 'insurance'
+    let legacyInsurance: Array<{
+      id: string; companyName: string; industry: string | null;
+      isInsuranceCompany: boolean; monthlyContribution: null;
+      coverageDescription: string | null;
+      user: { id: string; firstName: string; lastName: string } | null;
+    }> = [];
+
+    if (!type || type === 'all' || type === 'insurance') {
+      const insWhere: any = {};
+      if (qTrim) insWhere.companyName = { contains: qTrim, mode: 'insensitive' };
+      const reps = await this.prisma.insuranceRepProfile.findMany({
+        where: insWhere,
+        select: {
+          id: true, companyName: true, coverageTypes: true,
+          user: { select: { id: true, firstName: true, lastName: true } },
+        },
+        orderBy: { companyName: 'asc' },
+      });
+      legacyInsurance = reps.map(r => ({
+        id: r.id,
+        companyName: r.companyName,
+        industry: 'Insurance',
+        isInsuranceCompany: true,
+        monthlyContribution: null,
+        coverageDescription: r.coverageTypes?.join(', ') || null,
+        user: r.user,
+      }));
+    }
+
+    // Deduplicate by companyName (CorporateAdminProfile wins over legacy)
+    const seen = new Set<string>();
+    const merged: typeof legacyInsurance = [];
+    for (const c of [...corpCompanies.map(c => ({ ...c, industry: c.industry ?? null, coverageDescription: c.coverageDescription ?? null, user: c.user ?? null })), ...legacyInsurance]) {
+      const key = c.companyName.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); merged.push(c); }
+    }
+    return merged.sort((a, b) => a.companyName.localeCompare(b.companyName));
+  }
+
   /** Member joins an insurance company — deducts first month from wallet. */
   async joinInsuranceCompany(userId: string, companyProfileId: string) {
     const company = await this.prisma.corporateAdminProfile.findFirst({

@@ -36,11 +36,19 @@ export class CorporateController {
 
   // ─── Insurance company flows ────────────────────────────────────────────
 
-  /** GET /api/insurance-companies?q= — any user searches insurance companies. */
+  /** GET /api/corporate/insurance-companies?q= — legacy alias, insurance only. */
   @Public()
   @Get('insurance-companies')
   async searchInsurance(@Query('q') q?: string) {
     const data = await this.corporateService.searchInsuranceCompanies(q);
+    return { success: true, data };
+  }
+
+  /** GET /api/corporate/companies?q=&type=all|insurance|corporate — all company partners. */
+  @Public()
+  @Get('companies')
+  async searchCompanies(@Query('q') q?: string, @Query('type') type?: string) {
+    const data = await this.corporateService.searchAllCompanies(q, type);
     return { success: true, data };
   }
 

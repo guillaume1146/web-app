@@ -1,4 +1,5 @@
 import HeroSection from '@/components/home/HeroSection'
+import CompanyTrustBar from '@/components/home/CompanyTrustBar'
 import ServicesSection from '@/components/home/ServicesSection'
 import HealthShopMarketplace from '@/components/home/HealthShopMarketplace'
 import CommunityPosts from '@/components/home/CommunityPosts'
@@ -39,15 +40,18 @@ export default async function HomePage() {
  sortOrder: s.sortOrder,
  }))
 
+ // Order: Hero → Services (most attractive feature, must be #1) →
+ // Trust bar → Health Shop → Community → Providers
  const sections = [
  <HeroSection key="hero" content={heroContent} slides={slides.length > 0 ? slides : undefined} />,
  <ServicesSection key="services" />,
+ <CompanyTrustBar key="trust" />,
  <HealthShopMarketplace key="health-shop" />,
  <CommunityPosts key="community" />,
  <ProvidersSection key="providers" />,
  ]
 
- const labels = ['Welcome', 'Services', 'Health Shop', 'Community', 'Providers']
+ const labels = ['Welcome', 'Services', 'Partners', 'Health Shop', 'Community', 'Providers']
 
  return (
  <LandingPageContent sections={sections} labels={labels} />
