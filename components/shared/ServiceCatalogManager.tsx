@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useUser } from '@/hooks/useUser'
+import Link from 'next/link'
 import {
  FaPlus, FaEdit, FaTrash, FaSearch, FaSpinner, FaTimes,
- FaCheckCircle, FaTimesCircle, FaFilter
+ FaCheckCircle, FaTimesCircle, FaFilter, FaExclamationTriangle
 } from 'react-icons/fa'
+import { FiLink } from 'react-icons/fi'
 import ServiceWorkflowLinker from '@/components/workflow/ServiceWorkflowLinker'
 
 export interface ServiceField {
@@ -41,7 +43,25 @@ interface ServiceItem {
  price: number
  currency?: string
  isActive: boolean
+ platformServiceId?: string
  [key: string]: unknown
+}
+
+interface WorkflowTemplate {
+ id: string
+ name: string
+ slug: string
+ serviceMode: string
+ isDefault: boolean
+ platformServiceId: string | null
+ steps: { order: number; statusCode: string; label: string; flags: Record<string, boolean | string> }[]
+}
+
+const MODE_LABELS: Record<string, string> = { office: 'In-Person', home: 'Home Visit', video: 'Video' }
+const MODE_COLORS: Record<string, string> = {
+ office: 'bg-sky-100 text-sky-700',
+ home: 'bg-orange-100 text-orange-700',
+ video: 'bg-purple-100 text-purple-700',
 }
 
 export default function ServiceCatalogManager({ config }: { config: ServiceCatalogConfig }) {
@@ -56,7 +76,8 @@ export default function ServiceCatalogManager({ config }: { config: ServiceCatal
  const [formData, setFormData] = useState<Record<string, unknown>>({})
  const [saving, setSaving] = useState(false)
  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
- const [cachedWorkflows, setCachedWorkflows] = useState<unknown[] | undefined>(undefined)
+ const [cachedWorkflows, setCachedWorkflows] = useState<WorkflowTemplate[]>([])
+ const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>('')
 
  const accent = config.accentColor || 'teal'
 
@@ -100,6 +121,12 @@ export default function ServiceCatalogManager({ config }: { config: ServiceCatal
  if (user?.id) fetchServices()
  }, [user?.id, fetchServices])
 
+ // Workflows not yet linked to any service — available for new service assignment
+ const availableWorkflows = useMemo(
+   () => cachedWorkflows.filter(w => !w.platformServiceId),
+   [cachedWorkflows]
+ )
+
  const openCreateModal = () => {
  setEditingService(null)
  const defaults: Record<string, unknown> = {}
@@ -110,6 +137,7 @@ export default function ServiceCatalogManager({ config }: { config: ServiceCatal
  else defaults[f.key] = ''
  })
  setFormData(defaults)
+ setSelectedWorkflowId('')
  setShowModal(true)
  }
 
@@ -120,10 +148,17 @@ export default function ServiceCatalogManager({ config }: { config: ServiceCatal
  data[f.key] = service[f.key] ?? ''
  })
  setFormData(data)
+ setSelectedWorkflowId('')
  setShowModal(true)
  }
 
  const handleSave = async () => {
+ // Require workflow for new service creation when provider type is set
+ if (!editingService && config.providerType && !selectedWorkflowId) {
+   setMessage({ type: 'error', text: 'Please select a workflow before creating this service. Services without a workflow cannot be booked.' })
+   return
+ }
+
  setSaving(true)
  setMessage(null)
  try {
@@ -135,6 +170,7 @@ export default function ServiceCatalogManager({ config }: { config: ServiceCatal
  const res = await fetch(url, {
  method,
  headers: { 'Content-Type': 'application/json' },
+ credentials: 'include',
  body: JSON.stringify(formData),
  })
 
@@ -143,7 +179,24 @@ export default function ServiceCatalogManager({ config }: { config: ServiceCatal
  throw new Error(err.message || 'Request failed')
  }
 
- setMessage({ type: 'success', text: editingService ? 'Service updated successfully' : 'Service created successfully' })
+ const result = await res.json()
+
+ // Auto-link selected workflow to the newly created service
+ if (!editingService && selectedWorkflowId && result.data?.id) {
+   const newServiceId = result.data.id
+   await fetch(`/api/workflow/templates/${selectedWorkflowId}`, {
+     method: 'PATCH',
+     headers: { 'Content-Type': 'application/json' },
+     credentials: 'include',
+     body: JSON.stringify({ platformServiceId: newServiceId }),
+   })
+   // Update local cache so service card immediately shows the linked workflow
+   setCachedWorkflows(prev =>
+     prev.map(w => w.id === selectedWorkflowId ? { ...w, platformServiceId: newServiceId } : w)
+   )
+ }
+
+ setMessage({ type: 'success', text: editingService ? 'Service updated successfully' : 'Service created and workflow linked successfully' })
  setShowModal(false)
  fetchServices()
  } catch (err) {
@@ -156,7 +209,7 @@ export default function ServiceCatalogManager({ config }: { config: ServiceCatal
  const handleDelete = async (id: string) => {
  if (!confirm('Are you sure you want to delete this service?')) return
  try {
- const res = await fetch(`${config.apiBasePath}/${id}`, { method: 'DELETE' })
+ const res = await fetch(`${config.apiBasePath}/${id}`, { method: 'DELETE', credentials: 'include' })
  if (!res.ok) throw new Error('Delete failed')
  setMessage({ type: 'success', text: 'Service deleted successfully' })
  fetchServices()
@@ -294,7 +347,7 @@ export default function ServiceCatalogManager({ config }: { config: ServiceCatal
  {service.isActive ? 'Active' : 'Inactive'}
  </span>
  </div>
- {config.providerType && cachedWorkflows && (
+ {config.providerType && cachedWorkflows.length >= 0 && (
  <div className="pt-3 border-t border-gray-100 mt-3">
  <p className="text-xs font-medium text-gray-500 mb-1">Linked Workflow</p>
  <ServiceWorkflowLinker
@@ -369,6 +422,85 @@ export default function ServiceCatalogManager({ config }: { config: ServiceCatal
  )}
  </div>
  ))}
+
+ {/* Workflow Assignment */}
+ {config.providerType && (
+ <div>
+ <label className="block text-sm font-medium text-gray-700 mb-1.5">
+ <span className="flex items-center gap-1.5">
+   <FiLink className="w-3.5 h-3.5" />
+   Linked Workflow
+   {!editingService && <span className="text-red-500">*</span>}
+ </span>
+ </label>
+
+ {editingService ? (
+   // Edit mode: workflow managed from the card's ServiceWorkflowLinker
+   <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
+     Workflow is managed from the service card. Close this dialog and use the
+     &ldquo;Linked Workflow&rdquo; section on the card to assign or change it.
+   </div>
+ ) : availableWorkflows.length === 0 ? (
+   // No unlinked workflows available
+   <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+     <div className="flex items-center gap-2 text-amber-800 text-sm font-medium">
+       <FaExclamationTriangle className="w-4 h-4 flex-shrink-0" />
+       No workflows available to assign
+     </div>
+     <p className="text-xs text-amber-700">
+       All existing workflows are already linked to other services, or none have been created yet.
+       Create a new workflow first, then come back to add this service.
+     </p>
+     {config.workflowCreateHref && (
+       <Link
+         href={config.workflowCreateHref}
+         className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-800 underline underline-offset-2"
+       >
+         Create a workflow
+       </Link>
+     )}
+   </div>
+ ) : (
+   // Create mode: required workflow selector
+   <div className="space-y-2">
+     <select
+       value={selectedWorkflowId}
+       onChange={e => setSelectedWorkflowId(e.target.value)}
+       className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-teal-500 text-sm ${!selectedWorkflowId ? 'border-amber-300 bg-amber-50' : 'border-gray-300'}`}
+     >
+       <option value="">Select a workflow...</option>
+       {availableWorkflows.map(w => (
+         <option key={w.id} value={w.id}>
+           {w.name} — {MODE_LABELS[w.serviceMode] || w.serviceMode}
+         </option>
+       ))}
+     </select>
+     {selectedWorkflowId && (() => {
+       const wf = availableWorkflows.find(w => w.id === selectedWorkflowId)
+       if (!wf) return null
+       return (
+         <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${MODE_COLORS[wf.serviceMode] || 'bg-gray-100 text-gray-700'}`}>
+           {MODE_LABELS[wf.serviceMode] || wf.serviceMode}
+         </div>
+       )
+     })()}
+     {!selectedWorkflowId && (
+       <p className="text-xs text-amber-700">
+         A workflow defines how this service is delivered. Services without a workflow are not visible to patients.
+       </p>
+     )}
+     {config.workflowCreateHref && (
+       <Link
+         href={config.workflowCreateHref}
+         className="inline-flex items-center gap-1 text-xs text-[#0C6780] hover:underline"
+       >
+         <FaPlus className="w-2.5 h-2.5" /> Create a new workflow instead
+       </Link>
+     )}
+   </div>
+ )}
+ </div>
+ )}
  </div>
  <div className="flex items-center justify-end gap-3 p-5 border-t">
  <button
@@ -379,7 +511,7 @@ export default function ServiceCatalogManager({ config }: { config: ServiceCatal
  </button>
  <button
  onClick={handleSave}
- disabled={saving}
+ disabled={saving || (!editingService && !!config.providerType && !selectedWorkflowId && availableWorkflows.length > 0)}
  className={`px-4 py-2.5 bg-${accent}-600 text-white rounded-lg hover:bg-${accent}-700 transition text-sm font-medium disabled:opacity-50 flex items-center gap-2`}
  >
  {saving && <FaSpinner className="animate-spin" />}
