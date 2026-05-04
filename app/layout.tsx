@@ -4,9 +4,12 @@ import './globals.css'
 import ConditionalNavbar from '@/components/layout/ConditionalNavbar'
 import ConditionalFooter from '@/components/layout/ConditionalFooter'
 import { CartProvider } from '@/app/search/medicines/contexts/CartContext'
+import { BookingCartProvider } from '@/lib/contexts/booking-cart-context'
 import ToastProvider from '@/components/shared/ToastProvider'
 import DesktopModeWarning from '@/components/shared/DesktopModeWarning'
 import FloatingChatWidget from '@/components/shared/FloatingChatWidget'
+import FloatingBookingCart from '@/components/shared/FloatingBookingCart'
+import FloatingAuthFAB from '@/components/shared/FloatingAuthFAB'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -169,6 +172,7 @@ export default function RootLayout({
  </head>
  <body className={inter.className}>
  <CartProvider>
+ <BookingCartProvider>
  <ConditionalNavbar />
  <main id="main-content" className="min-h-screen">
  {children}
@@ -176,8 +180,11 @@ export default function RootLayout({
  <ConditionalFooter />
  <ToastProvider />
  <DesktopModeWarning />
- {/* Floating AI chat bubble — visible on every public + dashboard page */}
+ {/* 3 floating elements — visible everywhere */}
+ <FloatingAuthFAB />
+ <FloatingBookingCart />
  <FloatingChatWidget />
+ </BookingCartProvider>
  </CartProvider>
  <script
  dangerouslySetInnerHTML={{

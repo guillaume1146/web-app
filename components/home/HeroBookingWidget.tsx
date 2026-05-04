@@ -8,6 +8,7 @@ import { Icon } from '@iconify/react'
 import {
   FaTimes, FaLock, FaArrowRight, FaCheckCircle, FaCalendarAlt,
 } from 'react-icons/fa'
+import { useBookingCart } from '@/lib/contexts/booking-cart-context'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,6 +107,7 @@ const STUB_ROLES: RoleData[] = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function HeroBookingWidget() {
+  const { setSelection, openLoginModal } = useBookingCart()
   const [roles, setRoles] = useState<RoleData[]>(STUB_ROLES)
   const [activeRole, setActiveRole] = useState<RoleData>(STUB_ROLES[0])
   const [days] = useState<Date[]>(() => upcomingDays(7))
@@ -114,11 +116,8 @@ export default function HeroBookingWidget() {
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [services, setServices] = useState<ServiceItem[]>([])
-  const [modal, setModal] = useState<'none' | 'login' | 'services' | 'cart'>('none')
+  const [modal, setModal] = useState<'none' | 'services' | 'cart'>('none')
   const [cartService, setCartService] = useState<ServiceItem | null>(null)
-  const [loginForm, setLoginForm] = useState({ email: '', password: '' })
-  const [loginLoading, setLoginLoading] = useState(false)
-  const [loginError, setLoginError] = useState('')
   const pillsRef = useRef<HTMLDivElement>(null)
 
   function scrollPills(dir: 'left' | 'right') {
@@ -190,36 +189,28 @@ export default function HeroBookingWidget() {
   function handleSlotClick(slot: TimeSlot) {
     if (slot.taken) return
     setSelectedSlot(slot)
-    setModal(isLoggedIn() ? 'services' : 'login')
-  }
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault()
-    setLoginLoading(true)
-    setLoginError('')
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginForm.email, password: loginForm.password }),
-        credentials: 'include',
-      })
-      const j = await res.json()
-      if (j.success) {
-        setModal('services')
-      } else {
-        setLoginError(j.message || 'Incorrect email or password')
-      }
-    } catch {
-      setLoginError('Connection error — please try again')
-    } finally {
-      setLoginLoading(false)
+    if (!isLoggedIn()) {
+      // Use the global login modal (FloatingAuthFAB) — no redirect
+      openLoginModal(() => setModal('services'))
+    } else {
+      setModal('services')
     }
   }
 
   function selectService(svc: ServiceItem) {
     setCartService(svc)
     setModal('cart')
+    // Also persist to global booking cart so FloatingBookingCart shows it
+    if (selectedSlot) {
+      setSelection({
+        role: activeRole,
+        service: svc,
+        date: selectedDay.toISOString().slice(0, 10),
+        time: `${selectedSlot.hour.toString().padStart(2, '0')}:${selectedSlot.minute.toString().padStart(2, '0')}`,
+        timeLabel: selectedSlot.label,
+        dateLabel: `${DOW[selectedDay.getDay()]}, ${MONTHS[selectedDay.getMonth()]} ${selectedDay.getDate()}`,
+      })
+    }
   }
 
   function confirmBooking() {
@@ -393,6 +384,7 @@ export default function HeroBookingWidget() {
       </motion.div>
 
       {/* ── Modals (fixed overlay — avoids overflow-hidden clipping) ─── */}
+      {/* Login is now handled globally by FloatingAuthFAB */}
       <AnimatePresence>
         {modal !== 'none' && (
           <motion.div
@@ -411,70 +403,6 @@ export default function HeroBookingWidget() {
               transition={{ duration: 0.25, ease: 'easeOut' }}
               className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
             >
-              {/* ── Login modal ──────────────────────── */}
-              {modal === 'login' && (
-                <>
-                  <div className="flex items-start justify-between px-5 pt-5 pb-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <FaLock className="text-[#0C6780] text-xs" />
-                        <h3 className="text-sm font-bold text-[#001E40]">Sign in to book</h3>
-                      </div>
-                      <p className="text-[11px] text-gray-500">
-                        {activeRole.singularLabel} · {selectedSlot?.label} · {slotDateLabel}
-                      </p>
-                    </div>
-                    <button onClick={() => setModal('none')} className="p-1.5 text-gray-300 hover:text-gray-500 -mt-1 -mr-1 rounded-lg">
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleLogin} className="px-5 pb-5 space-y-3">
-                    <input
-                      type="email"
-                      placeholder="Email address"
-                      value={loginForm.email}
-                      autoComplete="email"
-                      onChange={e => setLoginForm(f => ({ ...f, email: e.target.value }))}
-                      required
-                      className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0C6780]/30 focus:border-[#0C6780]"
-                    />
-                    <input
-                      type="password"
-                      placeholder="Password"
-                      value={loginForm.password}
-                      autoComplete="current-password"
-                      onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
-                      required
-                      className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0C6780]/30 focus:border-[#0C6780]"
-                    />
-
-                    {loginError && (
-                      <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{loginError}</p>
-                    )}
-
-                    <button
-                      type="submit"
-                      disabled={loginLoading}
-                      className="w-full py-2.5 bg-[#0C6780] text-white rounded-xl text-sm font-semibold
-                        hover:bg-[#0a5a6e] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <FaLock className="text-[10px]" />
-                      {loginLoading ? 'Signing in…' : 'Sign In & Continue'}
-                    </button>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <Link href="/signup" className="text-xs text-[#0C6780] hover:underline font-medium">
-                        Create free account
-                      </Link>
-                      <Link href={`/login?redirect=/search/${activeRole.slug}`} className="text-xs text-gray-400 hover:text-gray-600">
-                        Full login page →
-                      </Link>
-                    </div>
-                  </form>
-                </>
-              )}
-
               {/* ── Service picker ────────────────────── */}
               {modal === 'services' && (
                 <>
