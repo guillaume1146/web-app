@@ -6,6 +6,8 @@ import Image from 'next/image'
 import { useAppConfig } from '@/hooks/useAppConfig'
 import HeroBookingWidget from '@/components/home/HeroBookingWidget'
 
+// ─── Flag mini-icons ──────────────────────────────────────────────────────────
+
 const flags: Record<string, React.ReactNode> = {
   MU: (
     <div className="inline-flex flex-col rounded-sm overflow-hidden">
@@ -46,6 +48,8 @@ function CountryFlag({ countryCode, className = '' }: { countryCode: string; cla
   return <div className={className}>{flags[countryCode] || flags.MU}</div>
 }
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 interface HeroSectionProps {
   content?: {
     mainTitle?: string
@@ -63,11 +67,15 @@ interface HeroSectionProps {
   countryCode?: string
 }
 
+// ─── Image animation variants ─────────────────────────────────────────────────
+
 const imageVariants = {
-  enter:  { opacity: 0, scale: 1.04 },
+  enter:  { opacity: 0, scale: 1.06 },
   center: { opacity: 1, scale: 1, transition: { duration: 0.9, ease: [0.25, 0.46, 0.45, 0.94] as const } },
   exit:   { opacity: 0, scale: 0.97, transition: { duration: 0.5, ease: [0.55, 0.085, 0.68, 0.53] as const } },
 }
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode = 'MU' }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
@@ -99,139 +107,148 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
 
   return (
     <section
-      className="relative overflow-visible"
-      style={{ background: '#001E40', minHeight: 540 }}
+      className="overflow-hidden"
+      style={{ background: '#001E40', minHeight: 520 }}
     >
-      {/* ── Full-width image carousel ─────────────────────────── */}
-      <div className="absolute inset-0 overflow-hidden rounded-none">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentImageIndex}
-            variants={imageVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            className="absolute inset-0"
-          >
-            <Image
-              src={heroImages[currentImageIndex].src}
-              alt={heroImages[currentImageIndex].alt}
-              fill
-              className="object-contain object-right sm:object-right-bottom"
-              sizes="100vw"
-              priority={currentImageIndex === 0}
-            />
-          </motion.div>
-        </AnimatePresence>
+      {/* ── 3-column flex row — fills the hero height ─────────────── */}
+      <div className="flex flex-col lg:flex-row" style={{ minHeight: 'inherit' }}>
 
-        {/* Left gradient — solid behind text + widget, fades before image zone */}
-        <div
-          className="absolute inset-y-0 left-0 right-0 pointer-events-none"
-          style={{ background: 'linear-gradient(to right, #001E40 55%, #001E40dd 65%, #001E4066 72%, transparent 80%)' }}
-        />
+        {/* ── COL 1: Platform description (left, ~37%) ─────────────── */}
+        <motion.div
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7, ease: 'easeOut' }}
+          className="lg:flex-[37] flex flex-col justify-center
+            px-5 sm:px-8 lg:px-10 xl:px-12
+            py-8 sm:py-10 lg:py-0"
+        >
+          {/* Country flag + platform badge */}
+          <div className="inline-flex self-start items-center bg-white/10 rounded-lg px-3 py-1.5 mb-4 border border-white/20">
+            <CountryFlag countryCode={countryCode} className="mr-2" />
+            <span className="text-xs font-semibold text-brand-sky tracking-wide uppercase">
+              {content?.platformBadge || config.platformDescription || "Africa's #1 HealthTech Platform"}
+            </span>
+          </div>
 
-        {/* Bottom gradient — caption legibility */}
-        <div
-          className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
-          style={{ background: 'linear-gradient(to top, #001E40 0%, #001E4088 50%, transparent 100%)' }}
-        />
-      </div>
-
-      {/* ── Layout: text dominant left, widget compact right, image far-right ── */}
-      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10 xl:px-14 pt-6 sm:pt-8 lg:pt-10 pb-8 sm:pb-10 lg:pr-[12%]">
-        <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-10">
-
-          {/* LEFT: headline & subtitle — dominant, takes most of the space */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.7, ease: 'easeOut' }}
-            className="flex-1 min-w-0"
-          >
-            {/* Country flag + platform badge */}
-            <div className="inline-flex items-center bg-white/10 rounded-lg px-3 py-1.5 mb-3 border border-white/20">
-              <CountryFlag countryCode={countryCode} className="mr-2" />
-              <span className="text-xs font-semibold text-brand-sky tracking-wide uppercase">
-                {content?.platformBadge || config.platformDescription || "Africa's #1 HealthTech Platform"}
+          <h1 className="text-3xl sm:text-4xl xl:text-5xl font-extrabold mb-3 leading-[1.08] text-white">
+            {titleParts.map((part, i) => (
+              <span key={i} className={i === 1 ? 'text-brand-sky' : ''}>
+                {part.trim()}
+                {i === 0 && titleParts.length > 1 && ','}{i === 0 && titleParts.length > 1 && <br />}
               </span>
-            </div>
+            ))}
+          </h1>
 
-            <h1 className="text-3xl sm:text-4xl lg:text-4xl xl:text-5xl font-extrabold mb-3 leading-[1.08] text-white">
-              {titleParts.map((part, i) => (
-                <span key={i} className={i === 1 ? 'text-brand-sky' : ''}>
-                  {part.trim()}
-                  {i === 0 && titleParts.length > 1 && ','}{i === 0 && titleParts.length > 1 && <br />}
-                </span>
-              ))}
-            </h1>
+          <p className="text-sm sm:text-base text-gray-300 leading-relaxed max-w-md">
+            {content?.subtitle ||
+              "Africa's most trusted health platform. Book verified specialists, get AI-powered insights, and access pharmacy — all in one place."}
+          </p>
 
-            <p className="text-sm sm:text-base text-gray-300 leading-relaxed max-w-lg">
-              {content?.subtitle ||
-                "Africa's most trusted health platform. Book verified specialists, get AI-powered insights, and access pharmacy — all in one place."}
-            </p>
+          {/* Trust stats */}
+          <div className="flex flex-wrap gap-5 mt-5">
+            {[
+              { value: '500+', label: 'Verified Providers' },
+              { value: '15+', label: 'Specialties' },
+              { value: '6', label: 'Countries' },
+            ].map(stat => (
+              <div key={stat.label} className="flex flex-col">
+                <span className="text-xl font-black text-white leading-none">{stat.value}</span>
+                <span className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">{stat.label}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
-            {/* Trust stats */}
-            <div className="flex flex-wrap gap-4 mt-4">
-              {[
-                { value: '500+', label: 'Verified Providers' },
-                { value: '15+', label: 'Specialties' },
-                { value: '6', label: 'Countries' },
-              ].map(stat => (
-                <div key={stat.label} className="flex flex-col">
-                  <span className="text-xl font-black text-white leading-none">{stat.value}</span>
-                  <span className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">{stat.label}</span>
-                </div>
-              ))}
-            </div>
+        {/* ── COL 2: Booking widget — fills full height (center, ~36%) ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
+          className="lg:flex-[36] flex flex-col
+            border-t lg:border-t-0 lg:border-l lg:border-r border-white/10"
+          style={{ minHeight: 'inherit' }}
+        >
+          <HeroBookingWidget fullHeight />
+        </motion.div>
 
-            {/* Slide caption */}
+        {/* ── COL 3: Image animation + caption (right, ~27%) ───────── */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.9, delay: 0.3 }}
+          className="hidden lg:flex lg:flex-[27] relative overflow-hidden"
+          style={{ minHeight: 'inherit' }}
+        >
+          {/* Animated image carousel */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentImageIndex}
+              variants={imageVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              className="absolute inset-0"
+            >
+              <Image
+                src={heroImages[currentImageIndex].src}
+                alt={heroImages[currentImageIndex].alt}
+                fill
+                className="object-cover object-center"
+                sizes="27vw"
+                priority={currentImageIndex === 0}
+              />
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Bottom gradient for caption legibility */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none z-10"
+            style={{ background: 'linear-gradient(to top, rgba(0,10,30,0.95) 0%, rgba(0,10,30,0.5) 60%, transparent 100%)' }}
+          />
+
+          {/* Image caption — animates with each slide */}
+          <div className="absolute bottom-0 left-0 right-0 px-4 pb-10 z-20">
             <AnimatePresence mode="wait">
               <motion.div
                 key={`caption-${currentImageIndex}`}
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
+                exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.4 }}
-                className="mt-6 hidden sm:flex items-center gap-2"
+                className="flex items-start gap-2"
               >
-                <div className="w-1 h-8 rounded-full bg-brand-sky/60 flex-shrink-0" />
+                <div className="w-0.5 h-8 rounded-full bg-brand-sky flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-bold text-white/80">{heroImages[currentImageIndex].title}</p>
+                  <p className="text-sm font-bold text-white leading-tight">
+                    {heroImages[currentImageIndex].title}
+                  </p>
                   {heroImages[currentImageIndex].description && (
-                    <p className="text-[10px] text-white/45 mt-0.5">{heroImages[currentImageIndex].description}</p>
+                    <p className="text-[11px] text-white/60 mt-0.5 leading-relaxed">
+                      {heroImages[currentImageIndex].description}
+                    </p>
                   )}
                 </div>
               </motion.div>
             </AnimatePresence>
-          </motion.div>
 
-          {/* RIGHT: booking widget — compact fixed width */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-            className="w-full lg:flex-shrink-0 lg:w-[440px] xl:w-[490px]"
-          >
-            <HeroBookingWidget />
-          </motion.div>
+            {/* Carousel dots */}
+            <div className="flex gap-1.5 mt-3">
+              {heroImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentImageIndex(index)}
+                  aria-label={`Slide ${index + 1}`}
+                  className={`h-1 rounded-full transition-all duration-300 ${
+                    index === currentImageIndex
+                      ? 'bg-white w-5'
+                      : 'bg-white/30 hover:bg-white/50 w-1'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        </motion.div>
 
-        </div>
-      </div>
-
-      {/* ── Carousel dots ──────────────────────────────────────── */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-        {heroImages.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentImageIndex(index)}
-            aria-label={`Slide ${index + 1}`}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              index === currentImageIndex
-                ? 'bg-white w-6 scale-110'
-                : 'bg-white/40 hover:bg-white/60 w-1.5'
-            }`}
-          />
-        ))}
       </div>
     </section>
   )

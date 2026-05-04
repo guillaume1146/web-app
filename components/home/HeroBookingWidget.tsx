@@ -106,7 +106,11 @@ const STUB_ROLES: RoleData[] = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function HeroBookingWidget() {
+interface HeroBookingWidgetProps {
+  fullHeight?: boolean
+}
+
+export default function HeroBookingWidget({ fullHeight = false }: HeroBookingWidgetProps) {
   const { setSelection, openLoginModal } = useBookingCart()
   const [roles, setRoles] = useState<RoleData[]>(STUB_ROLES)
   const [activeRole, setActiveRole] = useState<RoleData>(STUB_ROLES[0])
@@ -229,10 +233,18 @@ export default function HeroBookingWidget() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.65, delay: 0.3, ease: 'easeOut' }}
-        className="w-full"
+        className={fullHeight ? 'w-full h-full flex flex-col' : 'w-full'}
       >
-        <div className="rounded-2xl overflow-hidden border border-white/20 shadow-2xl"
-          style={{ background: 'rgba(0,10,25,0.55)', backdropFilter: 'blur(18px)' }}>
+        <div
+          className={fullHeight
+            ? 'flex flex-col h-full overflow-hidden'
+            : 'rounded-2xl overflow-hidden border border-white/20 shadow-2xl'
+          }
+          style={fullHeight
+            ? { background: 'rgba(0,10,25,0.55)' }
+            : { background: 'rgba(0,10,25,0.55)', backdropFilter: 'blur(18px)' }
+          }
+        >
 
           {/* ── Header + provider pills ─────────────── */}
           <div className="px-4 pt-4 pb-3 border-b border-white/10">
@@ -318,7 +330,7 @@ export default function HeroBookingWidget() {
           </div>
 
           {/* ── Time slots ──────────────────────────── */}
-          <div className="px-4 pb-4">
+          <div className={`px-4 pb-4 ${fullHeight ? 'flex-1 min-h-0 flex flex-col' : ''}`}>
             {isSunday ? (
               <div className="py-5 text-center">
                 <p className="text-white/30 text-xs">Closed on Sundays</p>
@@ -336,8 +348,9 @@ export default function HeroBookingWidget() {
                 <p className="text-white/30 text-xs">No slots available</p>
               </div>
             ) : (
-              <div className="grid grid-cols-4 gap-1.5 max-h-44 overflow-y-auto
-                [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20">
+              <div className={`grid grid-cols-4 gap-1.5 overflow-y-auto
+                [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20
+                ${fullHeight ? 'flex-1 min-h-0 content-start' : 'max-h-44'}`}>
                 {slots.map(slot => {
                   const sel = selectedSlot?.id === slot.id
                   return (
