@@ -233,11 +233,11 @@ export default function HeroBookingWidget({ fullHeight = false }: HeroBookingWid
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.65, delay: 0.3, ease: 'easeOut' }}
-        className={fullHeight ? 'w-full h-full flex flex-col' : 'w-full'}
+        className={fullHeight ? 'flex-1 min-h-0 flex flex-col' : 'w-full'}
       >
         <div
           className={fullHeight
-            ? 'flex flex-col h-full overflow-hidden'
+            ? 'flex flex-col flex-1 min-h-0 overflow-hidden'
             : 'rounded-2xl overflow-hidden border border-white/20 shadow-2xl'
           }
           style={fullHeight

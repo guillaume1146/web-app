@@ -13,23 +13,24 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// ─── Provider role icon keys (healthicons, all confirmed working) ─────────────
+// ─── Provider role icon keys — all verified against @iconify-json/healthicons ──
+// Validation: node -e "const d=require('@iconify-json/healthicons/icons.json'); console.log(Boolean(d.icons['KEY']))"
 const ROLE_ICONS: Record<string, string> = {
   DOCTOR:            'healthicons:doctor',
   NURSE:             'healthicons:nurse',
-  NANNY:             'healthicons:child-programme',
+  NANNY:             'healthicons:child-care',
   PHARMACIST:        'healthicons:pharmacy',
-  LAB_TECHNICIAN:    'healthicons:laboratory',
+  LAB_TECHNICIAN:    'healthicons:biochemistry-laboratory',
   EMERGENCY_WORKER:  'healthicons:ambulance',
-  CAREGIVER:         'healthicons:community-health-worker',
-  PHYSIOTHERAPIST:   'healthicons:physiotherapy',
-  DENTIST:           'healthicons:dentistry',
-  OPTOMETRIST:       'healthicons:eye-health',
-  NUTRITIONIST:      'healthicons:nutrition-care',
-  INSURANCE_REP:     'healthicons:health-insurance',
-  CORPORATE_ADMIN:   'tabler:building-hospital',
-  REGIONAL_ADMIN:    'tabler:map-pin-heart',
-  MEMBER:            'healthicons:patient-files',
+  CAREGIVER:         'healthicons:community-healthworker',
+  PHYSIOTHERAPIST:   'healthicons:physical-therapy',
+  DENTIST:           'healthicons:tooth',
+  OPTOMETRIST:       'healthicons:eye',
+  NUTRITIONIST:      'healthicons:nutrition',
+  INSURANCE_REP:     'healthicons:stethoscope',
+  CORPORATE_ADMIN:   'healthicons:city-worker',
+  REGIONAL_ADMIN:    'healthicons:world-care',
+  MEMBER:            'healthicons:outpatient',
 };
 
 // ─── Service emoji resolver ───────────────────────────────────────────────────

@@ -111,7 +111,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
       style={{ background: '#001E40', minHeight: 520 }}
     >
       {/* ── 3-column flex row — fills the hero height ─────────────── */}
-      <div className="flex flex-col lg:flex-row" style={{ minHeight: 'inherit' }}>
+      <div className="flex flex-col lg:flex-row lg:items-stretch" style={{ minHeight: 'inherit' }}>
 
         {/* ── COL 1: Platform description (left, ~37%) ─────────────── */}
         <motion.div
@@ -166,7 +166,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
           transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
           className="lg:flex-[36] flex flex-col
             border-t lg:border-t-0 lg:border-l lg:border-r border-white/10"
-          style={{ minHeight: 'inherit' }}
         >
           <HeroBookingWidget fullHeight />
         </motion.div>
@@ -177,7 +176,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
           animate={{ opacity: 1 }}
           transition={{ duration: 0.9, delay: 0.3 }}
           className="hidden lg:flex lg:flex-[27] relative overflow-hidden"
-          style={{ minHeight: 'inherit' }}
         >
           {/* Animated image carousel */}
           <AnimatePresence mode="wait">

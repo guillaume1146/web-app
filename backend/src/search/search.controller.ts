@@ -182,6 +182,8 @@ export class SearchController {
         defaultPrice: svc.defaultPrice,
         currency: svc.currency,
         duration: svc.duration,
+        iconKey: (svc as any).iconKey ?? null,
+        emoji: (svc as any).emoji ?? null,
         providerCount: countMap[svc.id] ?? 0,
         sampleProviders: [],
       }));
