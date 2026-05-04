@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { Icon } from '@iconify/react'
@@ -117,6 +117,11 @@ export default function HeroBookingWidget() {
   const [loginForm, setLoginForm] = useState({ email: '', password: '' })
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
+  const pillsRef = useRef<HTMLDivElement>(null)
+
+  function scrollPills(dir: 'left' | 'right') {
+    pillsRef.current?.scrollBy({ left: dir === 'right' ? 130 : -130, behavior: 'smooth' })
+  }
 
   // Load roles from DB
   useEffect(() => {
@@ -242,27 +247,43 @@ export default function HeroBookingWidget() {
               </span>
             </div>
 
-            {/* Provider type pills */}
-            <div className="flex gap-1.5 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden">
-              {roles.map(role => {
-                const active = role.code === activeRole.code
-                return (
-                  <button
-                    key={role.code}
-                    onClick={() => selectRole(role)}
-                    style={active ? { backgroundColor: role.color, borderColor: role.color } : {}}
-                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold
-                      transition-all border whitespace-nowrap
-                      ${active
-                        ? 'text-white shadow-lg shadow-black/30'
-                        : 'bg-white/10 text-white/75 border-white/15 hover:bg-white/20 hover:text-white'
-                      }`}
-                  >
-                    {role.iconKey && <Icon icon={role.iconKey} width={13} height={13} />}
-                    {role.singularLabel}
-                  </button>
-                )
-              })}
+            {/* Provider type pills — with prev/next scroll arrows */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => scrollPills('left')}
+                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white/70 hover:text-white transition-all text-xs"
+                aria-label="Scroll left"
+              >
+                ‹
+              </button>
+              <div ref={pillsRef} className="flex gap-1.5 overflow-x-auto pb-0.5 flex-1 [&::-webkit-scrollbar]:hidden scroll-smooth">
+                {roles.map(role => {
+                  const active = role.code === activeRole.code
+                  return (
+                    <button
+                      key={role.code}
+                      onClick={() => selectRole(role)}
+                      style={active ? { backgroundColor: role.color, borderColor: role.color } : {}}
+                      className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold
+                        transition-all border whitespace-nowrap
+                        ${active
+                          ? 'text-white shadow-lg shadow-black/30'
+                          : 'bg-white/10 text-white/75 border-white/15 hover:bg-white/20 hover:text-white'
+                        }`}
+                    >
+                      {role.iconKey && <Icon icon={role.iconKey} width={13} height={13} />}
+                      {role.singularLabel}
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                onClick={() => scrollPills('right')}
+                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white/70 hover:text-white transition-all text-xs"
+                aria-label="Scroll right"
+              >
+                ›
+              </button>
             </div>
           </div>
 

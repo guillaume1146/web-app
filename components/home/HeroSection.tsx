@@ -124,10 +124,10 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
           </motion.div>
         </AnimatePresence>
 
-        {/* Left gradient — text legibility (narrowed since text column is smaller) */}
+        {/* Left gradient — solid behind text + widget, fades before image zone */}
         <div
-          className="absolute inset-y-0 left-0 w-full sm:w-1/2 lg:w-2/5 pointer-events-none"
-          style={{ background: 'linear-gradient(to right, #001E40 50%, #001E40cc 75%, transparent 100%)' }}
+          className="absolute inset-y-0 left-0 right-0 pointer-events-none"
+          style={{ background: 'linear-gradient(to right, #001E40 52%, #001E40cc 64%, transparent 78%)' }}
         />
 
         {/* Bottom gradient — caption legibility */}
@@ -137,16 +137,16 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
         />
       </div>
 
-      {/* ── Two-column layout: text left + booking widget right ── */}
-      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10 xl:px-14 pt-8 sm:pt-10 lg:pt-12 pb-10 sm:pb-14">
-        <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8 justify-between">
+      {/* ── Layout: constrained to left 62% so widget never touches image ── */}
+      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10 xl:px-14 pt-8 sm:pt-10 lg:pt-12 pb-10 sm:pb-14 lg:pr-[38%]">
+        <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8">
 
           {/* LEFT: headline & subtitle */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7, ease: 'easeOut' }}
-            className="max-w-xs sm:max-w-sm lg:max-w-[260px] xl:max-w-xs flex-shrink-0"
+            className="flex-shrink-0 max-w-xs sm:max-w-sm lg:max-w-[220px] xl:max-w-[240px]"
           >
             {/* Country flag + platform badge */}
             <div className="inline-flex items-center bg-white/10 rounded-lg px-3 py-1.5 mb-4 border border-white/20">
@@ -192,12 +192,12 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
             </AnimatePresence>
           </motion.div>
 
-          {/* RIGHT: booking widget */}
+          {/* CENTER: booking widget — fills remaining space within the 62% content zone */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-            className="w-full lg:flex-1 lg:max-w-xl xl:max-w-2xl"
+            className="w-full lg:flex-1 min-w-0"
           >
             <HeroBookingWidget />
           </motion.div>
