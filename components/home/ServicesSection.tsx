@@ -53,6 +53,12 @@ export default function ServicesSection() {
     }).catch(() => setFetchError(true)).finally(() => setLoading(false))
   }, [])
 
+  const roleMap = useMemo(() => {
+    const map: Record<string, RoleData> = {}
+    for (const r of roles) map[r.code] = r
+    return map
+  }, [roles])
+
   const filtered = useMemo(() => {
     let list = services
     if (activeRole !== 'ALL') list = list.filter(s => s.providerType === activeRole)
@@ -67,40 +73,13 @@ export default function ServicesSection() {
     return list
   }, [services, activeRole, searchQuery])
 
-  const groupedByRole = useMemo(() => {
-    const map: Record<string, ServiceItem[]> = {}
-    for (const svc of filtered) {
-      if (!map[svc.providerType]) map[svc.providerType] = []
-      map[svc.providerType].push(svc)
-    }
-    return map
-  }, [filtered])
-
-  // DOCTOR group always first, then order by roles API sequence
-  const orderedRoleCodes = useMemo(() => {
-    const keys = Object.keys(groupedByRole)
-    return keys.sort((a, b) => {
-      if (a === 'DOCTOR') return -1
-      if (b === 'DOCTOR') return 1
-      const ia = roles.findIndex(r => r.code === a)
-      const ib = roles.findIndex(r => r.code === b)
-      return ia - ib
-    })
-  }, [groupedByRole, roles])
-
-  const roleInfo = useMemo(() => {
-    const info: Record<string, RoleData> = {}
-    for (const r of roles) info[r.code] = r
-    return info
-  }, [roles])
-
   return (
     <section className="py-8 sm:py-12 bg-white overflow-hidden">
       <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-14">
 
         {/* Sticky header */}
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-10 xl:-mx-14 px-4 sm:px-6 lg:px-10 xl:px-14
-          pt-4 sm:pt-6 pb-3 sm:pb-4 mb-4 sm:mb-6 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+          pt-4 sm:pt-6 pb-3 sm:pb-4 mb-6 bg-white/95 backdrop-blur-sm border-b border-gray-100">
 
           <div className="flex items-start justify-between gap-4 mb-3">
             <div>
@@ -167,22 +146,16 @@ export default function ServicesSection() {
 
         {/* Content */}
         {loading ? (
-          <div className="space-y-8">
-            {[1, 2, 3].map(i => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {Array.from({ length: 18 }).map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 bg-gray-200 rounded-xl" />
-                  <div className="h-4 bg-gray-200 rounded w-28" />
-                </div>
-                <div className="grid grid-rows-2 grid-flow-col auto-cols-[148px] sm:auto-cols-[196px] gap-3 overflow-hidden">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map(j => (
-                    <div key={j} className="h-44 bg-gray-100 rounded-2xl" />
-                  ))}
-                </div>
+                <div className="h-36 bg-gray-100 rounded-2xl mb-2" />
+                <div className="h-3 bg-gray-100 rounded w-3/4 mb-1.5" />
+                <div className="h-3 bg-gray-100 rounded w-1/2" />
               </div>
             ))}
           </div>
-        ) : fetchError || Object.keys(groupedByRole).length === 0 ? (
+        ) : fetchError || filtered.length === 0 ? (
           <div className="text-center py-16">
             <FaConciergeBell className="text-4xl text-gray-300 mx-auto mb-3" />
             {fetchError ? (
@@ -197,52 +170,17 @@ export default function ServicesSection() {
             )}
           </div>
         ) : (
-          orderedRoleCodes.map(roleCode => {
-            const roleServices = groupedByRole[roleCode]
-            const info = roleInfo[roleCode]
-            const color = info?.color ?? '#0C6780'
-            const slug = info?.slug ?? roleCode.toLowerCase()
-            const label = info?.label ?? roleCode
-
-            return (
-              <div key={roleCode} className="mb-8">
-                {/* Row header */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: `${color}1a` }}>
-                      {info?.iconKey
-                        ? <Icon icon={info.iconKey} width={20} height={20} color={color} />
-                        : <span className="text-lg leading-none">🩺</span>
-                      }
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900">{label}</h3>
-                      <p className="text-[10px] text-gray-400">{roleServices.length} service{roleServices.length !== 1 ? 's' : ''}</p>
-                    </div>
-                  </div>
-                  <Link
-                    href={`/search/${slug}`}
-                    className="flex items-center gap-1 text-xs font-medium transition-colors hover:opacity-80 whitespace-nowrap"
-                    style={{ color }}
-                  >
-                    Browse providers <FaArrowRight className="text-[9px]" />
-                  </Link>
-                </div>
-
-                {/* Two-row horizontally scrollable grid */}
-                <div className="grid grid-rows-2 grid-flow-col auto-cols-[148px] sm:auto-cols-[196px]
-                  gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden scroll-smooth">
-                  {roleServices.map(svc => (
-                    <ServiceCard key={svc.id} service={svc} color={color} slug={slug} />
-                  ))}
-                </div>
-              </div>
-            )
-          })
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {filtered.map(svc => {
+              const role = roleMap[svc.providerType]
+              const color = role?.color ?? '#0C6780'
+              const slug = role?.slug ?? svc.providerType.toLowerCase()
+              return <ServiceCard key={svc.id} service={svc} color={color} slug={slug} />
+            })}
+          </div>
         )}
 
-        <div className="text-center mt-4 sm:hidden">
+        <div className="text-center mt-6 sm:hidden">
           <Link
             href="/search/services"
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0C6780] text-white rounded-xl text-sm font-medium"
@@ -262,40 +200,40 @@ function ServiceCard({ service, color, slug }: { service: ServiceItem; color: st
   return (
     <Link
       href={`/search/${slug}`}
-      className="group flex-shrink-0 snap-start w-[160px] sm:w-52 flex flex-col bg-white rounded-2xl border border-gray-100
+      className="group flex flex-col bg-white rounded-2xl border border-gray-100
         hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
     >
-      {/* Illustration header — emoji from DB (seed 56) or iconify icon */}
+      {/* Illustration header */}
       <div
         className="relative w-full h-28 sm:h-32 flex-shrink-0 flex items-center justify-center overflow-hidden"
         style={{ background: `linear-gradient(135deg, ${bgMedium} 0%, ${bgLight} 100%)` }}
       >
         <span className="group-hover:scale-110 transition-transform duration-300 flex items-center justify-center">
           {service.emoji ? (
-            <span className="text-6xl sm:text-7xl leading-none select-none">{service.emoji}</span>
+            <span className="text-5xl sm:text-6xl leading-none select-none">{service.emoji}</span>
           ) : service.iconKey ? (
-            <Icon icon={service.iconKey} width={72} height={72} color={color} />
+            <Icon icon={service.iconKey} width={64} height={64} color={color} />
           ) : (
-            <span className="text-6xl leading-none select-none">🩺</span>
+            <span className="text-5xl leading-none select-none">🩺</span>
           )}
         </span>
         <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: color }} />
       </div>
 
       {/* Text */}
-      <div className="p-3 sm:p-4 flex-1 flex flex-col">
-        <h4 className="text-sm font-bold leading-snug line-clamp-2 mb-1" style={{ color }}>
+      <div className="p-3 flex-1 flex flex-col">
+        <h4 className="text-xs sm:text-sm font-bold leading-snug line-clamp-2 mb-1" style={{ color }}>
           {service.serviceName}
         </h4>
         {service.description && (
-          <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2 flex-1">
+          <p className="text-[10px] sm:text-[11px] text-gray-500 leading-relaxed line-clamp-2 flex-1">
             {service.description}
           </p>
         )}
       </div>
 
       {/* Footer */}
-      <div className="px-3 sm:px-4 pb-3 pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+      <div className="px-3 pb-3 pt-1.5 border-t border-gray-100 flex items-center justify-between gap-1">
         <span className="text-xs font-bold text-gray-900">
           Rs {service.defaultPrice.toLocaleString()}
         </span>
