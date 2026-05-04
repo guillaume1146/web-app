@@ -34,71 +34,85 @@ function hex2rgba(hex: string, alpha = 0.12) {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-// Each service gets a UNIQUE emoji — ordered from specific to generic so no two rules collide
-function resolveServiceEmoji(name: string, category: string, providerType: string): string {
+// Each service maps to a unique healthcare-specific healthicons iconify key.
+// Ordered from most specific to most generic — no two services in the same
+// provider group should collide if their names are reasonably descriptive.
+function resolveServiceIconKey(name: string, category: string, providerType: string): string {
   const t = `${name} ${category}`.toLowerCase()
 
-  // Anatomy-specific (highest specificity first)
-  if (/cardio|heart disease|arrhythm/.test(t)) return '🫀'         // anatomical heart
-  if (/lung|pulmon|respir|chest infect|bronch/.test(t)) return '🫁' // lungs
-  if (/neuro|brain|stroke|epilep|cereb/.test(t)) return '🧠'        // brain
-  if (/dental|teeth|tooth|oral|gum|cavity|braces/.test(t)) return '🦷'
-  if (/eye|vision|ophth|retina|glaucom|cataract/.test(t)) return '👁️'
-  if (/bone|ortho|joint|spine|fracture|arthrit|knee|hip/.test(t)) return '🦴'
-  if (/ear|hearing|ent|audiol|tinnit/.test(t)) return '👂'
-  if (/kidney|renal|urol|bladder|prostate/.test(t)) return '💧'
-  if (/liver|hepat|gallblad|jaundic/.test(t)) return '🟡'           // yellow circle for liver/jaundice
-  if (/gastro|stomach|digest|bowel|colon|intestin|acid reflux/.test(t)) return '🫃'
-  if (/skin|derma|acne|rash|eczema|psoriasis/.test(t)) return '💆'  // skin / face care
+  // Anatomy-specific (highest specificity)
+  if (/cardio|heart disease|arrhythm|chest pain/.test(t))       return 'healthicons:heart-organ'
+  if (/pulmon|lung|bronch|respir|chest infect/.test(t))          return 'healthicons:lungs'
+  if (/neuro|brain|stroke|epilep|cereb|headache/.test(t))        return 'healthicons:brain-alt-outline'
+  if (/dental|teeth|tooth|oral|gum|cavity|braces/.test(t))       return 'healthicons:dentistry-outline'
+  if (/eye|vision|ophth|retina|glaucom|cataract/.test(t))        return 'healthicons:eye-health-outline'
+  if (/bone|ortho|joint|spine|fracture|arthrit|knee|hip/.test(t)) return 'healthicons:orthopedic-hand-outline'
+  if (/ear|hearing|ent|audiol|tinnit/.test(t))                   return 'healthicons:ear'
+  if (/kidney|renal|urol|bladder|prostate/.test(t))              return 'healthicons:kidney'
+  if (/liver|hepat|gallblad|jaundic/.test(t))                    return 'healthicons:liver'
+  if (/gastro|stomach|digest|bowel|colon|intestin|acid/.test(t)) return 'healthicons:gastro-entero'
+  if (/skin|derma|acne|rash|eczema|psoriasis/.test(t))           return 'healthicons:skin-alt'
 
   // Procedures & tests
-  if (/x.?ray|imaging|mri|ct scan|ultrasound|radiol/.test(t)) return '🩻' // x-ray (Unicode 13)
-  if (/blood test|hematol|anemia|coagul/.test(t)) return '🩸'        // blood drop
-  if (/lab|sample|culture|swab|biopsy|pathol|urine/.test(t)) return '🔬' // microscope
-  if (/vaccine|immuniz|vaccin/.test(t)) return '💉'                  // syringe (reserved for vaccines)
-  if (/wound|dressing|bandage|suture|stitch/.test(t)) return '🩹'   // bandage
-  if (/surgery|operat|procedure|incision/.test(t)) return '⚕️'      // medical symbol (no scalpel emoji)
-  if (/cancer|oncol|tumor|chemo|radiother/.test(t)) return '🎗️'    // ribbon (awareness)
+  if (/x.?ray|mri|ct scan|ultrasound|radiol|imaging/.test(t))   return 'healthicons:x-ray'
+  if (/blood test|hematol|anemia|coagul/.test(t))                return 'healthicons:blood'
+  if (/lab|sample|culture|swab|biopsy|pathol|urine/.test(t))     return 'healthicons:laboratory'
+  if (/vaccine|immuniz|vaccin/.test(t))                           return 'healthicons:vaccination'
+  if (/wound|dressing|bandage|suture|stitch/.test(t))            return 'healthicons:wound-and-injury-care'
+  if (/surgery|operat|procedure|incision/.test(t))                return 'healthicons:surgery'
+  if (/cancer|oncol|tumor|chemo|radiother/.test(t))              return 'healthicons:cancer'
+  if (/injection|iv therapy|infus|intravenous/.test(t))          return 'healthicons:syringe'
+  if (/hiv|aids|sti|std|infectious|communicable/.test(t))        return 'healthicons:hiv'
 
   // Services & modes
-  if (/home visit|house call|domicil|home care/.test(t)) return '🏠'
-  if (/video|telehealth|telemedicine|online|virtual|remote consult/.test(t)) return '📱'
-  if (/emergency|ambulance|urgent|trauma|rescue/.test(t)) return '🚑'
-  if (/pharmacy|prescription|dispensing|medication/.test(t)) return '💊'
-  if (/physio|rehabilit|movement|mobility|stretching/.test(t)) return '💪'
-  if (/mental|psych|anxiety|depress|counsel|talk therapy/.test(t)) return '🧘' // meditation ≠ brain
-  if (/nutrition|diet|food|meal plan|weight loss/.test(t)) return '🥗'
-  if (/elder|geriat|elderly|senior care|aged/.test(t)) return '🧓'
-  if (/pregnan|obstetric|maternal|antenatal|prenatal|midwif|birth/.test(t)) return '🤰'
-  if (/baby|infant|newborn|neonat|pediatr|child/.test(t)) return '👶'
-  if (/nanny|childcare|babysit/.test(t)) return '🧸'
-  if (/diabetes|glucose|insulin|endocrin|thyroid|hormone/.test(t)) return '🧬' // DNA for endocrine
-  if (/blood pressure|hypertens|cardiovas|heart fail/.test(t)) return '❤️'    // red heart (distinct from 🫀)
-  if (/oxygen|asthma|inhaler|copd/.test(t)) return '💨'
-  if (/general consult|check.?up|annual|screening/.test(t)) return '🩺'
+  if (/home visit|house call|domicil|home care/.test(t))         return 'healthicons:home-health'
+  if (/video|telehealth|telemedicine|online|virtual|remote/.test(t)) return 'healthicons:telemedicine'
+  if (/emergency|ambulance|urgent|trauma|rescue/.test(t))        return 'healthicons:emergency-referral'
+  if (/pharmacy|prescription|dispensing/.test(t))                 return 'healthicons:pharmacy'
+  if (/physio|rehabilit|movement|mobility|stretching/.test(t))   return 'healthicons:physiotherapy'
+  if (/mental|psych|anxiety|depress|counsel|talk therapy/.test(t)) return 'healthicons:mental-health'
+  if (/nutrition|diet|food|meal plan|weight loss/.test(t))       return 'healthicons:nutrition-care'
+  if (/elder|geriat|elderly|senior care|aged/.test(t))           return 'healthicons:old-people-outline'
+  if (/pregnan|obstetric|maternal|antenatal|prenatal|birth/.test(t)) return 'healthicons:pregnant-woman'
+  if (/baby|infant|newborn|neonat|pediatr/.test(t))              return 'healthicons:infant'
+  if (/nanny|childcare|babysit|child/.test(t))                   return 'healthicons:child-programme'
+  if (/diabetes|glucose|insulin|endocrin|thyroid|hormone/.test(t)) return 'healthicons:glucose'
+  if (/blood pressure|hypertens|cardiovas|heart fail/.test(t))   return 'healthicons:blood-pressure'
+  if (/oxygen|asthma|inhaler|copd/.test(t))                      return 'healthicons:lungs'
+  if (/general consult|check.?up|annual|screening|assessment/.test(t)) return 'healthicons:stethoscope'
+  if (/prescription|medication|drug|medicine/.test(t))           return 'healthicons:medicines'
+  if (/caregiver|care plan|chronic|management|monitoring/.test(t)) return 'healthicons:community-health-worker'
+  if (/specialist|referral|second opinion/.test(t))              return 'healthicons:doctor'
 
-  // Provider-type fallbacks (each unique)
+  // Provider-type fallbacks — each role gets a distinct icon
   const FALLBACK: Record<string, string> = {
-    DOCTOR: '🩺',        // stethoscope
-    NURSE: '📋',         // assessment/care plan clipboard
-    NANNY: '🧸',         // teddy bear
-    PHARMACIST: '💊',    // pill
-    LAB_TECHNICIAN: '🔬', // microscope
-    EMERGENCY_WORKER: '🚑',
-    CAREGIVER: '🤝',     // handshake
-    PHYSIOTHERAPIST: '💪', // flexed muscle
-    DENTIST: '🦷',
-    OPTOMETRIST: '👁️',
-    NUTRITIONIST: '🥗',
+    DOCTOR:           'healthicons:doctor',
+    NURSE:            'healthicons:nurse',
+    NANNY:            'healthicons:child-programme',
+    PHARMACIST:       'healthicons:pharmacy',
+    LAB_TECHNICIAN:   'healthicons:laboratory',
+    EMERGENCY_WORKER: 'healthicons:ambulance',
+    CAREGIVER:        'healthicons:community-health-worker',
+    PHYSIOTHERAPIST:  'healthicons:physiotherapy',
+    DENTIST:          'healthicons:dentistry',
+    OPTOMETRIST:      'healthicons:eye-health',
+    NUTRITIONIST:     'healthicons:nutrition-care',
   }
-  return FALLBACK[providerType] ?? '⚕️'
+  return FALLBACK[providerType] ?? 'healthicons:stethoscope'
 }
 
-const PROVIDER_EMOJI: Record<string, string> = {
-  DOCTOR: '🩺', NURSE: '💉', NANNY: '🧸', PHARMACIST: '💊',
-  LAB_TECHNICIAN: '🧪', EMERGENCY_WORKER: '🚑', CAREGIVER: '🤝',
-  PHYSIOTHERAPIST: '🏃', DENTIST: '🦷', OPTOMETRIST: '👁️',
-  NUTRITIONIST: '🥗',
+const PROVIDER_ICON: Record<string, string> = {
+  DOCTOR:           'healthicons:doctor',
+  NURSE:            'healthicons:nurse',
+  NANNY:            'healthicons:child-programme',
+  PHARMACIST:       'healthicons:pharmacy',
+  LAB_TECHNICIAN:   'healthicons:laboratory',
+  EMERGENCY_WORKER: 'healthicons:ambulance',
+  CAREGIVER:        'healthicons:community-health-worker',
+  PHYSIOTHERAPIST:  'healthicons:physiotherapy',
+  DENTIST:          'healthicons:dentistry',
+  OPTOMETRIST:      'healthicons:eye-health',
+  NUTRITIONIST:     'healthicons:nutrition-care',
 }
 
 export default function ServicesSection() {
@@ -211,12 +225,20 @@ export default function ServicesSection() {
                   key={role.code}
                   onClick={() => setActiveRole(role.code)}
                   style={activeRole === role.code ? { backgroundColor: role.color, borderColor: role.color } : {}}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all border
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border
                     ${activeRole === role.code
                       ? 'text-white'
                       : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400 hover:text-gray-800'}`}
                 >
-                  {PROVIDER_EMOJI[role.code] ?? ''} {role.label}
+                  {PROVIDER_ICON[role.code] && (
+                    <Icon
+                      icon={PROVIDER_ICON[role.code]}
+                      width={13}
+                      height={13}
+                      color={activeRole === role.code ? '#ffffff' : role.color}
+                    />
+                  )}
+                  {role.label}
                 </button>
               ))}
             </div>
@@ -264,7 +286,12 @@ export default function ServicesSection() {
                 key={roleCode}
                 title={`From ${label}`}
                 subtitle={`${roleServices.length} service${roleServices.length !== 1 ? 's' : ''}`}
-                icon={<span className="text-xl">{PROVIDER_EMOJI[roleCode] ?? '⚕️'}</span>}
+                icon={
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: `${color}18` }}>
+                    <Icon icon={PROVIDER_ICON[roleCode] ?? 'healthicons:stethoscope'} width={18} height={18} color={color} />
+                  </div>
+                }
                 seeAllHref={`/search/${slug}`}
                 seeAllLabel="Browse providers"
               >
@@ -290,7 +317,7 @@ export default function ServicesSection() {
 }
 
 function ServiceCard({ service, color, slug }: { service: ServiceItem; color: string; slug: string }) {
-  const fallbackEmoji = resolveServiceEmoji(service.serviceName, service.category, service.providerType)
+  const iconKey = service.iconKey ?? resolveServiceIconKey(service.serviceName, service.category, service.providerType)
   const bgLight  = hex2rgba(color, 0.10)
   const bgMedium = hex2rgba(color, 0.20)
 
@@ -300,23 +327,13 @@ function ServiceCard({ service, color, slug }: { service: ServiceItem; color: st
       className="group flex-shrink-0 snap-start w-[160px] sm:w-52 flex flex-col bg-white rounded-2xl border border-gray-100
         hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
     >
-      {/* Illustration header — iconify key > emoji > fallback emoji */}
+      {/* Illustration header — always uses healthicons icon */}
       <div
         className="relative w-full h-28 sm:h-32 flex-shrink-0 flex items-center justify-center overflow-hidden"
         style={{ background: `linear-gradient(135deg, ${bgMedium} 0%, ${bgLight} 100%)` }}
       >
         <span className="group-hover:scale-110 transition-transform duration-300 flex items-center justify-center">
-          {service.iconKey ? (
-            <Icon icon={service.iconKey} width={64} height={64} color={color} />
-          ) : (
-            <span
-              className="text-5xl sm:text-6xl select-none"
-              role="img"
-              aria-label={service.serviceName}
-            >
-              {service.emoji ?? fallbackEmoji}
-            </span>
-          )}
+          <Icon icon={iconKey} width={72} height={72} color={color} />
         </span>
         <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: color }} />
       </div>

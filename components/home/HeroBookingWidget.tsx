@@ -113,7 +113,8 @@ export default function HeroBookingWidget() {
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [services, setServices] = useState<ServiceItem[]>([])
-  const [modal, setModal] = useState<'none' | 'login' | 'services'>('none')
+  const [modal, setModal] = useState<'none' | 'login' | 'services' | 'cart'>('none')
+  const [cartService, setCartService] = useState<ServiceItem | null>(null)
   const [loginForm, setLoginForm] = useState({ email: '', password: '' })
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
@@ -215,10 +216,16 @@ export default function HeroBookingWidget() {
     }
   }
 
-  function bookService(svc: ServiceItem) {
+  function selectService(svc: ServiceItem) {
+    setCartService(svc)
+    setModal('cart')
+  }
+
+  function confirmBooking() {
+    if (!cartService || !selectedSlot) return
     const dateStr = selectedDay.toISOString().slice(0, 10)
-    const timeStr = `${selectedSlot?.hour?.toString().padStart(2, '0')}:${selectedSlot?.minute?.toString().padStart(2, '0')}`
-    window.location.href = `/search/${activeRole.slug}?service=${svc.id}&date=${dateStr}&time=${timeStr}`
+    const timeStr = `${selectedSlot.hour.toString().padStart(2, '0')}:${selectedSlot.minute.toString().padStart(2, '0')}`
+    window.location.href = `/search/${activeRole.slug}?service=${cartService.id}&date=${dateStr}&time=${timeStr}`
   }
 
   const slotDateLabel = `${DOW[selectedDay.getDay()]}, ${MONTHS[selectedDay.getMonth()]} ${selectedDay.getDate()}`
@@ -489,7 +496,7 @@ export default function HeroBookingWidget() {
                       services.map(svc => (
                         <button
                           key={svc.id}
-                          onClick={() => bookService(svc)}
+                          onClick={() => selectService(svc)}
                           className="w-full flex items-center gap-3 px-3 py-3 rounded-xl border border-gray-100
                             hover:border-[#0C6780]/40 hover:bg-[#0C6780]/5 transition-all text-left group"
                         >
@@ -520,6 +527,79 @@ export default function HeroBookingWidget() {
                     >
                       Browse all {activeRole.label} providers →
                     </Link>
+                  </div>
+                </>
+              )}
+
+              {/* ── Booking cart / summary ────────────── */}
+              {modal === 'cart' && cartService && (
+                <>
+                  <div className="flex items-start justify-between px-5 pt-5 pb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-[#001E40]">Booking Summary</h3>
+                      <p className="text-[11px] text-gray-500 mt-0.5">Review your selection</p>
+                    </div>
+                    <button onClick={() => setModal('none')} className="p-1.5 text-gray-300 hover:text-gray-500 -mt-1 -mr-1 rounded-lg">
+                      <FaTimes className="text-xs" />
+                    </button>
+                  </div>
+
+                  {/* Cart details */}
+                  <div className="px-5 pb-5 space-y-3">
+                    {/* Provider type row */}
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: `${activeRole.color}18` }}>
+                        {activeRole.iconKey && <Icon icon={activeRole.iconKey} width={20} height={20} color={activeRole.color} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Provider</p>
+                        <p className="text-xs font-bold text-gray-900">{activeRole.singularLabel}</p>
+                      </div>
+                    </div>
+
+                    {/* Service row */}
+                    <div className="flex items-center gap-3 p-3 bg-[#0C6780]/5 rounded-xl border border-[#0C6780]/20">
+                      <div className="w-9 h-9 rounded-lg bg-[#0C6780]/10 flex items-center justify-center flex-shrink-0">
+                        {cartService.iconKey ? (
+                          <Icon icon={cartService.iconKey} width={20} height={20} color="#0C6780" />
+                        ) : (
+                          <span className="text-base">{cartService.emoji ?? '⚕️'}</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Service</p>
+                        <p className="text-xs font-bold text-gray-900 leading-tight">{cartService.serviceName}</p>
+                        <p className="text-[10px] text-gray-500">{cartService.category}</p>
+                      </div>
+                      <p className="text-sm font-black text-[#0C6780] flex-shrink-0">Rs {cartService.defaultPrice.toLocaleString()}</p>
+                    </div>
+
+                    {/* Date + time row */}
+                    <div className="flex items-center gap-2.5 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                      <FaCalendarAlt className="text-[#0C6780] text-sm flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-gray-900">{slotDateLabel}</p>
+                        <p className="text-[10px] text-gray-500">{selectedSlot?.label}</p>
+                      </div>
+                      <FaCheckCircle className="text-emerald-500 text-sm flex-shrink-0" />
+                    </div>
+
+                    {/* CTA */}
+                    <button
+                      onClick={confirmBooking}
+                      className="w-full py-3 bg-[#0C6780] text-white rounded-xl text-sm font-bold
+                        hover:bg-[#0a5a6e] transition-colors flex items-center justify-center gap-2 shadow-lg shadow-[#0C6780]/30"
+                    >
+                      Book Now <FaArrowRight className="text-xs" />
+                    </button>
+
+                    <button
+                      onClick={() => setModal('services')}
+                      className="w-full py-2 text-xs text-gray-500 hover:text-gray-700 transition-colors font-medium"
+                    >
+                      ← Change service
+                    </button>
                   </div>
                 </>
               )}

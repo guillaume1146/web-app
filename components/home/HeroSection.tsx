@@ -100,7 +100,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
   return (
     <section
       className="relative overflow-visible"
-      style={{ background: '#001E40', minHeight: 600 }}
+      style={{ background: '#001E40', minHeight: 680 }}
     >
       {/* ── Full-width image carousel ─────────────────────────── */}
       <div className="absolute inset-0 overflow-hidden rounded-none">
@@ -138,7 +138,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
       </div>
 
       {/* ── Layout: text dominant left, widget compact right, image far-right ── */}
-      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10 xl:px-14 pt-8 sm:pt-10 lg:pt-12 pb-10 sm:pb-14 lg:pr-[34%]">
+      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10 xl:px-14 pt-8 sm:pt-10 lg:pt-12 pb-10 sm:pb-14 lg:pr-[18%]">
         <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-10">
 
           {/* LEFT: headline & subtitle — dominant, takes most of the space */}
@@ -146,7 +146,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7, ease: 'easeOut' }}
-            className="flex-1 min-w-0 max-w-lg"
+            className="flex-1 min-w-0 max-w-xl"
           >
             {/* Country flag + platform badge */}
             <div className="inline-flex items-center bg-white/10 rounded-lg px-3 py-1.5 mb-5 border border-white/20">
@@ -210,7 +210,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-            className="w-full lg:flex-shrink-0 lg:w-[270px] xl:w-[290px]"
+            className="w-full lg:flex-shrink-0 lg:w-[360px] xl:w-[400px]"
           >
             <HeroBookingWidget />
           </motion.div>
