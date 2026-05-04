@@ -31,59 +31,64 @@ export class ProvidersService {
   }
 
   // ─── GET /providers/:id/services ───────────────────────────────────────
-  // Only returns services that have at least one workflow template explicitly
-  // linked (via WorkflowTemplate.platformServiceId). Services without a
-  // workflow are not bookable and are excluded from the patient-facing list.
+  // Returns ALL active PlatformServices for this provider's role type that
+  // have at least one active workflow template. Provider-specific price
+  // overrides (ProviderServiceConfig.priceOverride) are applied on top.
+  // Starting from PlatformService instead of ProviderServiceConfig ensures
+  // every bookable service appears even if the provider hasn't customised it.
 
   async getServices(userId: string) {
-    const configs = await this.prisma.providerServiceConfig.findMany({
-      where: { providerUserId: userId, isActive: true },
+    // 1. Resolve provider's role
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { userType: true },
+    });
+    if (!user) return [];
+
+    // 2. All platform services for this role with at least one active workflow
+    const platformServices = await this.prisma.platformService.findMany({
+      where: {
+        providerType: user.userType as string,
+        isActive: true,
+        workflowTemplates: { some: { isActive: true } },
+      },
       include: {
-        platformService: {
-          select: {
-            id: true, serviceName: true, description: true, defaultPrice: true, duration: true, category: true,
-            workflowTemplates: {
-              where: { isActive: true },
-              select: {
-                id: true,
-                name: true,
-                serviceMode: true,
-                isDefault: true,
-                steps: true,
-              },
-              orderBy: { isDefault: 'desc' },
-            },
-          },
+        workflowTemplates: {
+          where: { isActive: true },
+          select: { id: true, name: true, serviceMode: true, isDefault: true, steps: true },
+          orderBy: { isDefault: 'desc' },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { serviceName: 'asc' },
     });
 
-    return configs
-      .filter(c => c.platformService.workflowTemplates.length > 0)
-      .map(c => ({
-        id: c.platformService.id,
-        serviceName: c.platformService.serviceName,
-        category: c.platformService.category,
-        description: c.platformService.description,
-        price: c.priceOverride ?? c.platformService.defaultPrice,
-        duration: c.platformService.duration,
-        workflows: c.platformService.workflowTemplates.map(wf => {
-          // `steps` is a JSON array stored on the template; normalise to typed objects.
-          const rawSteps: any[] = Array.isArray(wf.steps) ? wf.steps : [];
-          const sortedSteps = [...rawSteps].sort((a, b) => (a.stepOrder ?? a.order ?? 0) - (b.stepOrder ?? b.order ?? 0));
-          return {
-            id: wf.id,
-            name: wf.name,
-            serviceMode: wf.serviceMode,
-            steps: sortedSteps.map(s => ({
-              order: s.stepOrder ?? s.order ?? 0,
-              label: s.label ?? '',
-              statusCode: s.statusCode ?? '',
-            })),
-          };
-        }),
-      }));
+    // 3. Provider-specific price overrides (keyed by platformServiceId)
+    const configs = await this.prisma.providerServiceConfig.findMany({
+      where: { providerUserId: userId, isActive: true },
+      select: { platformServiceId: true, priceOverride: true },
+    });
+    const priceMap = new Map(configs.map(c => [c.platformServiceId, c.priceOverride]));
+
+    // 4. Merge
+    const normaliseSteps = (raw: any[]) =>
+      [...raw]
+        .sort((a, b) => (a.stepOrder ?? a.order ?? 0) - (b.stepOrder ?? b.order ?? 0))
+        .map(s => ({ order: s.stepOrder ?? s.order ?? 0, label: s.label ?? '', statusCode: s.statusCode ?? '' }));
+
+    return platformServices.map(svc => ({
+      id: svc.id,
+      serviceName: svc.serviceName,
+      category: svc.category,
+      description: svc.description,
+      price: priceMap.get(svc.id) ?? svc.defaultPrice,
+      duration: svc.duration,
+      workflows: svc.workflowTemplates.map(wf => ({
+        id: wf.id,
+        name: wf.name,
+        serviceMode: wf.serviceMode,
+        steps: normaliseSteps(Array.isArray(wf.steps) ? wf.steps : []),
+      })),
+    }));
   }
 
   // ─── GET /providers/:id/reviews ────────────────────────────────────────

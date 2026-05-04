@@ -443,50 +443,6 @@ export default function DoctorConsultationBooking() {
  />
  </div>
  
- <div>
- <label className="block text-gray-700 text-sm font-medium mb-4">
- Consultation Type
- </label>
- <div className="space-y-3">
- <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
- <input
- type="radio"
- name="type"
- value="video"
- checked={appointmentDetails.type === "video"}
- onChange={(e) => setAppointmentDetails({
- ...appointmentDetails,
- type: e.target.value as "video" | "in-person"
- })}
- className="mr-4"
- />
- <FaVideo className="text-green-600 text-xl mr-3" />
- <div>
- <span className="font-semibold">Video Consultation</span>
- <p className="text-sm text-gray-600">Connect from anywhere via secure video call</p>
- </div>
- </label>
- 
- <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
- <input
- type="radio"
- name="type"
- value="in-person"
- checked={appointmentDetails.type === "in-person"}
- onChange={(e) => setAppointmentDetails({
- ...appointmentDetails,
- type: e.target.value as "video" | "in-person"
- })}
- className="mr-4"
- />
- <FaUser className="text-blue-600 text-xl mr-3" />
- <div>
- <span className="font-semibold">In-Person Visit</span>
- <p className="text-sm text-gray-600">Visit the doctor at their clinic</p>
- </div>
- </label>
- </div>
- </div>
  </div>
 
  {/* Time Slots */}
