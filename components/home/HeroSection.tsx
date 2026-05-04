@@ -100,7 +100,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
   return (
     <section
       className="relative overflow-visible"
-      style={{ background: '#001E40', minHeight: 680 }}
+      style={{ background: '#001E40', minHeight: 540 }}
     >
       {/* ── Full-width image carousel ─────────────────────────── */}
       <div className="absolute inset-0 overflow-hidden rounded-none">
@@ -138,7 +138,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
       </div>
 
       {/* ── Layout: text dominant left, widget compact right, image far-right ── */}
-      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10 xl:px-14 pt-8 sm:pt-10 lg:pt-12 pb-10 sm:pb-14 lg:pr-[18%]">
+      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10 xl:px-14 pt-6 sm:pt-8 lg:pt-10 pb-8 sm:pb-10 lg:pr-[12%]">
         <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-10">
 
           {/* LEFT: headline & subtitle — dominant, takes most of the space */}
@@ -146,17 +146,17 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7, ease: 'easeOut' }}
-            className="flex-1 min-w-0 max-w-xl"
+            className="flex-1 min-w-0"
           >
             {/* Country flag + platform badge */}
-            <div className="inline-flex items-center bg-white/10 rounded-lg px-3 py-1.5 mb-5 border border-white/20">
+            <div className="inline-flex items-center bg-white/10 rounded-lg px-3 py-1.5 mb-3 border border-white/20">
               <CountryFlag countryCode={countryCode} className="mr-2" />
               <span className="text-xs font-semibold text-brand-sky tracking-wide uppercase">
                 {content?.platformBadge || config.platformDescription || "Africa's #1 HealthTech Platform"}
               </span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-5xl xl:text-6xl font-extrabold mb-5 leading-[1.08] text-white">
+            <h1 className="text-3xl sm:text-4xl lg:text-4xl xl:text-5xl font-extrabold mb-3 leading-[1.08] text-white">
               {titleParts.map((part, i) => (
                 <span key={i} className={i === 1 ? 'text-brand-sky' : ''}>
                   {part.trim()}
@@ -165,13 +165,13 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
               ))}
             </h1>
 
-            <p className="text-base sm:text-lg text-gray-300 leading-relaxed max-w-md">
+            <p className="text-sm sm:text-base text-gray-300 leading-relaxed max-w-lg">
               {content?.subtitle ||
                 "Africa's most trusted health platform. Book verified specialists, get AI-powered insights, and access pharmacy — all in one place."}
             </p>
 
             {/* Trust stats */}
-            <div className="flex flex-wrap gap-4 mt-6">
+            <div className="flex flex-wrap gap-4 mt-4">
               {[
                 { value: '500+', label: 'Verified Providers' },
                 { value: '15+', label: 'Specialties' },
@@ -210,7 +210,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-            className="w-full lg:flex-shrink-0 lg:w-[360px] xl:w-[400px]"
+            className="w-full lg:flex-shrink-0 lg:w-[440px] xl:w-[490px]"
           >
             <HeroBookingWidget />
           </motion.div>

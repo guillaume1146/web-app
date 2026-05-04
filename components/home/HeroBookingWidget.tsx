@@ -345,7 +345,7 @@ export default function HeroBookingWidget() {
                 <p className="text-white/30 text-xs">No slots available</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-1.5 max-h-44 overflow-y-auto
+              <div className="grid grid-cols-4 gap-1.5 max-h-44 overflow-y-auto
                 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20">
                 {slots.map(slot => {
                   const sel = selectedSlot?.id === slot.id
