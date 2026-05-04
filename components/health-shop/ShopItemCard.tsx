@@ -3,12 +3,16 @@
 import { useState } from 'react'
 import { FaPlus, FaMinus, FaShoppingCart, FaPrescription } from 'react-icons/fa'
 import { useCart } from './CartContext'
+import PrescriptionUploadModal from '@/components/shared/PrescriptionUploadModal'
 
 const CATEGORY_EMOJI: Record<string, string> = {
   medication: '💊', vitamins: '🧴', first_aid: '🩹', personal_care: '🧼',
   dental_care: '🦷', baby_care: '👶', nutrition: '🥗', eyewear: '👓',
   medical_devices: '🩺', monitoring: '❤️', supplements: '💪', rehab_equipment: '🏋️',
   contact_lenses: '👁️',
+  prescription_medicines: '💊', otc_medicines: '🏥', fitness_wellness: '💪',
+  beauty_care: '✨', ayurveda: '🌿', first_aid_kit: '🩹',
+  eye_care: '👁️', dental: '🦷', vitamins_supplements: '💉',
 }
 
 interface Product {
@@ -34,7 +38,10 @@ export default function ShopItemCard({ product }: { product: Product }) {
   const cartItem = items.find(i => i.id === product.id)
   const qtyInCart = cartItem?.quantity || 0
 
-  const handleAdd = () => {
+  const [imgError, setImgError] = useState(false)
+  const [showRxModal, setShowRxModal] = useState(false)
+
+  const doAddToCart = () => {
     addToCart({
       id: product.id,
       name: product.name,
@@ -50,9 +57,21 @@ export default function ShopItemCard({ product }: { product: Product }) {
     })
   }
 
-  const [imgError, setImgError] = useState(false)
+  const handleAdd = () => {
+    if (product.requiresPrescription) {
+      setShowRxModal(true)
+      return
+    }
+    doAddToCart()
+  }
+
+  const handleRxConfirmed = (_prescriptionUrl: string) => {
+    doAddToCart()
+    setShowRxModal(false)
+  }
 
   return (
+    <>
     <div className={`bg-white rounded-xl border ${product.isFeatured ? 'border-[#0C6780] ring-1 ring-[#0C6780]/20' : 'border-gray-200'} overflow-hidden hover:shadow-md transition-shadow`}>
       {/* Product image / fallback */}
       {product.imageUrl && !imgError ? (
@@ -143,5 +162,14 @@ export default function ShopItemCard({ product }: { product: Product }) {
         </div>
       </div>
     </div>
+
+    {showRxModal && (
+      <PrescriptionUploadModal
+        medicineName={product.name}
+        onConfirm={handleRxConfirmed}
+        onClose={() => setShowRxModal(false)}
+      />
+    )}
+    </>
   )
 }

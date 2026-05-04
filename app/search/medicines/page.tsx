@@ -6,6 +6,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { FaSearch, FaPills, FaStar, FaMapMarkerAlt, FaTruck, FaCheckCircle, FaShoppingCart, FaLock, FaLeaf, FaExclamationTriangle, FaHeart, FaBrain, FaBaby, FaEye, FaTooth, FaBone, FaHandHoldingMedical, FaMedkit, FaPercent, FaPlus, FaMinus, FaTrash, FaHistory, FaTimes } from 'react-icons/fa'
 import { useCart } from '@/app/search/medicines/contexts/CartContext'
 import { useSearchHistory } from '@/hooks/useSearchHistory'
+import PrescriptionUploadModal from '@/components/shared/PrescriptionUploadModal'
 
 const categoryIcons = {
  "Pain Relief": FaHandHoldingMedical,
@@ -19,102 +20,6 @@ const categoryIcons = {
  "Eye Care": FaEye,
  "Dental Care": FaTooth,
  "Bone Health": FaBone
-}
-
-const FloatingCart = () => {
- const { cartItems, removeFromCart, updateQuantity, getTotalItems, getTotalPrice } = useCart()
- const [isExpanded, setIsExpanded] = useState(false)
-
- return (
- <>
- <div className="fixed bottom-6 right-6 z-50">
- {isExpanded ? (
- <div className="bg-white rounded-2xl shadow-2xl p-6 w-96 max-h-[600px] overflow-hidden flex flex-col">
- <div className="flex items-center justify-between mb-4">
- <h3 className="text-lg font-bold text-gray-900">Shopping Cart</h3>
- <button
- onClick={() => setIsExpanded(false)}
- className="text-gray-500 hover:text-gray-700"
- >
- ✕
- </button>
- </div>
- 
- {cartItems.length === 0 ? (
- <div className="text-center py-8">
- <FaShoppingCart className="text-4xl text-gray-300 mx-auto mb-3" />
- <p className="text-gray-500">Your cart is empty</p>
- </div>
- ) : (
- <>
- <div className="flex-1 overflow-y-auto mb-4 space-y-3">
- {cartItems.map((item) => (
- <div key={item.id} className="border rounded-lg p-3">
- <div className="flex items-start justify-between mb-2">
- <div className="flex-1">
- <h4 className="font-semibold text-sm text-gray-900">{item.name}</h4>
- <p className="text-xs text-gray-600">{item.brand}</p>
- </div>
- <button
- onClick={() => removeFromCart(item.id)}
- className="text-red-500 hover:text-red-700"
- >
- <FaTrash className="text-sm" />
- </button>
- </div>
- <div className="flex items-center justify-between">
- <div className="flex items-center gap-2">
- <button
- onClick={() => updateQuantity(item.id, item.quantity - 1)}
- className="w-6 h-6 border rounded flex items-center justify-center hover:bg-gray-50"
- >
- <FaMinus className="text-xs" />
- </button>
- <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
- <button
- onClick={() => updateQuantity(item.id, item.quantity + 1)}
- className="w-6 h-6 border rounded flex items-center justify-center hover:bg-gray-50"
- >
- <FaPlus className="text-xs" />
- </button>
- </div>
- <span className="text-sm font-bold text-green-600">Rs {item.price * item.quantity}</span>
- </div>
- </div>
- ))}
- </div>
- 
- <div className="border-t pt-4">
- <div className="flex justify-between mb-3">
- <span className="font-semibold">Total:</span>
- <span className="text-xl font-bold text-green-600">Rs {getTotalPrice()}</span>
- </div>
- <Link
- href="/patient/pharmacy/order/cart"
- className="block w-full text-white text-center py-3 rounded-lg font-semibold transition-all"
- >
- Proceed to Checkout
- </Link>
- </div>
- </>
- )}
- </div>
- ) : (
- <button
- onClick={() => setIsExpanded(true)}
- className="bg-brand-navy text-white p-4 rounded-full shadow-lg transition-all relative"
- >
- <FaShoppingCart className="text-2xl" />
- {getTotalItems() > 0 && (
- <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">
- {getTotalItems()}
- </span>
- )}
- </button>
- )}
- </div>
- </>
- )
 }
 
 // Medicine UI interface (mapped from API response)
@@ -155,9 +60,10 @@ interface MedicineUi {
 
 interface MedicineProps {
  medicine: MedicineUi
+ onAddRx: (medicine: MedicineUi) => void
 }
 
-const MedicineCard = ({ medicine }: MedicineProps) => {
+const MedicineCard = ({ medicine, onAddRx }: MedicineProps) => {
  const { addToCart, cartItems } = useCart()
  const CategoryIcon = categoryIcons[medicine.category as keyof typeof categoryIcons] || FaPills
 
@@ -254,7 +160,7 @@ const MedicineCard = ({ medicine }: MedicineProps) => {
  </span>
  ) : (
  <button
- onClick={() => addToCart(medicine)}
+ onClick={() => medicine.prescriptionRequired ? onAddRx(medicine) : addToCart(medicine)}
  disabled={!medicine.inStock}
  className="flex-1 sm:flex-none bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-green-700 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1"
  >
@@ -402,7 +308,10 @@ function MedicinesContent() {
  const [hasSearched, setHasSearched] = useState(!!initialQuery)
  const [showHistory, setShowHistory] = useState(false)
 
- const { history, addToHistory, removeFromHistory, clearHistory } = useSearchHistory()
+ const [rxMedicine, setRxMedicine] = useState<MedicineUi | null>(null)
+
+ const { addToCart } = useCart()
+  const { history, addToHistory, removeFromHistory, clearHistory } = useSearchHistory()
 
  const updateUrl = useCallback((q: string, cat: string) => {
  const params = new URLSearchParams()
@@ -472,9 +381,6 @@ function MedicinesContent() {
 
  return (
  <div className="min-h-screen to-white">
- {/* Floating Cart */}
- <FloatingCart />
-
  <div className="container mx-auto px-4 py-8">
  <div>
  <div className="bg-white rounded-xl shadow-xl p-4">
@@ -543,13 +449,20 @@ function MedicinesContent() {
  className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
  >
  <option value="all">All Categories</option>
+ <option value="prescription">Prescription Medicines (Rx)</option>
+ <option value="otc">OTC Medicines</option>
  <option value="pain relief">Pain Relief</option>
- <option value="diabetes">Diabetes</option>
  <option value="antibiotics">Antibiotics</option>
+ <option value="diabetes">Diabetes</option>
+ <option value="heart">Heart Health</option>
+ <option value="children">Children's Health</option>
  <option value="vitamins">Vitamins & Supplements</option>
  <option value="digestive">Digestive Health</option>
- <option value="heart">Heart Health</option>
- <option value="children">Medicine for Children</option>
+ <option value="skin">Skin & Dermatology</option>
+ <option value="eye">Eye Care</option>
+ <option value="dental">Dental Care</option>
+ <option value="mental">Mental Health</option>
+ <option value="fitness">Fitness & Wellness</option>
  </select>
 
  <button
@@ -588,7 +501,7 @@ function MedicinesContent() {
  
  <div className="flex flex-col gap-4">
  {searchResults.map((medicine) => (
- <MedicineCard key={medicine.id} medicine={medicine} />
+ <MedicineCard key={medicine.id} medicine={medicine} onAddRx={setRxMedicine} />
  ))}
  </div>
  </>
@@ -596,7 +509,14 @@ function MedicinesContent() {
  <EmptyState onClear={handleClearFilters} />
  ) : null}
  </div>
- 
+
+ {rxMedicine && (
+  <PrescriptionUploadModal
+   medicineName={rxMedicine.name}
+   onConfirm={() => { addToCart(rxMedicine); setRxMedicine(null) }}
+   onClose={() => setRxMedicine(null)}
+  />
+ )}
  </div>
  </div>
  )

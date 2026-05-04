@@ -34,6 +34,25 @@ const PROVIDER_LABELS: Record<string, string> = {
   NUTRITIONIST: 'Nutrition', CAREGIVER: 'Caregiver', LAB_TECHNICIAN: 'Lab',
 }
 
+const CATEGORY_PILLS: { key: string; label: string; emoji: string }[] = [
+  { key: 'prescription_medicines', label: 'Rx Medicines', emoji: '💊' },
+  { key: 'otc_medicines', label: 'OTC Medicines', emoji: '🏥' },
+  { key: 'fitness_wellness', label: 'Fitness & Wellness', emoji: '💪' },
+  { key: 'beauty_care', label: 'Beauty Care', emoji: '✨' },
+  { key: 'ayurveda', label: 'Ayurveda & Wellness', emoji: '🌿' },
+  { key: 'medical_devices', label: 'Medical Devices', emoji: '🩺' },
+  { key: 'first_aid', label: 'First Aid', emoji: '🩹' },
+  { key: 'baby_care', label: 'Baby Care', emoji: '👶' },
+  { key: 'personal_care', label: 'Personal Care', emoji: '🧼' },
+  { key: 'dental_care', label: 'Dental Care', emoji: '🦷' },
+  { key: 'eye_care', label: 'Eye Care', emoji: '👁️' },
+  { key: 'nutrition', label: 'Nutrition', emoji: '🥗' },
+  { key: 'vitamins', label: 'Vitamins & Supplements', emoji: '💉' },
+  { key: 'supplements', label: 'Supplements', emoji: '🏋️' },
+  { key: 'monitoring', label: 'Health Monitoring', emoji: '❤️' },
+  { key: 'medication', label: 'Medications', emoji: '💊' },
+]
+
 function HealthShopContent() {
   const [items, setItems] = useState<ShopItem[]>([])
   const [categories, setCategories] = useState<ShopCategory[]>([])
@@ -59,11 +78,11 @@ function HealthShopContent() {
       if (data.success) {
         // Backend returns { success, data: items[], total }. Older shape nested
         // items+total+categories under `data` — support both defensively.
-        const items = Array.isArray(data.data) ? data.data : data.data?.items ?? []
-        const total = typeof data.total === 'number' ? data.total : data.data?.total ?? items.length
+        const rawItems = Array.isArray(data.data) ? data.data : data.data?.items ?? []
+        const rawTotal = typeof data.total === 'number' ? data.total : data.data?.total ?? rawItems.length
         const cats = data.data?.categories ?? data.categories
-        setItems(items)
-        setTotal(total)
+        setItems(rawItems)
+        setTotal(rawTotal)
         if (Array.isArray(cats)) setCategories(cats)
       } else {
         setItems([])
@@ -86,25 +105,50 @@ function HealthShopContent() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        {/* Search + Provider filter */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-1">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input type="text" value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0) }} placeholder="Search products..."
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-teal outline-none" />
           </div>
-          <div className="flex gap-2">
-            <select value={category} onChange={(e) => { setCategory(e.target.value); setOffset(0) }}
-              className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-teal bg-white">
-              <option value="">All Categories</option>
-              {categories.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-            </select>
-            <select value={providerType} onChange={(e) => { setProviderType(e.target.value); setOffset(0) }}
-              className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-teal bg-white">
-              <option value="">All Providers</option>
-              {Object.entries(PROVIDER_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-          </div>
+          <select value={providerType} onChange={(e) => { setProviderType(e.target.value); setOffset(0) }}
+            className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-teal bg-white">
+            <option value="">All Providers</option>
+            {Object.entries(PROVIDER_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </div>
+
+        {/* Category pill strip */}
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+          <button
+            onClick={() => { setCategory(''); setOffset(0) }}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${category === '' ? 'bg-[#0C6780] text-white border-[#0C6780]' : 'bg-white text-gray-600 border-gray-200 hover:border-[#0C6780]'}`}
+          >
+            All
+          </button>
+          {CATEGORY_PILLS.map(pill => (
+            <button
+              key={pill.key}
+              onClick={() => { setCategory(pill.key); setOffset(0) }}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${category === pill.key ? 'bg-[#0C6780] text-white border-[#0C6780]' : 'bg-white text-gray-600 border-gray-200 hover:border-[#0C6780]'}`}
+            >
+              <span>{pill.emoji}</span>
+              {pill.label}
+            </button>
+          ))}
+          {/* Fallback pills from API that aren't in predefined list */}
+          {categories
+            .filter(c => !CATEGORY_PILLS.find(p => p.key === c.key))
+            .map(c => (
+              <button
+                key={c.key}
+                onClick={() => { setCategory(c.key); setOffset(0) }}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${category === c.key ? 'bg-[#0C6780] text-white border-[#0C6780]' : 'bg-white text-gray-600 border-gray-200 hover:border-[#0C6780]'}`}
+              >
+                {c.label}
+              </button>
+            ))}
         </div>
 
         <p className="text-sm text-gray-500 mb-4">{total} product{total !== 1 ? 's' : ''} found</p>

@@ -8,6 +8,9 @@ import Navbar from './Navbar'
 // These public entry-points always show the navbar — regardless of auth state.
 const ALWAYS_SHOW = new Set(['/', '/login', '/signup'])
 
+// These path prefixes always show the navbar — even when authenticated.
+const PUBLIC_SHOW_PREFIXES = ['/search/', '/about', '/contact']
+
 const DASHBOARD_PREFIXES = [
   // Role-prefix routes
   '/patient/', '/doctor/', '/nurse/', '/nanny/', '/pharmacist/',
@@ -44,6 +47,9 @@ export default function ConditionalNavbar() {
 
   // Landing page, login, and signup always get the navbar — no auth check.
   if (ALWAYS_SHOW.has(pathname)) return <Navbar />
+
+  // Public search/browse pages always show the navbar, even when authenticated.
+  if (PUBLIC_SHOW_PREFIXES.some(p => pathname.startsWith(p))) return <Navbar />
 
   // All dashboard / internal paths — suppress entirely.
   if (isDashboardPath(pathname)) return null
