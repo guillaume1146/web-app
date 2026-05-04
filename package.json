@@ -46,7 +46,7 @@
     "bcrypt": "^6.0.0",
     "clsx": "^2.1.1",
     "express": "^5.1.0",
-    "framer-motion": "^12.23.12",
+    "framer-motion": "^12.38.0",
     "healthicons-react": "^3.5.0",
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.11.0",
