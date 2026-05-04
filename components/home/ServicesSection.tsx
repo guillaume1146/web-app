@@ -1,10 +1,10 @@
 'use client'
 
+import '@/lib/utils/register-icons'
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { FaSearch, FaConciergeBell, FaClock, FaArrowRight } from 'react-icons/fa'
 import { Icon } from '@iconify/react'
-import HorizontalScrollRow from '@/components/shared/HorizontalScrollRow'
 
 interface ServiceItem {
   id: string
@@ -125,7 +125,7 @@ export default function ServicesSection() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/search/services?limit=200').then(r => r.json()),
+      fetch('/api/search/services?limit=500').then(r => r.json()),
       fetch('/api/roles?searchEnabled=true').then(r => r.json()),
     ]).then(([svcJson, rolesJson]) => {
       if (svcJson.success && Array.isArray(svcJson.data)) setServices(svcJson.data)
@@ -247,13 +247,16 @@ export default function ServicesSection() {
 
         {/* Content */}
         {loading ? (
-          <div className="space-y-10">
+          <div className="space-y-8">
             {[1, 2, 3].map(i => (
               <div key={i} className="animate-pulse">
-                <div className="h-5 bg-gray-200 rounded w-40 mb-4" />
-                <div className="flex gap-4">
-                  {[1, 2, 3, 4, 5].map(j => (
-                    <div key={j} className="flex-shrink-0 w-[160px] sm:w-52 h-52 bg-gray-100 rounded-2xl" />
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 bg-gray-200 rounded-xl" />
+                  <div className="h-4 bg-gray-200 rounded w-28" />
+                </div>
+                <div className="grid grid-rows-2 grid-flow-col auto-cols-[148px] sm:auto-cols-[196px] gap-3 overflow-hidden">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(j => (
+                    <div key={j} className="h-44 bg-gray-100 rounded-2xl" />
                   ))}
                 </div>
               </div>
@@ -282,23 +285,36 @@ export default function ServicesSection() {
             const label = info?.label ?? roleCode
 
             return (
-              <HorizontalScrollRow
-                key={roleCode}
-                title={`From ${label}`}
-                subtitle={`${roleServices.length} service${roleServices.length !== 1 ? 's' : ''}`}
-                icon={
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: `${color}18` }}>
-                    <Icon icon={PROVIDER_ICON[roleCode] ?? 'healthicons:stethoscope'} width={18} height={18} color={color} />
+              <div key={roleCode} className="mb-8">
+                {/* Row header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `${color}1a` }}>
+                      <Icon icon={PROVIDER_ICON[roleCode] ?? 'healthicons:stethoscope'} width={20} height={20} color={color} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">{label}</h3>
+                      <p className="text-[10px] text-gray-400">{roleServices.length} service{roleServices.length !== 1 ? 's' : ''}</p>
+                    </div>
                   </div>
-                }
-                seeAllHref={`/search/${slug}`}
-                seeAllLabel="Browse providers"
-              >
-                {roleServices.map(svc => (
-                  <ServiceCard key={svc.id} service={svc} color={color} slug={slug} />
-                ))}
-              </HorizontalScrollRow>
+                  <Link
+                    href={`/search/${slug}`}
+                    className="flex items-center gap-1 text-xs font-medium transition-colors hover:opacity-80 whitespace-nowrap"
+                    style={{ color }}
+                  >
+                    Browse providers <FaArrowRight className="text-[9px]" />
+                  </Link>
+                </div>
+
+                {/* Two-row horizontally scrollable grid */}
+                <div className="grid grid-rows-2 grid-flow-col auto-cols-[148px] sm:auto-cols-[196px]
+                  gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden scroll-smooth">
+                  {roleServices.map(svc => (
+                    <ServiceCard key={svc.id} service={svc} color={color} slug={slug} />
+                  ))}
+                </div>
+              </div>
             )
           })
         )}
