@@ -104,7 +104,7 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
  const [services, setServices] = useState<Service[]>([])
  const [selectedService, setSelectedService] = useState<Service | null>(null)
- const [consultType, setConsultType] = useState<'in_person' | 'home_visit' | 'video'>('in_person')
+ const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null)
  const [selectedDate, setSelectedDate] = useState('')
  const [selectedTime, setSelectedTime] = useState('')
  const [weekOffset, setWeekOffset] = useState(0)
@@ -216,6 +216,20 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  return selectedRole.specialties || []
  }, [selectedRole])
 
+ // Resolve the active workflow — auto-pick when exactly one exists, else use user's choice
+ const activeWorkflow = useMemo(() => {
+ if (!selectedService) return null
+ if (selectedWorkflowId) return selectedService.workflows.find(w => w.id === selectedWorkflowId) ?? null
+ if (selectedService.workflows.length === 1) return selectedService.workflows[0]
+ return null
+ }, [selectedService, selectedWorkflowId])
+
+ // Derive consultType from the selected workflow — no independent state needed
+ const consultType = useMemo((): 'in_person' | 'home_visit' | 'video' => {
+ if (!activeWorkflow) return 'in_person'
+ return modeToConsultType(activeWorkflow.serviceMode)
+ }, [activeWorkflow])
+
  const handleSubmit = async () => {
  if (!user || !selectedProvider || !selectedDate || !selectedTime) return
  setSubmitting(true)
@@ -234,8 +248,10 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
    type: consultType,
  }
  if (reason) b.reason = reason
+ if (selectedService?.id) b.serviceId = selectedService.id
  if (selectedService?.serviceName) b.serviceName = selectedService.serviceName
  if (selectedService?.price != null) b.servicePrice = selectedService.price
+ if (activeWorkflow?.id) b.workflowTemplateId = activeWorkflow.id
  if (selectedProvider.specializations?.[0] || selectedSpecialty) b.specialty = selectedProvider.specializations?.[0] || selectedSpecialty
  return b
  })()
@@ -268,6 +284,7 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  setSelectedSpecialty(null)
  setSelectedProvider(null)
  setSelectedService(null)
+ setSelectedWorkflowId(null)
  setSelectedDate('')
  setSelectedTime('')
  setWeekOffset(0)
@@ -394,9 +411,7 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  <button key={s.id || s.serviceName}
  onClick={() => {
  setSelectedService(s)
- // Auto-select consultation type when only one workflow option
- if (s.workflows.length === 1) setConsultType(modeToConsultType(s.workflows[0].serviceMode))
- else setConsultType('in_person')
+ setSelectedWorkflowId(null) // will auto-pick when exactly one workflow
  }}
  className={`w-full p-3 border rounded-lg text-left transition ${isSelected ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-gray-50 border-gray-200'}`}>
  <div className="flex justify-between items-start gap-2">
@@ -423,17 +438,20 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  <p className="text-xs text-gray-400 mb-3">No specific services listed — general consultation will be booked.</p>
  )}
 
- {/* Consultation type picker — only show when selected service has multiple workflow modes */}
+ {/* When there are multiple workflows, user must pick one */}
  {selectedService && selectedService.workflows.length > 1 && (
  <div className="mb-3">
- <p className="text-xs font-medium text-gray-600 mb-2">Consultation type</p>
+ <p className="text-xs font-medium text-gray-600 mb-2">How would you like this appointment? <span className="text-red-400">*</span></p>
  <div className="flex flex-wrap gap-2">
  {selectedService.workflows.map(w => {
- const ct = modeToConsultType(w.serviceMode)
+ const isWfSelected = selectedWorkflowId === w.id
  return (
- <button key={w.id} onClick={() => setConsultType(ct)}
- className={`flex-1 min-w-[80px] p-2.5 border rounded-lg text-xs font-medium transition ${consultType === ct ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-200' : `${MODE_COLORS[w.serviceMode] ?? ''} hover:opacity-80`}`}>
- {MODE_LABELS[w.serviceMode] ?? w.name}
+ <button key={w.id} onClick={() => setSelectedWorkflowId(w.id)}
+ className={`flex-1 min-w-[100px] p-3 border-2 rounded-lg text-left transition ${isWfSelected ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200' : `border-gray-200 ${MODE_COLORS[w.serviceMode] ?? ''} hover:opacity-90`}`}>
+ <span className={`text-[10px] font-bold uppercase tracking-wide block mb-0.5 ${isWfSelected ? 'text-blue-700' : ''}`}>
+ {MODE_LABELS[w.serviceMode] ?? w.serviceMode}
+ </span>
+ <span className="text-xs font-medium text-gray-800 leading-tight">{w.name}</span>
  </button>
  )
  })}
@@ -441,7 +459,18 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, default
  </div>
  )}
 
- <button onClick={() => setStep(4)} disabled={!selectedService && services.length > 0}
+ {/* When exactly one workflow, show it as a read-only badge */}
+ {selectedService && selectedService.workflows.length === 1 && (
+ <div className="mb-3 flex items-center gap-2">
+ <span className="text-xs text-gray-500">Format:</span>
+ <span className={`text-xs font-medium px-2 py-1 rounded-full border ${MODE_COLORS[selectedService.workflows[0].serviceMode] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+ {MODE_LABELS[selectedService.workflows[0].serviceMode] ?? selectedService.workflows[0].name}
+ </span>
+ </div>
+ )}
+
+ <button onClick={() => setStep(4)}
+ disabled={(services.length > 0 && !selectedService) || (selectedService && selectedService.workflows.length > 1 && !selectedWorkflowId) || false}
  className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-blue-700 transition">Continue</button>
  </div>
  )}
