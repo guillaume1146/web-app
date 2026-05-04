@@ -12,6 +12,8 @@ import FloatingChatWidget from '@/components/shared/FloatingChatWidget'
 import FloatingBookingCart from '@/components/shared/FloatingBookingCart'
 import FloatingAuthFAB from '@/components/shared/FloatingAuthFAB'
 import FloatingCart from '@/components/health-shop/FloatingCart'
+import FloatingPrescriptionFAB from '@/components/shared/FloatingPrescriptionFAB'
+import { PrescriptionProvider } from '@/lib/contexts/prescription-context'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -174,6 +176,7 @@ export default function RootLayout({
  </head>
  <body className={inter.className}>
  <HealthShopCartProvider>
+ <PrescriptionProvider>
  <CartProvider>
  <BookingCartProvider>
  <ConditionalNavbar />
@@ -187,9 +190,11 @@ export default function RootLayout({
  <FloatingAuthFAB />
  <FloatingBookingCart />
  <FloatingCart />
+ <FloatingPrescriptionFAB />
  <FloatingChatWidget />
  </BookingCartProvider>
  </CartProvider>
+ </PrescriptionProvider>
  </HealthShopCartProvider>
  <script
  dangerouslySetInnerHTML={{

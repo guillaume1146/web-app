@@ -2,8 +2,24 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { FiSearch, FiPackage } from 'react-icons/fi'
+import { FaFileMedical } from 'react-icons/fa'
 import ShopItemCard from '@/components/health-shop/ShopItemCard'
 import FloatingCart from '@/components/health-shop/FloatingCart'
+import { usePrescription } from '@/lib/contexts/prescription-context'
+
+function rxScore(item: ShopItem, medicines: string[]): number {
+  if (!medicines.length) return 0
+  const text = `${item.name} ${item.genericName ?? ''}`.toLowerCase()
+  for (const med of medicines) {
+    const m = med.toLowerCase().trim()
+    if (!m) continue
+    if (text.includes(m)) return 2
+    for (const word of m.split(/\s+/)) {
+      if (word.length > 3 && text.includes(word)) return 1
+    }
+  }
+  return 0
+}
 
 interface ShopItem {
   id: string
@@ -62,6 +78,7 @@ function HealthShopContent() {
   const [category, setCategory] = useState('')
   const [providerType, setProviderType] = useState('')
   const [offset, setOffset] = useState(0)
+  const { prescription } = usePrescription()
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
@@ -151,9 +168,16 @@ function HealthShopContent() {
             ))}
         </div>
 
-        <p className="text-sm text-gray-500 mb-4">{total} product{total !== 1 ? 's' : ''} found</p>
+        <p className="text-sm text-gray-500 mb-3">{total} product{total !== 1 ? 's' : ''} found</p>
 
-        {/* Items grid with Add to Cart */}
+        {prescription.medicines.length > 0 && (
+          <div className="mb-4 flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+            <FaFileMedical className="text-amber-500 flex-shrink-0" />
+            <span>Results sorted by your prescription · <strong>{prescription.medicines.length}</strong> medicine{prescription.medicines.length !== 1 ? 's' : ''} detected</span>
+          </div>
+        )}
+
+        {/* Items grid */}
         {loading ? (
           <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-teal" /></div>
         ) : items.length === 0 ? (
@@ -164,9 +188,11 @@ function HealthShopContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {items.map(item => (
-              <ShopItemCard key={item.id} product={item} />
-            ))}
+            {[...items]
+              .sort((a, b) => rxScore(b, prescription.medicines) - rxScore(a, prescription.medicines))
+              .map(item => (
+                <ShopItemCard key={item.id} product={item} rxMatch={rxScore(item, prescription.medicines) > 0} />
+              ))}
           </div>
         )}
 

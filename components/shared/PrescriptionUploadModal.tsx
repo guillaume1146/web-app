@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { FaTimes, FaUpload, FaCamera, FaCheckCircle, FaFileMedical, FaSpinner } from 'react-icons/fa'
+import { usePrescription } from '@/lib/contexts/prescription-context'
 
 interface PrescriptionUploadModalProps {
   medicineName: string
@@ -10,6 +11,7 @@ interface PrescriptionUploadModalProps {
 }
 
 export default function PrescriptionUploadModal({ medicineName, onConfirm, onClose }: PrescriptionUploadModalProps) {
+  const { setPrescription } = usePrescription()
   const [step, setStep] = useState<'upload' | 'scanning' | 'confirmed'>('upload')
   const [preview, setPreview] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('')
@@ -44,8 +46,20 @@ export default function PrescriptionUploadModal({ medicineName, onConfirm, onClo
       const json = await res.json()
       const url = json.data?.url || preview
 
-      // Simulate AI scan (1.5s)
-      await new Promise(r => setTimeout(r, 1500))
+      // Extract medicines + simulate scan in parallel
+      const [, extractRes] = await Promise.all([
+        new Promise(r => setTimeout(r, 1500)),
+        fetch('/api/ai/extract-prescription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: preview }),
+        }).then(r => r.json()).catch(() => ({ data: { medicines: [], rawText: '' } })),
+      ])
+      const extracted = (extractRes as { data?: { medicines: string[]; rawText: string } }).data ?? { medicines: [], rawText: '' }
+
+      // Save to global prescription context so Health Shop benefits immediately
+      setPrescription({ imageUrl: url, medicines: extracted.medicines, rawText: extracted.rawText, uploadedAt: new Date().toISOString() })
+
       setStep('confirmed')
       setUploading(false)
 

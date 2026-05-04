@@ -33,7 +33,7 @@ interface Product {
   isFeatured: boolean
 }
 
-export default function ShopItemCard({ product }: { product: Product }) {
+export default function ShopItemCard({ product, rxMatch = false }: { product: Product; rxMatch?: boolean }) {
   const { items, addToCart, updateQuantity, removeFromCart } = useCart()
   const cartItem = items.find(i => i.id === product.id)
   const qtyInCart = cartItem?.quantity || 0
@@ -72,7 +72,7 @@ export default function ShopItemCard({ product }: { product: Product }) {
 
   return (
     <>
-    <div className={`bg-white rounded-xl border ${product.isFeatured ? 'border-[#0C6780] ring-1 ring-[#0C6780]/20' : 'border-gray-200'} overflow-hidden hover:shadow-md transition-shadow`}>
+    <div className={`bg-white rounded-xl border ${rxMatch ? 'border-amber-300 ring-1 ring-amber-200' : product.isFeatured ? 'border-[#0C6780] ring-1 ring-[#0C6780]/20' : 'border-gray-200'} overflow-hidden hover:shadow-md transition-shadow`}>
       {/* Product image / fallback */}
       {product.imageUrl && !imgError ? (
         <div className="h-32 bg-gray-100 overflow-hidden">
@@ -101,6 +101,11 @@ export default function ShopItemCard({ product }: { product: Product }) {
             {product.genericName && <p className="text-xs text-gray-400 truncate">{product.genericName}</p>}
           </div>
           <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+            {rxMatch && (
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">
+                ✓ Rx match
+              </span>
+            )}
             {product.requiresPrescription && (
               <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">
                 <FaPrescription className="text-[8px]" /> Rx

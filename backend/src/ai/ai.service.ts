@@ -942,4 +942,49 @@ Rules:
       return "Connection issue. Please try again in a moment.";
     }
   }
+
+  async extractPrescription(imageDataUrl: string): Promise<{ medicines: string[]; rawText: string }> {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) return { medicines: [], rawText: '' };
+
+    const visionModel = process.env.GROQ_VISION_MODEL || 'llama-3.2-11b-vision-preview';
+
+    const body = {
+      model: visionModel,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: imageDataUrl } },
+          {
+            type: 'text',
+            text: 'You are a pharmacy assistant. Extract ALL medication names, generic drug names, and dosages from this prescription image. Return ONLY valid JSON: {"medicines":["name1","name2"],"rawText":"full extracted text"}. Include both brand and generic names. No text outside the JSON.',
+          },
+        ],
+      }],
+      max_tokens: 600,
+    };
+
+    try {
+      const res = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json() as { choices?: Array<{ message: { content: string } }>; usage?: { prompt_tokens: number; completion_tokens: number } };
+      const content = (json.choices?.[0]?.message?.content ?? '{}').trim();
+      if (json.usage) {
+        this.logger.log(`[AI] extract-prescription: in=${json.usage.prompt_tokens} out=${json.usage.completion_tokens}`);
+      }
+      // Strip markdown code fences if present
+      const clean = content.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+      const parsed = JSON.parse(clean) as { medicines?: string[]; rawText?: string };
+      return {
+        medicines: Array.isArray(parsed.medicines) ? parsed.medicines.filter(Boolean) : [],
+        rawText: parsed.rawText ?? content,
+      };
+    } catch (err) {
+      this.logger.error('[AI] extract-prescription error:', err);
+      return { medicines: [], rawText: '' };
+    }
+  }
 }

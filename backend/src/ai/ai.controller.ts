@@ -117,4 +117,18 @@ export class AiController {
       return { success: false, message: 'Failed to delete session' };
     }
   }
+
+  /** POST /api/ai/extract-prescription — public, extracts medicine names from a prescription image */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('extract-prescription')
+  async extractPrescription(@Body() body: { image: string }) {
+    if (!body?.image) return { success: false, message: 'image is required' };
+    try {
+      const result = await this.aiService.extractPrescription(body.image);
+      return { success: true, data: result };
+    } catch {
+      return { success: true, data: { medicines: [], rawText: '' } };
+    }
+  }
 }
