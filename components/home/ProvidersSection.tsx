@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { FaSearch, FaUserMd, FaStar, FaArrowRight, FaCheckCircle } from 'react-icons/fa'
-import HorizontalScrollRow from '@/components/shared/HorizontalScrollRow'
 import { avatarSrc } from '@/lib/utils/avatar'
 
 interface ProviderCard {
@@ -248,7 +247,7 @@ export default function ProvidersSection() {
           </div>
 
         ) : activeRole === 'ALL' ? (
-          /* Horizontal scroll rows — one per role */
+          /* Flat grid grouped by role */
           filteredGroups.length === 0 ? (
             <div className="text-center py-16">
               <FaUserMd className="text-4xl text-gray-300 mx-auto mb-3" />
@@ -256,20 +255,34 @@ export default function ProvidersSection() {
               <button onClick={() => setSearchQuery('')} className="mt-2 text-xs text-[#0C6780] hover:underline">Clear search</button>
             </div>
           ) : (
-            filteredGroups.map(group => (
-              <HorizontalScrollRow
-                key={group.code}
-                title={group.label}
-                subtitle={`${group.providers.length} provider${group.providers.length !== 1 ? 's' : ''} shown`}
-                icon={<span className="text-xl">{PROVIDER_EMOJI[group.code] ?? '👨‍⚕️'}</span>}
-                seeAllHref={`/search/${group.slug}`}
-                seeAllLabel="See All"
-              >
-                {group.providers.map(provider => (
-                  <ProviderCardItem key={provider.id} provider={provider} color={group.color} slug={group.slug} />
-                ))}
-              </HorizontalScrollRow>
-            ))
+            <div className="space-y-10">
+              {filteredGroups.map(group => {
+                const shown = group.providers.slice(0, 6)
+                return (
+                  <div key={group.code}>
+                    {/* Section header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{PROVIDER_EMOJI[group.code] ?? '👨‍⚕️'}</span>
+                        <h3 className="text-base font-bold text-gray-900">{group.label}</h3>
+                        <span className="text-xs text-gray-400">({group.providers.length})</span>
+                      </div>
+                      <Link
+                        href={`/search/${group.slug}`}
+                        className="flex items-center gap-1 text-xs font-medium text-[#0C6780] hover:text-[#001E40] transition-colors"
+                      >
+                        See All <FaArrowRight className="text-[9px]" />
+                      </Link>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                      {shown.map(provider => (
+                        <ProviderCardItem key={provider.id} provider={provider} color={group.color} slug={group.slug} />
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           )
 
         ) : (
@@ -304,62 +317,79 @@ export default function ProvidersSection() {
 }
 
 function ProviderCardItem({ provider, color, slug }: { provider: ProviderCard; color: string; slug: string }) {
-  const bgSoft = hex2rgba(color, 0.08)
+  const bgLight  = hex2rgba(color, 0.10)
+  const bgMedium = hex2rgba(color, 0.20)
+  const avatarUrl = avatarSrc(provider.profileImage, provider.firstName, provider.lastName)
 
   return (
     <Link
       href={`/profile/${provider.id}`}
-      className="group flex flex-col items-center
-        bg-white rounded-2xl border border-gray-100 p-3 sm:p-4
-        hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 snap-start flex-shrink-0 w-[140px] sm:w-44"
-      style={{ borderTopWidth: 3, borderTopColor: color }}
+      className="group flex flex-col bg-white rounded-2xl border border-gray-100
+        hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
     >
-      <div className="relative mb-2.5">
-        <img
-          src={avatarSrc(provider.profileImage, provider.firstName, provider.lastName)}
-          alt={`${provider.firstName} ${provider.lastName}`}
-          className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-white shadow"
-        />
-        {provider.verified && (
-          <FaCheckCircle
-            className="absolute -bottom-0.5 -right-0.5 text-blue-500 text-sm bg-white rounded-full"
-            title="Verified"
+      {/* Avatar header */}
+      <div
+        className="relative w-full h-28 sm:h-32 flex-shrink-0 flex items-center justify-center overflow-hidden"
+        style={{ background: `linear-gradient(135deg, ${bgMedium} 0%, ${bgLight} 100%)` }}
+      >
+        {/* Blurred background avatar */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
+          <img src={avatarUrl} alt="" className="w-full h-full object-cover object-top scale-150 blur-2xl opacity-40" />
+        </div>
+
+        {/* Sharp foreground avatar */}
+        <div className="relative group-hover:scale-105 transition-transform duration-300">
+          <img
+            src={avatarUrl}
+            alt={`${provider.firstName} ${provider.lastName}`}
+            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover object-top border-2 border-white shadow-lg"
           />
+          {provider.verified && (
+            <FaCheckCircle
+              className="absolute -bottom-0.5 -right-0.5 text-blue-500 text-sm bg-white rounded-full"
+              title="Verified"
+            />
+          )}
+        </div>
+
+        {/* Provider type badge */}
+        <div className="absolute bottom-1.5 left-2 z-10">
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(0,0,0,0.35)', color: '#fff', backdropFilter: 'blur(4px)' }}>
+            {PROVIDER_EMOJI[provider.userType] ?? ''} {slug.replace(/-/g, ' ')}
+          </span>
+        </div>
+
+        <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: color }} />
+      </div>
+
+      {/* Body */}
+      <div className="p-3 flex-1 flex flex-col">
+        <h4 className="text-xs sm:text-sm font-bold text-gray-900 leading-snug line-clamp-2 mb-0.5">
+          {provider.firstName} {provider.lastName}
+        </h4>
+        {provider.specialty && (
+          <p className="text-[10px] text-gray-500 line-clamp-1">
+            {Array.isArray(provider.specialty) ? provider.specialty[0] : provider.specialty}
+          </p>
         )}
       </div>
 
-      <h4 className="text-xs sm:text-sm font-bold text-gray-900 text-center line-clamp-2 leading-snug mb-1">
-        {provider.firstName} {provider.lastName}
-      </h4>
-
-      <span
-        className="text-[10px] font-semibold px-2 py-0.5 rounded-full mb-1.5"
-        style={{ background: bgSoft, color }}
-      >
-        {PROVIDER_EMOJI[provider.userType] ?? ''} {slug.replace(/-/g, ' ')}
-      </span>
-
-      {provider.specialty && (
-        <p className="text-[10px] text-gray-500 text-center line-clamp-2 mb-1.5">
-          {Array.isArray(provider.specialty) ? provider.specialty[0] : provider.specialty}
-        </p>
-      )}
-
-      {provider.rating && provider.rating > 0 && (
-        <div className="flex items-center gap-0.5 text-[10px] text-amber-500 font-medium">
-          <FaStar className="text-[9px]" />
-          {Number(provider.rating).toFixed(1)}
-          {provider.reviewCount && (
-            <span className="text-gray-400 ml-0.5">({provider.reviewCount})</span>
-          )}
-        </div>
-      )}
-
-      <div
-        className="mt-auto pt-2.5 w-full text-center text-[10px] font-semibold flex items-center justify-center gap-1 group-hover:gap-2 transition-all"
-        style={{ color }}
-      >
-        View Profile <FaArrowRight className="text-[8px]" />
+      {/* Footer */}
+      <div className="px-3 pb-3 pt-1.5 border-t border-gray-100 flex items-center justify-between gap-1">
+        {provider.rating && provider.rating > 0 ? (
+          <div className="flex items-center gap-0.5 text-[10px] text-amber-500 font-medium">
+            <FaStar className="text-[9px]" />
+            {Number(provider.rating).toFixed(1)}
+            {provider.reviewCount && (
+              <span className="text-gray-400 ml-0.5">({provider.reviewCount})</span>
+            )}
+          </div>
+        ) : (
+          <span />
+        )}
+        <span className="text-[10px] font-semibold flex items-center gap-0.5 group-hover:gap-1 transition-all" style={{ color }}>
+          View <FaArrowRight className="text-[8px]" />
+        </span>
       </div>
     </Link>
   )

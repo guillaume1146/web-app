@@ -9,24 +9,40 @@ export default function FloatingCart() {
   const { items, totalItems, totalPrice, updateQuantity, removeFromCart, clearCart, hasRxItems } = useCart()
   const [open, setOpen] = useState(false)
 
-  if (totalItems === 0) return null
-
   return (
     <>
-      {/* Floating button */}
+      {/* Floating button — always visible */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-40 right-6 z-50 bg-[#0C6780] text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:bg-[#0a5568] transition-all"
+        title="Health Shop Cart"
+        aria-label="Health Shop Cart"
+        className={`fixed bottom-40 right-5 sm:right-6 z-50
+          w-14 h-14 rounded-full shadow-xl flex items-center justify-center
+          transition-all hover:scale-105 active:scale-95
+          ${totalItems > 0 ? 'bg-[#0C6780] text-white' : 'bg-white border-2 border-gray-200 text-gray-400 hover:border-[#0C6780] hover:text-[#0C6780]'}`}
       >
         <FaShoppingCart className="text-xl" />
-        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-          {totalItems}
-        </span>
+        {totalItems > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
+            {totalItems}
+          </span>
+        )}
       </button>
 
-      {/* Cart panel */}
-      {open && (
-        <div className="fixed bottom-44 right-6 z-50 w-[360px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
+      {/* Empty cart panel */}
+      {open && totalItems === 0 && (
+        <div className="fixed bottom-56 right-5 sm:right-6 z-50 bg-white rounded-2xl shadow-xl border border-gray-200 p-4 w-52">
+          <p className="text-sm font-semibold text-gray-900 mb-1">Health Shop</p>
+          <p className="text-xs text-gray-500 mb-3">Your cart is empty. Browse products from all providers.</p>
+          <Link href="/search/health-shop" className="block w-full text-center bg-[#0C6780] text-white py-2 rounded-xl text-xs font-medium">
+            Browse Health Shop
+          </Link>
+        </div>
+      )}
+
+      {/* Cart panel — when items present */}
+      {open && totalItems > 0 && (
+        <div className="fixed bottom-44 right-5 sm:right-6 z-50 w-[360px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b bg-gray-50">
             <h3 className="font-bold text-gray-900 text-sm">Cart ({totalItems} items)</h3>

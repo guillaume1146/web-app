@@ -23,7 +23,7 @@ export default function FloatingChatWidget() {
   const [turns, setTurns] = useState<Turn[]>([
     {
       role: 'agent',
-      text: "Bonjour 👋 Je suis l'Assistant Santé IA de MediWyz. Je peux vous aider à réserver un médecin, trouver des médicaments dans le Health Shop, ou répondre à toutes vos questions sur la plateforme.",
+      text: "Bonjour 👋 Je suis Wyzo, votre Assistant Santé IA. Je peux vous aider à réserver un médecin, trouver des médicaments dans le Health Shop, ou répondre à toutes vos questions sur la plateforme.",
     },
   ])
   const [input, setInput] = useState('')
@@ -87,7 +87,7 @@ export default function FloatingChatWidget() {
               overflow-hidden"
             role="dialog"
             aria-modal="true"
-            aria-label="MediWyz Health AI Assistant"
+            aria-label="Wyzo — Health AI Assistant"
           >
             {/* Header */}
             <div className="flex items-center gap-4 px-6 sm:px-10 py-5 sm:py-6 bg-gradient-to-r from-brand-navy via-[#0a3d62] to-brand-teal flex-shrink-0">
@@ -95,7 +95,7 @@ export default function FloatingChatWidget() {
                 <Image src="/images/logo-icon.png" alt="MediWyz" width={44} height={44} className="rounded-xl" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-lg sm:text-xl">Assistant Santé IA — MediWyz</p>
+                <p className="text-white font-bold text-lg sm:text-xl">Wyzo — Health AI Assistant</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
                   <p className="text-white/80 text-sm sm:text-base">En ligne • Réponses instantanées</p>
@@ -189,38 +189,23 @@ export default function FloatingChatWidget() {
         </>
       )}
 
-      {/* ─── Floating trigger pill ───────────────────────────────────── */}
+      {/* ─── Floating trigger button (circular) ─────────────────────── */}
       <button
         onClick={() => setOpen(v => !v)}
-        className={`fixed bottom-6 right-5 sm:right-7 z-50
-          flex items-center gap-3 pl-3 pr-5 py-3
-          rounded-full shadow-[0_12px_40px_-6px_rgba(0,30,64,0.50)]
+        title={open ? 'Close Wyzo' : 'Wyzo — Health AI Assistant'}
+        aria-label={open ? 'Close Wyzo' : 'Wyzo — Health AI Assistant'}
+        className={`fixed bottom-6 right-5 sm:right-6 z-50
+          w-14 h-14 rounded-full shadow-xl
+          flex items-center justify-center
           transition-all duration-200 hover:scale-105 active:scale-95
-          ${open
-            ? 'bg-gray-700'
-            : 'bg-gradient-to-r from-brand-navy to-brand-teal'
-          }`}
-        aria-label={open ? 'Fermer l\'assistant' : 'Ouvrir l\'Assistant Santé IA MediWyz'}
+          ${open ? 'bg-gray-700' : 'bg-gradient-to-br from-brand-navy to-brand-teal'}`}
       >
-        {/* Logo circle */}
-        <div className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-          {open
-            ? <FaTimes className="text-white text-base" />
-            : <Image src="/images/logo-icon.png" alt="" width={30} height={30} className="rounded-full" />
-          }
-        </div>
-
-        {/* Label */}
-        {!open && (
-          <div className="flex flex-col items-start leading-tight">
-            <span className="text-white text-xs font-medium opacity-80">Assistant Santé IA</span>
-            <span className="text-white text-base font-bold tracking-wide">MediWyz</span>
-          </div>
-        )}
-
-        {/* Unread dot */}
+        {open
+          ? <FaTimes className="text-white text-base" />
+          : <Image src="/images/logo-icon.png" alt="Wyzo" width={32} height={32} className="rounded-full" />
+        }
         {!open && turns.length > 1 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full border-2 border-white" />
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
         )}
       </button>
     </>

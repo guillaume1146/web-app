@@ -4,12 +4,14 @@ import './globals.css'
 import ConditionalNavbar from '@/components/layout/ConditionalNavbar'
 import ConditionalFooter from '@/components/layout/ConditionalFooter'
 import { CartProvider } from '@/app/search/medicines/contexts/CartContext'
+import { CartProvider as HealthShopCartProvider } from '@/components/health-shop/CartContext'
 import { BookingCartProvider } from '@/lib/contexts/booking-cart-context'
 import ToastProvider from '@/components/shared/ToastProvider'
 import DesktopModeWarning from '@/components/shared/DesktopModeWarning'
 import FloatingChatWidget from '@/components/shared/FloatingChatWidget'
 import FloatingBookingCart from '@/components/shared/FloatingBookingCart'
 import FloatingAuthFAB from '@/components/shared/FloatingAuthFAB'
+import FloatingCart from '@/components/health-shop/FloatingCart'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -171,6 +173,7 @@ export default function RootLayout({
  />
  </head>
  <body className={inter.className}>
+ <HealthShopCartProvider>
  <CartProvider>
  <BookingCartProvider>
  <ConditionalNavbar />
@@ -180,12 +183,14 @@ export default function RootLayout({
  <ConditionalFooter />
  <ToastProvider />
  <DesktopModeWarning />
- {/* 3 floating elements — visible everywhere */}
+ {/* Floating elements — visible everywhere */}
  <FloatingAuthFAB />
  <FloatingBookingCart />
+ <FloatingCart />
  <FloatingChatWidget />
  </BookingCartProvider>
  </CartProvider>
+ </HealthShopCartProvider>
  <script
  dangerouslySetInnerHTML={{
  __html: `

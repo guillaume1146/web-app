@@ -176,7 +176,7 @@ export default function ServicesSection() {
               const role = roleMap[svc.providerType]
               const color = role?.color ?? '#0C6780'
               const slug = role?.slug ?? svc.providerType.toLowerCase()
-              return <ServiceCard key={svc.id} service={svc} color={color} slug={slug} />
+              return <ServiceCard key={svc.id} service={svc} color={color} slug={slug} roleLabel={role?.label ?? svc.providerType} />
             })}
           </div>
         )}
@@ -194,7 +194,7 @@ export default function ServicesSection() {
   )
 }
 
-function ServiceCard({ service, color, slug }: { service: ServiceItem; color: string; slug: string }) {
+function ServiceCard({ service, color, slug, roleLabel }: { service: ServiceItem; color: string; slug: string; roleLabel: string }) {
   const bgLight  = hex2rgba(color, 0.10)
   const bgMedium = hex2rgba(color, 0.20)
 
@@ -209,9 +209,23 @@ function ServiceCard({ service, color, slug }: { service: ServiceItem; color: st
         className="relative w-full h-28 sm:h-32 flex-shrink-0 flex items-center justify-center overflow-hidden"
         style={{ background: `linear-gradient(135deg, ${bgMedium} 0%, ${bgLight} 100%)` }}
       >
-        <span className="group-hover:scale-110 transition-transform duration-300 flex items-center justify-center w-full h-full">
+        {/* Blurred background glow */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
           {service.imageUrl ? (
-            <img src={service.imageUrl} alt={service.serviceName} className="w-full h-full object-contain px-3 py-2" />
+            <img src={service.imageUrl} alt="" className="w-full h-full object-cover scale-150 blur-2xl opacity-40" />
+          ) : service.emoji ? (
+            <span className="text-[110px] leading-none select-none blur-2xl opacity-30 scale-150">{service.emoji}</span>
+          ) : service.iconKey ? (
+            <div className="blur-2xl opacity-25 scale-[2]">
+              <Icon icon={service.iconKey} width={80} height={80} color={color} />
+            </div>
+          ) : null}
+        </div>
+
+        {/* Sharp foreground icon */}
+        <span className="relative group-hover:scale-110 transition-transform duration-300 flex items-center justify-center">
+          {service.imageUrl ? (
+            <img src={service.imageUrl} alt={service.serviceName} className="h-20 sm:h-24 w-full object-contain px-3" />
           ) : service.emoji ? (
             <span className="text-5xl sm:text-6xl leading-none select-none">{service.emoji}</span>
           ) : service.iconKey ? (
@@ -220,6 +234,14 @@ function ServiceCard({ service, color, slug }: { service: ServiceItem; color: st
             <span className="text-5xl leading-none select-none">🩺</span>
           )}
         </span>
+
+        {/* Provider type badge */}
+        <div className="absolute bottom-1.5 left-2 z-10">
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(0,0,0,0.35)', color: '#fff', backdropFilter: 'blur(4px)' }}>
+            {roleLabel}
+          </span>
+        </div>
+
         <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: color }} />
       </div>
 
