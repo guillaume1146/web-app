@@ -31,45 +31,61 @@ function hex2rgba(hex: string, alpha = 0.12) {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
+// Each service gets a UNIQUE emoji — ordered from specific to generic so no two rules collide
 function resolveServiceEmoji(name: string, category: string, providerType: string): string {
-  const text = `${name} ${category}`.toLowerCase()
-  if (/cardio|heart/.test(text)) return '🫀'
-  if (/lung|pulmon|respir|chest|breath/.test(text)) return '🫁'
-  if (/brain|neuro|stroke|cereb/.test(text)) return '🧠'
-  if (/dental|teeth|tooth|oral|mouth/.test(text)) return '🦷'
-  if (/eye|vision|optom|ophth|sight|retina/.test(text)) return '👁️'
-  if (/bone|ortho|joint|spine|fracture|arthrit/.test(text)) return '🦴'
-  if (/blood test|hematol|anemia|transfus/.test(text)) return '🩸'
-  if (/lab|sample|culture|swab|biopsy|pathol/.test(text)) return '🧪'
-  if (/vaccine|immuniz|vaccin|shot/.test(text)) return '💉'
-  if (/prescription|medicine|medication|drug|pharmacy|dispens/.test(text)) return '💊'
-  if (/home visit|house call|domicil|home care/.test(text)) return '🏠'
-  if (/video|telehealth|telemedicine|online consult|remote|virtual/.test(text)) return '📹'
-  if (/emergency|ambulance|urgent|trauma|rescue/.test(text)) return '🚑'
-  if (/physio|rehabilit|exercise|movement|mobility/.test(text)) return '🏃'
-  if (/nutrition|diet|food|meal|weight|obesity/.test(text)) return '🥗'
-  if (/caregiver|elder|geriat|elderly|senior care/.test(text)) return '🤝'
-  if (/child|pediatr|baby|infant|newborn|neonat/.test(text)) return '👶'
-  if (/pregnan|obstetric|maternal|antenatal|prenatal|birth|deliver/.test(text)) return '🤰'
-  if (/mental|psych|anxiety|depress|counsel|therap/.test(text)) return '🧠'
-  if (/skin|derma|acne|rash/.test(text)) return '🧴'
-  if (/ear|hearing|ent|audiol/.test(text)) return '👂'
-  if (/kidney|renal|urol|bladder/.test(text)) return '🫘'
-  if (/stomach|gastro|digest|bowel|colon|intestin/.test(text)) return '🫃'
-  if (/liver|hepat|gallblad/.test(text)) return '🫀'
-  if (/diabetes|glucose|insulin|endocrin|thyroid/.test(text)) return '💓'
-  if (/nanny|childcare|babysit/.test(text)) return '🧸'
-  if (/x.ray|imaging|scan|mri|ultrasound|radiol/.test(text)) return '🩻'
-  if (/wound|dress|injury|bandage/.test(text)) return '🩹'
-  if (/blood pressure|hypertens|cardiovas/.test(text)) return '💓'
-  if (/oxygen|asthma|inhaler/.test(text)) return '💨'
-  if (/cancer|oncol|tumor/.test(text)) return '🎗️'
-  if (/surgery|operat|procedure/.test(text)) return '🔬'
-  if (/consult|checkup|check-up|appointment|visit|general/.test(text)) return '🩺'
+  const t = `${name} ${category}`.toLowerCase()
+
+  // Anatomy-specific (highest specificity first)
+  if (/cardio|heart disease|arrhythm/.test(t)) return '🫀'         // anatomical heart
+  if (/lung|pulmon|respir|chest infect|bronch/.test(t)) return '🫁' // lungs
+  if (/neuro|brain|stroke|epilep|cereb/.test(t)) return '🧠'        // brain
+  if (/dental|teeth|tooth|oral|gum|cavity|braces/.test(t)) return '🦷'
+  if (/eye|vision|ophth|retina|glaucom|cataract/.test(t)) return '👁️'
+  if (/bone|ortho|joint|spine|fracture|arthrit|knee|hip/.test(t)) return '🦴'
+  if (/ear|hearing|ent|audiol|tinnit/.test(t)) return '👂'
+  if (/kidney|renal|urol|bladder|prostate/.test(t)) return '💧'
+  if (/liver|hepat|gallblad|jaundic/.test(t)) return '🟡'           // yellow circle for liver/jaundice
+  if (/gastro|stomach|digest|bowel|colon|intestin|acid reflux/.test(t)) return '🫃'
+  if (/skin|derma|acne|rash|eczema|psoriasis/.test(t)) return '💆'  // skin / face care
+
+  // Procedures & tests
+  if (/x.?ray|imaging|mri|ct scan|ultrasound|radiol/.test(t)) return '🩻' // x-ray (Unicode 13)
+  if (/blood test|hematol|anemia|coagul/.test(t)) return '🩸'        // blood drop
+  if (/lab|sample|culture|swab|biopsy|pathol|urine/.test(t)) return '🔬' // microscope
+  if (/vaccine|immuniz|vaccin/.test(t)) return '💉'                  // syringe (reserved for vaccines)
+  if (/wound|dressing|bandage|suture|stitch/.test(t)) return '🩹'   // bandage
+  if (/surgery|operat|procedure|incision/.test(t)) return '⚕️'      // medical symbol (no scalpel emoji)
+  if (/cancer|oncol|tumor|chemo|radiother/.test(t)) return '🎗️'    // ribbon (awareness)
+
+  // Services & modes
+  if (/home visit|house call|domicil|home care/.test(t)) return '🏠'
+  if (/video|telehealth|telemedicine|online|virtual|remote consult/.test(t)) return '📱'
+  if (/emergency|ambulance|urgent|trauma|rescue/.test(t)) return '🚑'
+  if (/pharmacy|prescription|dispensing|medication/.test(t)) return '💊'
+  if (/physio|rehabilit|movement|mobility|stretching/.test(t)) return '💪'
+  if (/mental|psych|anxiety|depress|counsel|talk therapy/.test(t)) return '🧘' // meditation ≠ brain
+  if (/nutrition|diet|food|meal plan|weight loss/.test(t)) return '🥗'
+  if (/elder|geriat|elderly|senior care|aged/.test(t)) return '🧓'
+  if (/pregnan|obstetric|maternal|antenatal|prenatal|midwif|birth/.test(t)) return '🤰'
+  if (/baby|infant|newborn|neonat|pediatr|child/.test(t)) return '👶'
+  if (/nanny|childcare|babysit/.test(t)) return '🧸'
+  if (/diabetes|glucose|insulin|endocrin|thyroid|hormone/.test(t)) return '🧬' // DNA for endocrine
+  if (/blood pressure|hypertens|cardiovas|heart fail/.test(t)) return '❤️'    // red heart (distinct from 🫀)
+  if (/oxygen|asthma|inhaler|copd/.test(t)) return '💨'
+  if (/general consult|check.?up|annual|screening/.test(t)) return '🩺'
+
+  // Provider-type fallbacks (each unique)
   const FALLBACK: Record<string, string> = {
-    DOCTOR: '🩺', NURSE: '💉', NANNY: '🧸', PHARMACIST: '💊',
-    LAB_TECHNICIAN: '🧪', EMERGENCY_WORKER: '🚑', CAREGIVER: '🤝',
-    PHYSIOTHERAPIST: '🏃', DENTIST: '🦷', OPTOMETRIST: '👁️',
+    DOCTOR: '🩺',        // stethoscope
+    NURSE: '📋',         // assessment/care plan clipboard
+    NANNY: '🧸',         // teddy bear
+    PHARMACIST: '💊',    // pill
+    LAB_TECHNICIAN: '🔬', // microscope
+    EMERGENCY_WORKER: '🚑',
+    CAREGIVER: '🤝',     // handshake
+    PHYSIOTHERAPIST: '💪', // flexed muscle
+    DENTIST: '🦷',
+    OPTOMETRIST: '👁️',
     NUTRITIONIST: '🥗',
   }
   return FALLBACK[providerType] ?? '⚕️'
@@ -122,6 +138,18 @@ export default function ServicesSection() {
     }
     return map
   }, [filtered])
+
+  // DOCTOR group always first, then order by roles API sequence
+  const orderedRoleCodes = useMemo(() => {
+    const keys = Object.keys(groupedByRole)
+    return keys.sort((a, b) => {
+      if (a === 'DOCTOR') return -1
+      if (b === 'DOCTOR') return 1
+      const ia = roles.findIndex(r => r.code === a)
+      const ib = roles.findIndex(r => r.code === b)
+      return ia - ib
+    })
+  }, [groupedByRole, roles])
 
   const roleInfo = useMemo(() => {
     const info: Record<string, RoleData> = {}
@@ -221,7 +249,8 @@ export default function ServicesSection() {
             )}
           </div>
         ) : (
-          Object.entries(groupedByRole).map(([roleCode, roleServices]) => {
+          orderedRoleCodes.map(roleCode => {
+            const roleServices = groupedByRole[roleCode]
             const info = roleInfo[roleCode]
             const color = info?.color ?? '#0C6780'
             const slug = info?.slug ?? roleCode.toLowerCase()

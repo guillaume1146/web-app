@@ -51,11 +51,10 @@ export class WorkflowRegistry {
     }
 
     // Levels 4-6 are generic fallbacks (no platformServiceId link).
-    // If a platformServiceId was given but nothing matched levels 1-3, the
-    // service has no configured workflow — return null so the booking layer
-    // can reject it with a clear error instead of silently using a generic
-    // template that may be wrong for this service.
-    if (platformServiceId) return null;
+    // If a platformServiceId was given but nothing matched levels 1-3, fall
+    // through to the generic providerType+serviceMode defaults so bookings
+    // always have a runnable workflow. Services that need a distinct flow can
+    // be explicitly linked at levels 1-3.
 
     // 4. Regional admin generic template for provider type + mode (region-scoped)
     if (regionCode) {
