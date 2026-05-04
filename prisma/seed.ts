@@ -50,6 +50,7 @@ import { seedWorkflowStepLibrary } from './seeds/49-workflow-step-library.seed'
 import { seedWorkflowDomainTemplates } from './seeds/50-workflow-domain-templates.seed'
 import { seedSarahJohnsonAndServices } from './seeds/55-sarah-johnson-services.seed'
 import { seedIconKeys } from './seeds/56-icon-keys.seed'
+import { seedDoctorSpecialtyServices } from './seeds/57-doctor-specialty-services.seed'
 
 const prisma = new PrismaClient()
 
@@ -259,6 +260,7 @@ async function main() {
   await seedWorkflowStepLibrary(prisma)
   await seedWorkflowDomainTemplates(prisma)
   await seedIconKeys()
+  await seedDoctorSpecialtyServices()
 
   // ── Final step: ensure ALL users have subscriptions ──────────────
   console.log('  Ensuring all users have subscriptions...')
