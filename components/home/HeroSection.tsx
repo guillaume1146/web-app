@@ -95,12 +95,12 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
     return () => clearInterval(interval)
   }, [heroImages.length])
 
-  const titleParts = (content?.mainTitle || config.heroTitle || 'Healthcare, Simplified').split(',')
+  const titleParts = (content?.mainTitle || config.heroTitle || 'Healthcare, Reimagined').split(',')
 
   return (
     <section
       className="relative overflow-visible"
-      style={{ background: '#001E40', minHeight: 560 }}
+      style={{ background: '#001E40', minHeight: 600 }}
     >
       {/* ── Full-width image carousel ─────────────────────────── */}
       <div className="absolute inset-0 overflow-hidden rounded-none">
@@ -127,7 +127,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
         {/* Left gradient — solid behind text + widget, fades before image zone */}
         <div
           className="absolute inset-y-0 left-0 right-0 pointer-events-none"
-          style={{ background: 'linear-gradient(to right, #001E40 52%, #001E40cc 64%, transparent 78%)' }}
+          style={{ background: 'linear-gradient(to right, #001E40 55%, #001E40dd 65%, #001E4066 72%, transparent 80%)' }}
         />
 
         {/* Bottom gradient — caption legibility */}
@@ -137,26 +137,26 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
         />
       </div>
 
-      {/* ── Layout: constrained to left 62% so widget never touches image ── */}
-      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10 xl:px-14 pt-8 sm:pt-10 lg:pt-12 pb-10 sm:pb-14 lg:pr-[38%]">
-        <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8">
+      {/* ── Layout: text dominant left, widget compact right, image far-right ── */}
+      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10 xl:px-14 pt-8 sm:pt-10 lg:pt-12 pb-10 sm:pb-14 lg:pr-[34%]">
+        <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-10">
 
-          {/* LEFT: headline & subtitle */}
+          {/* LEFT: headline & subtitle — dominant, takes most of the space */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7, ease: 'easeOut' }}
-            className="flex-shrink-0 max-w-xs sm:max-w-sm lg:max-w-[220px] xl:max-w-[240px]"
+            className="flex-1 min-w-0 max-w-lg"
           >
             {/* Country flag + platform badge */}
-            <div className="inline-flex items-center bg-white/10 rounded-lg px-3 py-1.5 mb-4 border border-white/20">
+            <div className="inline-flex items-center bg-white/10 rounded-lg px-3 py-1.5 mb-5 border border-white/20">
               <CountryFlag countryCode={countryCode} className="mr-2" />
-              <span className="text-xs font-medium text-brand-sky">
-                {content?.platformBadge || config.platformDescription}
+              <span className="text-xs font-semibold text-brand-sky tracking-wide uppercase">
+                {content?.platformBadge || config.platformDescription || "Africa's #1 HealthTech Platform"}
               </span>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl lg:text-4xl xl:text-5xl font-bold mb-4 leading-tight text-white">
+            <h1 className="text-4xl sm:text-5xl lg:text-5xl xl:text-6xl font-extrabold mb-5 leading-[1.08] text-white">
               {titleParts.map((part, i) => (
                 <span key={i} className={i === 1 ? 'text-brand-sky' : ''}>
                   {part.trim()}
@@ -165,12 +165,26 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
               ))}
             </h1>
 
-            <p className="text-sm text-gray-300 leading-relaxed">
+            <p className="text-base sm:text-lg text-gray-300 leading-relaxed max-w-md">
               {content?.subtitle ||
-                'Connect with qualified doctors, get AI-powered health insights, and access medicines across Mauritius.'}
+                "Africa's most trusted health platform. Book verified specialists, get AI-powered insights, and access pharmacy — all in one place."}
             </p>
 
-            {/* Slide caption (moved from absolute position to inline) */}
+            {/* Trust stats */}
+            <div className="flex flex-wrap gap-4 mt-6">
+              {[
+                { value: '500+', label: 'Verified Providers' },
+                { value: '15+', label: 'Specialties' },
+                { value: '6', label: 'Countries' },
+              ].map(stat => (
+                <div key={stat.label} className="flex flex-col">
+                  <span className="text-xl font-black text-white leading-none">{stat.value}</span>
+                  <span className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">{stat.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Slide caption */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={`caption-${currentImageIndex}`}
@@ -178,26 +192,25 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.4 }}
-                className="mt-6 hidden sm:block"
+                className="mt-6 hidden sm:flex items-center gap-2"
               >
-                <p className="text-xs font-bold text-white/80 drop-shadow">
-                  {heroImages[currentImageIndex].title}
-                </p>
-                {heroImages[currentImageIndex].description && (
-                  <p className="text-[10px] text-white/50 mt-0.5 drop-shadow">
-                    {heroImages[currentImageIndex].description}
-                  </p>
-                )}
+                <div className="w-1 h-8 rounded-full bg-brand-sky/60 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-white/80">{heroImages[currentImageIndex].title}</p>
+                  {heroImages[currentImageIndex].description && (
+                    <p className="text-[10px] text-white/45 mt-0.5">{heroImages[currentImageIndex].description}</p>
+                  )}
+                </div>
               </motion.div>
             </AnimatePresence>
           </motion.div>
 
-          {/* CENTER: booking widget — fills remaining space within the 62% content zone */}
+          {/* RIGHT: booking widget — compact fixed width */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-            className="w-full lg:flex-1 min-w-0"
+            className="w-full lg:flex-shrink-0 lg:w-[270px] xl:w-[290px]"
           >
             <HeroBookingWidget />
           </motion.div>
