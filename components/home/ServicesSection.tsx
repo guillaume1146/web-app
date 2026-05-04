@@ -34,69 +34,79 @@ function hex2rgba(hex: string, alpha = 0.12) {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-// Each service maps to a unique healthcare-specific healthicons iconify key.
-// Ordered from most specific to most generic — no two services in the same
-// provider group should collide if their names are reasonably descriptive.
+// All keys verified against @iconify-json/healthicons icons.json
+// Run: node -e "require('@iconify-json/healthicons/icons.json').icons['KEY']" to validate
 function resolveServiceIconKey(name: string, category: string, providerType: string): string {
   const t = `${name} ${category}`.toLowerCase()
 
-  // Anatomy-specific (highest specificity)
-  if (/cardio|heart disease|arrhythm|chest pain/.test(t))       return 'healthicons:heart-organ'
-  if (/pulmon|lung|bronch|respir|chest infect/.test(t))          return 'healthicons:lungs'
-  if (/neuro|brain|stroke|epilep|cereb|headache/.test(t))        return 'healthicons:brain-alt-outline'
-  if (/dental|teeth|tooth|oral|gum|cavity|braces/.test(t))       return 'healthicons:dentistry-outline'
-  if (/eye|vision|ophth|retina|glaucom|cataract/.test(t))        return 'healthicons:eye-health-outline'
-  if (/bone|ortho|joint|spine|fracture|arthrit|knee|hip/.test(t)) return 'healthicons:orthopedic-hand-outline'
-  if (/ear|hearing|ent|audiol|tinnit/.test(t))                   return 'healthicons:ear'
-  if (/kidney|renal|urol|bladder|prostate/.test(t))              return 'healthicons:kidney'
-  if (/liver|hepat|gallblad|jaundic/.test(t))                    return 'healthicons:liver'
-  if (/gastro|stomach|digest|bowel|colon|intestin|acid/.test(t)) return 'healthicons:gastro-entero'
-  if (/skin|derma|acne|rash|eczema|psoriasis/.test(t))           return 'healthicons:skin-alt'
+  // ── Anatomy / organ (highest specificity) ─────────────────────────────────
+  if (/cardio|heart disease|arrhythm|chest pain|heart fail/.test(t))     return 'healthicons:heart-organ'
+  if (/pulmon|lung|bronch|respir|chest infect|asthma|copd/.test(t))       return 'healthicons:lungs'
+  if (/neuro|brain|stroke|epilep|cereb|headache|cognit/.test(t))          return 'healthicons:neurology'
+  if (/dental|teeth|tooth|oral|gum|cavity|braces/.test(t))                return 'healthicons:tooth'
+  if (/eye|vision|ophth|retina|glaucom|cataract|dry.eyes/.test(t))        return 'healthicons:eye'
+  if (/bone|ortho|joint|fracture|arthrit|knee|hip|spine/.test(t))         return 'healthicons:orthopaedics'
+  if (/ear|hearing|ent|audiol|tinnit/.test(t))                             return 'healthicons:ear'
+  if (/kidney|renal|urol|bladder|prostate/.test(t))                        return 'healthicons:kidneys'
+  if (/liver|hepat|gallblad|jaundic/.test(t))                              return 'healthicons:hepatology'
+  if (/gastro|stomach|digest|bowel|colon|intestin|acid reflux/.test(t))   return 'healthicons:gastroenterology'
+  if (/skin|derma|acne|rash|eczema|psoriasis/.test(t))                     return 'healthicons:skin-cancer'
 
-  // Procedures & tests
-  if (/x.?ray|mri|ct scan|ultrasound|radiol|imaging/.test(t))   return 'healthicons:x-ray'
-  if (/blood test|hematol|anemia|coagul/.test(t))                return 'healthicons:blood'
-  if (/lab|sample|culture|swab|biopsy|pathol|urine/.test(t))     return 'healthicons:laboratory'
-  if (/vaccine|immuniz|vaccin/.test(t))                           return 'healthicons:vaccination'
-  if (/wound|dressing|bandage|suture|stitch/.test(t))            return 'healthicons:wound-and-injury-care'
-  if (/surgery|operat|procedure|incision/.test(t))                return 'healthicons:surgery'
-  if (/cancer|oncol|tumor|chemo|radiother/.test(t))              return 'healthicons:cancer'
-  if (/injection|iv therapy|infus|intravenous/.test(t))          return 'healthicons:syringe'
-  if (/hiv|aids|sti|std|infectious|communicable/.test(t))        return 'healthicons:hiv'
+  // ── Lab & diagnostics ─────────────────────────────────────────────────────
+  if (/x.?ray|radiol|imaging/.test(t))                                     return 'healthicons:radiology'
+  if (/ultrasound|scanner/.test(t))                                        return 'healthicons:ultrasound-scanner'
+  if (/lipid|cholesterol|triglycer/.test(t))                               return 'healthicons:heart-cardiogram'
+  if (/hemoglobin|hba1c|glycat/.test(t))                                   return 'healthicons:diabetes-measure'
+  if (/blood.?test|hematol|anemia|coagul|cbc|complete.blood/.test(t))     return 'healthicons:hematology'
+  if (/allergy|allergen|ige/.test(t))                                      return 'healthicons:biochemistry-laboratory'
+  if (/thyroid|tsh|endocrin|hormone/.test(t))                              return 'healthicons:lab-search'
+  if (/urine|culture|swab|biopsy|pathol|specimen/.test(t))                 return 'healthicons:hematology-laboratory'
+  if (/lab|sample|test panel/.test(t))                                     return 'healthicons:biochemistry-laboratory'
+  if (/vaccine|immuniz|vaccin/.test(t))                                    return 'healthicons:syringe-vaccine'
+  if (/wound|dressing|bandage|suture|stitch|first.aid/.test(t))           return 'healthicons:bandage-adhesive'
+  if (/surgery|operat|incision/.test(t))                                   return 'healthicons:general-surgery'
+  if (/cancer|oncol|tumor|chemo|radiother/.test(t))                        return 'healthicons:oncology'
+  if (/injection|iv therapy|infus|intravenous/.test(t))                    return 'healthicons:syringe'
+  if (/hiv|aids|sti|std/.test(t))                                          return 'healthicons:hiv-ind'
+  if (/infecti|communicable/.test(t))                                      return 'healthicons:bacteria'
 
-  // Services & modes
-  if (/home visit|house call|domicil|home care/.test(t))         return 'healthicons:home-health'
-  if (/video|telehealth|telemedicine|online|virtual|remote/.test(t)) return 'healthicons:telemedicine'
-  if (/emergency|ambulance|urgent|trauma|rescue/.test(t))        return 'healthicons:emergency-referral'
-  if (/pharmacy|prescription|dispensing/.test(t))                 return 'healthicons:pharmacy'
-  if (/physio|rehabilit|movement|mobility|stretching/.test(t))   return 'healthicons:physiotherapy'
-  if (/mental|psych|anxiety|depress|counsel|talk therapy/.test(t)) return 'healthicons:mental-health'
-  if (/nutrition|diet|food|meal plan|weight loss/.test(t))       return 'healthicons:nutrition-care'
-  if (/elder|geriat|elderly|senior care|aged/.test(t))           return 'healthicons:old-people-outline'
-  if (/pregnan|obstetric|maternal|antenatal|prenatal|birth/.test(t)) return 'healthicons:pregnant-woman'
-  if (/baby|infant|newborn|neonat|pediatr/.test(t))              return 'healthicons:infant'
-  if (/nanny|childcare|babysit|child/.test(t))                   return 'healthicons:child-programme'
-  if (/diabetes|glucose|insulin|endocrin|thyroid|hormone/.test(t)) return 'healthicons:glucose'
-  if (/blood pressure|hypertens|cardiovas|heart fail/.test(t))   return 'healthicons:blood-pressure'
-  if (/oxygen|asthma|inhaler|copd/.test(t))                      return 'healthicons:lungs'
-  if (/general consult|check.?up|annual|screening|assessment/.test(t)) return 'healthicons:stethoscope'
-  if (/prescription|medication|drug|medicine/.test(t))           return 'healthicons:medicines'
-  if (/caregiver|care plan|chronic|management|monitoring/.test(t)) return 'healthicons:community-health-worker'
-  if (/specialist|referral|second opinion/.test(t))              return 'healthicons:doctor'
+  // ── Services & care modes ─────────────────────────────────────────────────
+  if (/home visit|house call|domicil/.test(t))                             return 'healthicons:home'
+  if (/video|telehealth|telemedicine|online|virtual|remote/.test(t))       return 'healthicons:telemedicine'
+  if (/emergency|ambulance|urgent|trauma|rescue/.test(t))                  return 'healthicons:ambulance'
+  if (/pharmacy|prescription|dispensing/.test(t))                           return 'healthicons:pharmacy'
+  if (/physio|rehabilit|movement|mobility|stretching/.test(t))             return 'healthicons:physical-therapy'
+  if (/mental|psych|anxiety|depress|counsel|talk.therapy/.test(t))         return 'healthicons:mental-health'
+  if (/nutrition|diet|food|meal.plan|weight.loss/.test(t))                 return 'healthicons:nutrition'
+  if (/elder|geriat|elderly|senior.care|aged/.test(t))                     return 'healthicons:geriatrics'
+  if (/pregnan|obstetric|maternal|antenatal|prenatal|birth/.test(t))       return 'healthicons:pregnant'
+  if (/baby|infant|newborn|neonat|pediatr/.test(t))                        return 'healthicons:baby-0203m'
+  if (/art|craft|creative|activity|homework|learning|education/.test(t))   return 'healthicons:child-cognition'
+  if (/nanny|childcare|babysit|special.needs|child.care|child.program/.test(t)) return 'healthicons:child-care'
+  if (/child/.test(t))                                                      return 'healthicons:child-program'
+  if (/diabetes|glucose|insulin/.test(t))                                  return 'healthicons:diabetes'
+  if (/blood.pressure|hypertens|cardiovas/.test(t))                        return 'healthicons:blood-pressure'
+  if (/screening|check.?up|annual|assessment|general.consult/.test(t))     return 'healthicons:stethoscope'
+  if (/medication|drug|medicine|prescription/.test(t))                     return 'healthicons:medicines'
+  if (/caregiver|care.plan|chronic|management|monitoring/.test(t))         return 'healthicons:community-healthworker'
+  if (/specialist|referral|second.opinion|travel/.test(t))                 return 'healthicons:doctor'
+  if (/speech|language|communication/.test(t))                              return 'healthicons:speech-language-therapy'
+  if (/occupational/.test(t))                                               return 'healthicons:occupational-therapy'
+  if (/eyeglass|lens|contact/.test(t))                                     return 'healthicons:eyeglasses'
 
-  // Provider-type fallbacks — each role gets a distinct icon
+  // ── Provider-type fallbacks — one distinct verified icon per role ──────────
   const FALLBACK: Record<string, string> = {
     DOCTOR:           'healthicons:doctor',
     NURSE:            'healthicons:nurse',
-    NANNY:            'healthicons:child-programme',
+    NANNY:            'healthicons:child-care',
     PHARMACIST:       'healthicons:pharmacy',
-    LAB_TECHNICIAN:   'healthicons:laboratory',
+    LAB_TECHNICIAN:   'healthicons:biochemistry-laboratory',
     EMERGENCY_WORKER: 'healthicons:ambulance',
-    CAREGIVER:        'healthicons:community-health-worker',
-    PHYSIOTHERAPIST:  'healthicons:physiotherapy',
-    DENTIST:          'healthicons:dentistry',
-    OPTOMETRIST:      'healthicons:eye-health',
-    NUTRITIONIST:     'healthicons:nutrition-care',
+    CAREGIVER:        'healthicons:community-healthworker',
+    PHYSIOTHERAPIST:  'healthicons:physical-therapy',
+    DENTIST:          'healthicons:tooth',
+    OPTOMETRIST:      'healthicons:eye',
+    NUTRITIONIST:     'healthicons:nutrition',
   }
   return FALLBACK[providerType] ?? 'healthicons:stethoscope'
 }
@@ -104,15 +114,15 @@ function resolveServiceIconKey(name: string, category: string, providerType: str
 const PROVIDER_ICON: Record<string, string> = {
   DOCTOR:           'healthicons:doctor',
   NURSE:            'healthicons:nurse',
-  NANNY:            'healthicons:child-programme',
+  NANNY:            'healthicons:child-care',
   PHARMACIST:       'healthicons:pharmacy',
-  LAB_TECHNICIAN:   'healthicons:laboratory',
+  LAB_TECHNICIAN:   'healthicons:biochemistry-laboratory',
   EMERGENCY_WORKER: 'healthicons:ambulance',
-  CAREGIVER:        'healthicons:community-health-worker',
-  PHYSIOTHERAPIST:  'healthicons:physiotherapy',
-  DENTIST:          'healthicons:dentistry',
-  OPTOMETRIST:      'healthicons:eye-health',
-  NUTRITIONIST:     'healthicons:nutrition-care',
+  CAREGIVER:        'healthicons:community-healthworker',
+  PHYSIOTHERAPIST:  'healthicons:physical-therapy',
+  DENTIST:          'healthicons:tooth',
+  OPTOMETRIST:      'healthicons:eye',
+  NUTRITIONIST:     'healthicons:nutrition',
 }
 
 export default function ServicesSection() {

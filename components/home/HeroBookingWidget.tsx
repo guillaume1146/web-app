@@ -99,9 +99,9 @@ function isLoggedIn() {
 const STUB_ROLES: RoleData[] = [
   { code: 'DOCTOR', label: 'Doctors', singularLabel: 'Doctor', slug: 'doctors', color: '#0C6780', iconKey: 'healthicons:doctor' },
   { code: 'NURSE', label: 'Nurses', singularLabel: 'Nurse', slug: 'nurses', color: '#7C3AED', iconKey: 'healthicons:nurse' },
-  { code: 'DENTIST', label: 'Dentists', singularLabel: 'Dentist', slug: 'dentists', color: '#059669', iconKey: 'healthicons:dentistry' },
-  { code: 'PHYSIOTHERAPIST', label: 'Physios', singularLabel: 'Physiotherapist', slug: 'physiotherapists', color: '#D97706', iconKey: 'healthicons:physiotherapy' },
-  { code: 'NUTRITIONIST', label: 'Nutritionists', singularLabel: 'Nutritionist', slug: 'nutritionists', color: '#DB2777', iconKey: 'healthicons:nutrition-care' },
+  { code: 'DENTIST', label: 'Dentists', singularLabel: 'Dentist', slug: 'dentists', color: '#059669', iconKey: 'healthicons:tooth' },
+  { code: 'PHYSIOTHERAPIST', label: 'Physios', singularLabel: 'Physiotherapist', slug: 'physiotherapists', color: '#D97706', iconKey: 'healthicons:physical-therapy' },
+  { code: 'NUTRITIONIST', label: 'Nutritionists', singularLabel: 'Nutritionist', slug: 'nutritionists', color: '#DB2777', iconKey: 'healthicons:nutrition' },
 ]
 
 // ─── Component ────────────────────────────────────────────────────────────────
