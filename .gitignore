@@ -64,3 +64,4 @@ backend/.env
 
 # Claude Code worktrees
 .claude/worktrees/
+icons/

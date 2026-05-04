@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body, NotFoundException, ForbiddenException, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, NotFoundException, ForbiddenException, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
 import { Public } from '../auth/decorators/public.decorator';
@@ -147,6 +147,9 @@ export class ServicesController {
         isDefault: false,
         isActive: true,
         createdByProviderId: user.sub,
+        iconKey: body.iconKey || null,
+        emoji: body.emoji || null,
+        imageUrl: body.imageUrl || null,
       },
     });
     // Auto-assign to creator's own catalog
@@ -154,6 +157,37 @@ export class ServicesController {
       data: { platformServiceId: service.id, providerUserId: user.sub, isActive: true },
     });
     return { success: true, data: service };
+  }
+
+  /** PATCH /api/services/custom/:id — provider updates their own custom service */
+  @Patch('custom/:id')
+  async updateCustom(@Param('id') id: string, @Body() body: CreateCustomServiceDto, @CurrentUser() user: JwtPayload) {
+    const service = await this.prisma.platformService.findUnique({ where: { id } });
+    if (!service) throw new NotFoundException('Service not found');
+    if (service.createdByProviderId !== user.sub) throw new ForbiddenException('You can only edit services you created');
+
+    const data: any = {};
+    if (body.name !== undefined) data.serviceName = body.name;
+    if (body.description !== undefined) data.description = body.description;
+    if (body.category !== undefined) data.category = body.category;
+    if (body.price !== undefined) data.defaultPrice = body.price;
+    if (body.duration !== undefined) data.duration = body.duration;
+    if (body.iconKey !== undefined) data.iconKey = body.iconKey || null;
+    if (body.emoji !== undefined) data.emoji = body.emoji || null;
+    if (body.imageUrl !== undefined) data.imageUrl = body.imageUrl || null;
+
+    const updated = await this.prisma.platformService.update({ where: { id }, data });
+    return { success: true, data: updated };
+  }
+
+  /** DELETE /api/services/custom/:id — provider deletes their own custom service */
+  @Delete('custom/:id')
+  async deleteCustom(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    const service = await this.prisma.platformService.findUnique({ where: { id } });
+    if (!service) throw new NotFoundException('Service not found');
+    if (service.createdByProviderId !== user.sub) throw new ForbiddenException('You can only delete services you created');
+    await this.prisma.platformService.update({ where: { id }, data: { isActive: false } });
+    return { success: true, message: 'Service removed' };
   }
 
   // ─── Admin CRUD for PlatformService ────────────────────────────────────────

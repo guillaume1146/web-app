@@ -243,7 +243,14 @@
       "Bash(Sort-Object)",
       "PowerShell(flutter *)",
       "PowerShell(git *)",
-      "Bash(gh workflow *)"
+      "Bash(gh workflow *)",
+      "Bash(gh pr *)",
+      "Bash(dir app *)",
+      "Bash(Select-String -Pattern \"book\")",
+      "Bash(Select-Object -First 20)",
+      "Bash(dir \"C:\\\\Github Repositories\\\\healthways-typescript\\\\public\\\\images\" /B /S)",
+      "Bash(dir \"C:\\\\Github Repositories\\\\healthways-typescript\\\\app\\\\regional\" /s /b)",
+      "Bash(Select-Object -ExpandProperty Name)"
     ]
   }
 }

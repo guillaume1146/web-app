@@ -2502,6 +2502,7 @@ model PlatformService {
   description         String
   iconKey             String? // Iconify format: "healthicons:stethoscope", "ph:syringe-duotone", etc.
   emoji               String? // Fallback emoji character (e.g. "🩺", "💊")
+  imageUrl            String? // Custom uploaded illustration (takes priority over emoji/iconKey)
   defaultPrice        Float    @default(0)
   currency            String   @default("MUR")
   duration            Int? // minutes

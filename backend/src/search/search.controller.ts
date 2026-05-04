@@ -184,6 +184,7 @@ export class SearchController {
         duration: svc.duration,
         iconKey: (svc as any).iconKey ?? null,
         emoji: (svc as any).emoji ?? null,
+        imageUrl: (svc as any).imageUrl ?? null,
         providerCount: countMap[svc.id] ?? 0,
         sampleProviders: [],
       }));

@@ -158,6 +158,24 @@ export class UploadController {
     }
   }
 
+  // ── POST /upload/service-image — any provider, for service illustrations ──
+  @Post('service-image')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadServiceImage(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { data?: string; name?: string },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    try {
+      const saved = saveFile(file, body.data, body.name, 'services');
+      if (!saved) return { success: false, message: 'No file provided' };
+      return { success: true, data: { url: saved.url } };
+    } catch (error) {
+      console.error('POST /upload/service-image error:', error);
+      return { success: false, message: 'Internal server error' };
+    }
+  }
+
   // ── POST /upload/cms — admin only, for CMS images ────────────────────────
   @Post('cms')
   @UseGuards(AdminGuard)

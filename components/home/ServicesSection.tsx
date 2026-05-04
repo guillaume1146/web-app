@@ -18,6 +18,7 @@ interface ServiceItem {
   providerCount: number
   iconKey?: string | null
   emoji?: string | null
+  imageUrl?: string | null
 }
 
 interface RoleData {
@@ -208,8 +209,10 @@ function ServiceCard({ service, color, slug }: { service: ServiceItem; color: st
         className="relative w-full h-28 sm:h-32 flex-shrink-0 flex items-center justify-center overflow-hidden"
         style={{ background: `linear-gradient(135deg, ${bgMedium} 0%, ${bgLight} 100%)` }}
       >
-        <span className="group-hover:scale-110 transition-transform duration-300 flex items-center justify-center">
-          {service.emoji ? (
+        <span className="group-hover:scale-110 transition-transform duration-300 flex items-center justify-center w-full h-full">
+          {service.imageUrl ? (
+            <img src={service.imageUrl} alt={service.serviceName} className="w-full h-full object-contain px-3 py-2" />
+          ) : service.emoji ? (
             <span className="text-5xl sm:text-6xl leading-none select-none">{service.emoji}</span>
           ) : service.iconKey ? (
             <Icon icon={service.iconKey} width={64} height={64} color={color} />
