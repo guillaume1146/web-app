@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { FaSearch, FaConciergeBell, FaClock, FaArrowRight } from 'react-icons/fa'
+import { Icon } from '@iconify/react'
 import HorizontalScrollRow from '@/components/shared/HorizontalScrollRow'
 
 interface ServiceItem {
@@ -15,6 +16,8 @@ interface ServiceItem {
   currency: string
   duration: number | null
   providerCount: number
+  iconKey?: string | null
+  emoji?: string | null
 }
 
 interface RoleData {
@@ -287,7 +290,7 @@ export default function ServicesSection() {
 }
 
 function ServiceCard({ service, color, slug }: { service: ServiceItem; color: string; slug: string }) {
-  const emoji = resolveServiceEmoji(service.serviceName, service.category, service.providerType)
+  const fallbackEmoji = resolveServiceEmoji(service.serviceName, service.category, service.providerType)
   const bgLight  = hex2rgba(color, 0.10)
   const bgMedium = hex2rgba(color, 0.20)
 
@@ -297,17 +300,23 @@ function ServiceCard({ service, color, slug }: { service: ServiceItem; color: st
       className="group flex-shrink-0 snap-start w-[160px] sm:w-52 flex flex-col bg-white rounded-2xl border border-gray-100
         hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
     >
-      {/* Emoji illustration header */}
+      {/* Illustration header — iconify key > emoji > fallback emoji */}
       <div
         className="relative w-full h-28 sm:h-32 flex-shrink-0 flex items-center justify-center overflow-hidden"
         style={{ background: `linear-gradient(135deg, ${bgMedium} 0%, ${bgLight} 100%)` }}
       >
-        <span
-          className="text-5xl sm:text-6xl select-none group-hover:scale-110 transition-transform duration-300"
-          role="img"
-          aria-label={service.serviceName}
-        >
-          {emoji}
+        <span className="group-hover:scale-110 transition-transform duration-300 flex items-center justify-center">
+          {service.iconKey ? (
+            <Icon icon={service.iconKey} width={64} height={64} color={color} />
+          ) : (
+            <span
+              className="text-5xl sm:text-6xl select-none"
+              role="img"
+              aria-label={service.serviceName}
+            >
+              {service.emoji ?? fallbackEmoji}
+            </span>
+          )}
         </span>
         <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: color }} />
       </div>

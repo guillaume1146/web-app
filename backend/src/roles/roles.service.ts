@@ -142,6 +142,7 @@ export class RolesService {
       singularLabel: role.singularLabel,
       slug: role.slug,
       icon: role.icon,
+      iconKey: (role as any).iconKey ?? null,
       color: role.color,
       cardImage: role.cardImage,
       description: role.description,

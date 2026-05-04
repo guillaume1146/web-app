@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { Icon } from '@iconify/react'
+import IconPicker from '@/components/shared/IconPicker'
 import {
   FaPlus, FaEdit, FaTrash, FaTimes, FaCheck, FaSpinner,
   FaUsersCog, FaEye, FaEyeSlash, FaFileAlt,
@@ -38,6 +40,7 @@ interface ProviderRole {
   singularLabel: string
   slug: string
   icon: string
+  iconKey: string | null
   color: string
   cardImage: string | null
   description: string | null
@@ -59,6 +62,7 @@ const emptyForm = {
   singularLabel: '',
   slug: '',
   icon: 'FaUserMd',
+  iconKey: '',
   color: '#0C6780',
   description: '',
   searchEnabled: true,
@@ -98,6 +102,7 @@ export default function RolesManagementPage() {
   const [docInput, setDocInput] = useState({ name: '', description: '', required: true })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showIconPicker, setShowIconPicker] = useState(false)
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -124,6 +129,7 @@ export default function RolesManagementPage() {
       singularLabel: role.singularLabel,
       slug: role.slug,
       icon: role.icon,
+      iconKey: role.iconKey || '',
       color: role.color,
       description: role.description || '',
       searchEnabled: role.searchEnabled,
@@ -170,6 +176,7 @@ export default function RolesManagementPage() {
             label: form.label,
             singularLabel: form.singularLabel,
             icon: form.icon,
+            iconKey: form.iconKey || undefined,
             color: form.color,
             description: form.description || undefined,
             searchEnabled: form.searchEnabled,
@@ -335,6 +342,38 @@ export default function RolesManagementPage() {
                 </div>
               </div>
 
+              {/* Iconify icon picker (replaces legacy FA picker for richer healthcare icons) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Illustration Icon (Iconify)</label>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center">
+                    {form.iconKey ? (
+                      <Icon icon={form.iconKey} width={22} height={22} color={form.color || '#0C6780'} />
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowIconPicker(v => !v)}
+                    className="px-3 py-1.5 text-xs border border-[#0C6780] text-[#0C6780] rounded-lg hover:bg-[#0C6780]/5 transition-colors"
+                  >
+                    {form.iconKey ? 'Change' : 'Choose Icon'}
+                  </button>
+                  {form.iconKey && (
+                    <span className="text-xs text-gray-500 font-mono truncate max-w-[180px]">{form.iconKey}</span>
+                  )}
+                </div>
+                {showIconPicker && (
+                  <IconPicker
+                    value={form.iconKey}
+                    onChange={(key, _isEmoji) => { setForm(f => ({ ...f, iconKey: key })); setShowIconPicker(false) }}
+                    onClose={() => setShowIconPicker(false)}
+                    color={form.color || '#0C6780'}
+                  />
+                )}
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2}
@@ -407,7 +446,11 @@ function RoleCard({ role, onEdit, onDelete }: { role: ProviderRole; onEdit: (r: 
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg" style={{ backgroundColor: role.color }}>
-            {role.singularLabel[0]}
+            {role.iconKey ? (
+              <Icon icon={role.iconKey} width={22} height={22} color="white" />
+            ) : (
+              role.singularLabel[0]
+            )}
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 text-sm">{role.label}</h3>

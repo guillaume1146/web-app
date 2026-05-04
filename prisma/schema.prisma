@@ -36,7 +36,8 @@ model ProviderRole {
   label         String // Plural display: "Doctors", "Audiologists"
   singularLabel String // Singular: "Doctor", "Audiologist"
   slug          String  @unique // URL slug: "doctors", "audiologists"
-  icon          String  @default("FaUserMd") // React icon name
+  icon          String  @default("FaUserMd") // React icon name (legacy FA picker — kept for compat)
+  iconKey       String? // Iconify format: "healthicons:doctor", "ph:stethoscope-duotone", "tabler:stethoscope"
   color         String  @default("#0C6780") // Brand color hex
   cardImage     String? // Optional card/logo image URL
   description   String? // Role description for signup page
@@ -2499,6 +2500,8 @@ model PlatformService {
   serviceName         String
   category            String // Consultation, Screening, Wound Care, etc.
   description         String
+  iconKey             String? // Iconify format: "healthicons:stethoscope", "ph:syringe-duotone", etc.
+  emoji               String? // Fallback emoji character (e.g. "🩺", "💊")
   defaultPrice        Float    @default(0)
   currency            String   @default("MUR")
   duration            Int? // minutes

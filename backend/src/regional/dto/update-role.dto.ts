@@ -23,6 +23,10 @@ export class UpdateRoleDto {
 
   @IsOptional()
   @IsString()
+  iconKey?: string;
+
+  @IsOptional()
+  @IsString()
   color?: string;
 
   @IsOptional()

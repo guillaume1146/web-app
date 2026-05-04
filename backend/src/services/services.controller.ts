@@ -1,11 +1,14 @@
-import { Controller, Get, Post, Patch, Param, Query, Body, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, NotFoundException, ForbiddenException, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
 import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/jwt.strategy';
+import { AdminGuard } from '../auth/guards/admin.guard';
 import { CreateCustomServiceDto } from './dto/create-custom-service.dto';
 import { UpdateServiceConfigDto } from './dto/update-service-config.dto';
+import { CreatePlatformServiceDto } from './dto/create-platform-service.dto';
+import { UpdatePlatformServiceDto } from './dto/update-platform-service.dto';
 
 @ApiTags('Services')
 @Controller('services')
@@ -29,12 +32,12 @@ export class ServicesController {
       select: {
         id: true, providerType: true, serviceName: true, category: true,
         description: true, defaultPrice: true, currency: true, duration: true,
-        isDefault: true, countryCode: true,
+        isDefault: true, countryCode: true, iconKey: true, emoji: true,
       },
     });
 
     // Group by "providerType — category" to match frontend expectation
-    const grouped: Record<string, Array<{ id: string; serviceName: string; defaultPrice: number; description: string | null; duration: number | null; isDefault: boolean }>> = {};
+    const grouped: Record<string, Array<{ id: string; serviceName: string; defaultPrice: number; description: string | null; duration: number | null; isDefault: boolean; iconKey: string | null; emoji: string | null }>> = {};
     for (const svc of services) {
       const key = `${svc.providerType} — ${svc.category}`;
       if (!grouped[key]) grouped[key] = [];
@@ -45,6 +48,8 @@ export class ServicesController {
         description: svc.description,
         duration: svc.duration,
         isDefault: svc.isDefault,
+        iconKey: svc.iconKey,
+        emoji: svc.emoji,
       });
     }
 
@@ -149,5 +154,79 @@ export class ServicesController {
       data: { platformServiceId: service.id, providerUserId: user.sub, isActive: true },
     });
     return { success: true, data: service };
+  }
+
+  // ─── Admin CRUD for PlatformService ────────────────────────────────────────
+
+  /** GET /api/services/admin — list all platform services (admin only) */
+  @UseGuards(AdminGuard)
+  @Get('admin')
+  async adminList(@Query('providerType') providerType?: string, @Query('countryCode') countryCode?: string) {
+    const where: any = {};
+    if (providerType) where.providerType = providerType.toUpperCase();
+    if (countryCode) where.countryCode = countryCode;
+    const services = await this.prisma.platformService.findMany({
+      where,
+      orderBy: [{ providerType: 'asc' }, { category: 'asc' }, { serviceName: 'asc' }],
+    });
+    return { success: true, data: services };
+  }
+
+  /** POST /api/services/admin — create platform service (admin only) */
+  @UseGuards(AdminGuard)
+  @Post('admin')
+  async adminCreate(@Body() dto: CreatePlatformServiceDto) {
+    const service = await this.prisma.platformService.create({
+      data: {
+        providerType: dto.providerType.toUpperCase() as any,
+        serviceName: dto.serviceName,
+        category: dto.category,
+        description: dto.description,
+        defaultPrice: dto.defaultPrice ?? 0,
+        currency: dto.currency ?? 'MUR',
+        duration: dto.duration,
+        isDefault: dto.isDefault ?? true,
+        countryCode: dto.countryCode,
+        iconKey: dto.iconKey,
+        emoji: dto.emoji,
+        requiredContentType: dto.requiredContentType,
+        isActive: true,
+      },
+    });
+    return { success: true, data: service };
+  }
+
+  /** GET /api/services/admin/:id — single service detail (admin only) */
+  @UseGuards(AdminGuard)
+  @Get('admin/:id')
+  async adminGet(@Param('id') id: string) {
+    const service = await this.prisma.platformService.findUnique({ where: { id } });
+    if (!service) throw new NotFoundException('Service not found');
+    return { success: true, data: service };
+  }
+
+  /** PATCH /api/services/admin/:id — update platform service (admin only) */
+  @UseGuards(AdminGuard)
+  @Patch('admin/:id')
+  async adminUpdate(@Param('id') id: string, @Body() dto: UpdatePlatformServiceDto) {
+    const existing = await this.prisma.platformService.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundException('Service not found');
+    const data: any = {};
+    for (const k of ['serviceName', 'category', 'description', 'defaultPrice', 'currency', 'duration',
+      'isDefault', 'isActive', 'countryCode', 'iconKey', 'emoji', 'requiredContentType']) {
+      if ((dto as any)[k] !== undefined) data[k] = (dto as any)[k];
+    }
+    const updated = await this.prisma.platformService.update({ where: { id }, data });
+    return { success: true, data: updated };
+  }
+
+  /** DELETE /api/services/admin/:id — soft-delete platform service (admin only) */
+  @UseGuards(AdminGuard)
+  @Delete('admin/:id')
+  async adminDelete(@Param('id') id: string) {
+    const existing = await this.prisma.platformService.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundException('Service not found');
+    await this.prisma.platformService.update({ where: { id }, data: { isActive: false } });
+    return { success: true, message: 'Service deactivated' };
   }
 }

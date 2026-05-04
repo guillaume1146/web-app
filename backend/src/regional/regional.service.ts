@@ -50,7 +50,7 @@ export class RegionalService {
     return this.prisma.providerRole.create({
       data: {
         code: body.code?.toUpperCase(), label: body.label, singularLabel: body.singularLabel || body.label,
-        slug: body.slug, icon: body.icon || 'FaUser', color: body.color || '#0C6780',
+        slug: body.slug, icon: body.icon || 'FaUser', iconKey: body.iconKey, color: body.color || '#0C6780',
         description: body.description, searchEnabled: body.searchEnabled ?? true,
         bookingEnabled: body.bookingEnabled ?? true, inventoryEnabled: body.inventoryEnabled ?? false,
         isProvider: true, isActive: true, urlPrefix: body.urlPrefix || `/${body.slug}`,
@@ -67,7 +67,7 @@ export class RegionalService {
 
   async updateRole(id: string, body: any) {
     const data: any = {};
-    for (const k of ['label', 'singularLabel', 'slug', 'icon', 'color', 'description', 'searchEnabled', 'bookingEnabled', 'inventoryEnabled', 'isActive', 'urlPrefix']) {
+    for (const k of ['label', 'singularLabel', 'slug', 'icon', 'iconKey', 'color', 'description', 'searchEnabled', 'bookingEnabled', 'inventoryEnabled', 'isActive', 'urlPrefix']) {
       if (body[k] !== undefined) data[k] = body[k];
     }
     if (body.code) data.code = body.code.toUpperCase();

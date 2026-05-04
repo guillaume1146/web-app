@@ -34,6 +34,10 @@ export class CreateRoleDto {
 
   @IsOptional()
   @IsString()
+  iconKey?: string;
+
+  @IsOptional()
+  @IsString()
   color?: string;
 
   @IsOptional()

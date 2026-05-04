@@ -12,6 +12,19 @@ export class SearchController {
     private prisma: PrismaService,
   ) {}
 
+  // ── GET /search/available-slots — real slot availability for hero widget ──
+  @Public() @Get('available-slots')
+  async getAvailableSlots(@Query('date') date?: string, @Query('roleCode') roleCode?: string) {
+    if (!date || !roleCode) return { success: false, message: 'date and roleCode are required' };
+    try {
+      const data = await this.searchService.getAvailableSlots(date, roleCode);
+      return { success: true, data };
+    } catch (error) {
+      console.error('GET /search/available-slots error:', error);
+      return { success: true, data: { slots: [], providerCount: 0 } };
+    }
+  }
+
   /** GET /api/search/providers?type=X — THE GENERIC ENDPOINT (primary) */
   @Public()
   @Get('providers')

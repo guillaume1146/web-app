@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { useAppConfig } from '@/hooks/useAppConfig'
+import HeroBookingWidget from '@/components/home/HeroBookingWidget'
 
 const flags: Record<string, React.ReactNode> = {
   MU: (
@@ -98,11 +99,11 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
 
   return (
     <section
-      className="relative overflow-hidden"
-      style={{ background: '#001E40', minHeight: 320 }}
+      className="relative overflow-visible"
+      style={{ background: '#001E40', minHeight: 560 }}
     >
       {/* ── Full-width image carousel ─────────────────────────── */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 overflow-hidden rounded-none">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentImageIndex}
@@ -123,71 +124,86 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
           </motion.div>
         </AnimatePresence>
 
-        {/* Left gradient — text legibility */}
+        {/* Left gradient — text legibility (narrowed since text column is smaller) */}
         <div
-          className="absolute inset-y-0 left-0 w-full sm:w-2/3 lg:w-1/2 pointer-events-none"
-          style={{ background: 'linear-gradient(to right, #001E40 40%, #001E40cc 65%, transparent 100%)' }}
+          className="absolute inset-y-0 left-0 w-full sm:w-1/2 lg:w-2/5 pointer-events-none"
+          style={{ background: 'linear-gradient(to right, #001E40 50%, #001E40cc 75%, transparent 100%)' }}
         />
 
         {/* Bottom gradient — caption legibility */}
         <div
-          className="absolute bottom-0 left-0 right-0 h-28 pointer-events-none"
+          className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
           style={{ background: 'linear-gradient(to top, #001E40 0%, #001E4088 50%, transparent 100%)' }}
         />
       </div>
 
-      {/* ── Text content (overlaid, left side) ───────────────── */}
-      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10 xl:px-14 pt-8 sm:pt-10 lg:pt-12 pb-16 sm:pb-20">
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.7, ease: 'easeOut' }}
-          className="max-w-md lg:max-w-lg"
-        >
-          {/* Country flag + platform badge */}
-          <div className="inline-flex items-center bg-white/10 rounded-lg px-3 py-1.5 mb-4 border border-white/20">
-            <CountryFlag countryCode={countryCode} className="mr-2" />
-            <span className="text-xs font-medium text-brand-sky">
-              {content?.platformBadge || config.platformDescription}
-            </span>
-          </div>
+      {/* ── Two-column layout: text left + booking widget right ── */}
+      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10 xl:px-14 pt-8 sm:pt-10 lg:pt-12 pb-10 sm:pb-14">
+        <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8 justify-between">
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 leading-tight text-white">
-            {titleParts.map((part, i) => (
-              <span key={i} className={i === 1 ? 'text-brand-sky' : ''}>
-                {part.trim()}
-                {i === 0 && titleParts.length > 1 && ','}{i === 0 && titleParts.length > 1 && <br />}
+          {/* LEFT: headline & subtitle */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
+            className="max-w-xs sm:max-w-sm lg:max-w-[260px] xl:max-w-xs flex-shrink-0"
+          >
+            {/* Country flag + platform badge */}
+            <div className="inline-flex items-center bg-white/10 rounded-lg px-3 py-1.5 mb-4 border border-white/20">
+              <CountryFlag countryCode={countryCode} className="mr-2" />
+              <span className="text-xs font-medium text-brand-sky">
+                {content?.platformBadge || config.platformDescription}
               </span>
-            ))}
-          </h1>
+            </div>
 
-          <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
-            {content?.subtitle ||
-              'Connect with qualified doctors, get AI-powered health insights, and access medicines across Mauritius. Your trusted healthcare companion.'}
-          </p>
-        </motion.div>
-      </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-4xl xl:text-5xl font-bold mb-4 leading-tight text-white">
+              {titleParts.map((part, i) => (
+                <span key={i} className={i === 1 ? 'text-brand-sky' : ''}>
+                  {part.trim()}
+                  {i === 0 && titleParts.length > 1 && ','}{i === 0 && titleParts.length > 1 && <br />}
+                </span>
+              ))}
+            </h1>
 
-      {/* ── Slide caption — overlaps bottom of image ──────────── */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={`caption-${currentImageIndex}`}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
-          transition={{ duration: 0.4 }}
-          className="absolute bottom-6 right-4 sm:right-8 lg:right-14 z-20 text-right"
-        >
-          <p className="text-xs sm:text-sm font-bold text-white drop-shadow">
-            {heroImages[currentImageIndex].title}
-          </p>
-          {heroImages[currentImageIndex].description && (
-            <p className="text-[10px] sm:text-xs text-white/70 mt-0.5 drop-shadow">
-              {heroImages[currentImageIndex].description}
+            <p className="text-sm text-gray-300 leading-relaxed">
+              {content?.subtitle ||
+                'Connect with qualified doctors, get AI-powered health insights, and access medicines across Mauritius.'}
             </p>
-          )}
-        </motion.div>
-      </AnimatePresence>
+
+            {/* Slide caption (moved from absolute position to inline) */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`caption-${currentImageIndex}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.4 }}
+                className="mt-6 hidden sm:block"
+              >
+                <p className="text-xs font-bold text-white/80 drop-shadow">
+                  {heroImages[currentImageIndex].title}
+                </p>
+                {heroImages[currentImageIndex].description && (
+                  <p className="text-[10px] text-white/50 mt-0.5 drop-shadow">
+                    {heroImages[currentImageIndex].description}
+                  </p>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
+
+          {/* RIGHT: booking widget */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
+            className="w-full lg:flex-1 lg:max-w-xl xl:max-w-2xl"
+          >
+            <HeroBookingWidget />
+          </motion.div>
+
+        </div>
+      </div>
 
       {/* ── Carousel dots ──────────────────────────────────────── */}
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">

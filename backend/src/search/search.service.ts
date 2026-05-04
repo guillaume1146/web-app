@@ -34,6 +34,81 @@ export class SearchService {
    * For legacy roles with dedicated profile tables: includes profile data.
    * For new dynamic roles: uses User fields only + ProviderSpecialty for filtering.
    */
+  // ─── GET /search/available-slots — real slot availability across a role ──────
+  // Reads ProviderAvailability (weekly schedule) + BookedSlot (taken slots) to
+  // return per-time-slot availability counts for the hero booking widget.
+  // Public endpoint — no auth required.
+  async getAvailableSlots(dateStr: string, roleCode: string) {
+    const uType = roleCode.toUpperCase();
+
+    // Parse date parts from YYYY-MM-DD (avoid timezone shift from new Date(str))
+    const parts = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!parts) return { slots: [], providerCount: 0 };
+    const [, yStr, mStr, dStr] = parts;
+    const year = parseInt(yStr), month = parseInt(mStr) - 1, day = parseInt(dStr);
+    const dayOfWeek = new Date(year, month, day).getDay(); // 0=Sun, 6=Sat
+
+    const dayStart = new Date(Date.UTC(year, month, day, 0, 0, 0));
+    const dayEnd   = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+
+    // All active providers of this role
+    const providers = await this.prisma.user.findMany({
+      where: { userType: uType as any, accountStatus: 'active' },
+      select: { id: true },
+    });
+    if (providers.length === 0) return { slots: [], providerCount: 0 };
+
+    const providerIds = providers.map(p => p.id);
+
+    // Weekly availability windows for this day of week
+    const availabilities = await this.prisma.providerAvailability.findMany({
+      where: { userId: { in: providerIds }, dayOfWeek, isActive: true },
+    });
+    if (availabilities.length === 0) return { slots: [], providerCount: providers.length };
+
+    // Already-taken slots on this date
+    const bookedSlots = await this.prisma.bookedSlot.findMany({
+      where: {
+        providerUserId: { in: providerIds },
+        date: { gte: dayStart, lte: dayEnd },
+        status: 'booked',
+      },
+      select: { providerUserId: true, startTime: true },
+    });
+    const bookedSet = new Set(bookedSlots.map(b => `${b.providerUserId}:${b.startTime}`));
+
+    const toMin = (t: string) => {
+      const [h, m = 0] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    // Aggregate: for each time string, count how many providers have it free vs taken
+    const slotMap = new Map<string, { available: number; total: number }>();
+
+    for (const avail of availabilities) {
+      const startMin = toMin(avail.startTime);
+      const endMin   = toMin(avail.endTime);
+      const duration = avail.slotDuration ?? 60;
+
+      for (let m = startMin; m < endMin; m += duration) {
+        const h = Math.floor(m / 60);
+        const min = m % 60;
+        const timeStr = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+
+        const entry = slotMap.get(timeStr) ?? { available: 0, total: 0 };
+        entry.total++;
+        if (!bookedSet.has(`${avail.userId}:${timeStr}`)) entry.available++;
+        slotMap.set(timeStr, entry);
+      }
+    }
+
+    const slots = Array.from(slotMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([time, c]) => ({ time, available: c.available, total: c.total, taken: c.available === 0 }));
+
+    return { slots, providerCount: providers.length };
+  }
+
   async searchProviders(type: string, query?: string, page?: number, limit?: number, specialty?: string) {
     if (!type) throw new BadRequestException('type parameter is required');
     const uType = type.toUpperCase();
