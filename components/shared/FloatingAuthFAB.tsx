@@ -3,43 +3,17 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import {
-  FaTimes, FaLock, FaUserCircle, FaSpinner, FaArrowRight,
-} from 'react-icons/fa'
+import { FaTimes, FaLock, FaSpinner, FaArrowRight } from 'react-icons/fa'
 import { useBookingCart } from '@/lib/contexts/booking-cart-context'
 
-function getAuthCookies() {
-  if (typeof document === 'undefined') return { loggedIn: false, userType: '', userId: '' }
-  const cookies = Object.fromEntries(
-    document.cookie.split(';').map(c => {
-      const [k, ...v] = c.trim().split('=')
-      return [k, v.join('=')]
-    })
-  )
-  return {
-    loggedIn: !!cookies.mediwyz_userType,
-    userType: cookies.mediwyz_userType ?? '',
-    userId: cookies.mediwyz_user_id ?? '',
-  }
-}
-
 export default function FloatingAuthFAB() {
-  const { loginModalOpen, openLoginModal, closeLoginModal, onAfterLogin } = useBookingCart()
-  const [auth, setAuth] = useState({ loggedIn: false, userType: '', userId: '' })
+  const { loginModalOpen, closeLoginModal, onAfterLogin } = useBookingCart()
   const [mounted, setMounted] = useState(false)
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    setAuth(getAuthCookies())
-    setMounted(true)
-  }, [])
-
-  // Re-check auth when login modal closes (user may have just logged in)
-  useEffect(() => {
-    if (!loginModalOpen) setAuth(getAuthCookies())
-  }, [loginModalOpen])
+  useEffect(() => { setMounted(true) }, [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -54,7 +28,6 @@ export default function FloatingAuthFAB() {
       })
       const j = await res.json()
       if (j.success) {
-        setAuth(getAuthCookies())
         closeLoginModal()
         onAfterLogin?.()
       } else {
@@ -69,13 +42,11 @@ export default function FloatingAuthFAB() {
 
   if (!mounted) return null
 
-  const dashPath = auth.userType ? `/${auth.userType.toLowerCase().replace(/_/g, '-')}/feed` : '/login'
-
   return (
     <>
       {/* ── Login modal (global, shared across the app) ───────────── */}
       <AnimatePresence>
-        {loginModalOpen && !auth.loggedIn && (
+        {loginModalOpen && (
           <>
             <motion.div
               key="auth-overlay"
@@ -161,30 +132,6 @@ export default function FloatingAuthFAB() {
         )}
       </AnimatePresence>
 
-      {/* ── FAB: sign in (guest) or profile avatar (authenticated) ── */}
-      {auth.loggedIn ? (
-        <Link
-          href={dashPath}
-          className="fixed bottom-[10.5rem] right-5 sm:right-7 z-50 w-12 h-12 rounded-full
-            bg-gradient-to-br from-[#001E40] to-[#0C6780] shadow-lg flex items-center justify-center
-            text-white hover:scale-105 active:scale-95 transition-all"
-          aria-label="My dashboard"
-          title="Go to dashboard"
-        >
-          <FaUserCircle className="text-xl" />
-        </Link>
-      ) : (
-        <button
-          onClick={() => openLoginModal()}
-          className="fixed bottom-[10.5rem] right-5 sm:right-7 z-50 flex items-center gap-2 px-3.5 py-2.5 rounded-full
-            bg-white border-2 border-[#0C6780] shadow-lg text-[#0C6780] text-xs font-bold
-            hover:bg-[#0C6780] hover:text-white transition-all hover:scale-105 active:scale-95"
-          aria-label="Sign in"
-        >
-          <FaLock className="text-xs" />
-          Sign In
-        </button>
-      )}
     </>
   )
 }

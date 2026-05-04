@@ -16,7 +16,7 @@ export default function FloatingCart() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-24 right-6 z-50 bg-[#0C6780] text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:bg-[#0a5568] transition-all"
+        className="fixed bottom-40 right-6 z-50 bg-[#0C6780] text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:bg-[#0a5568] transition-all"
       >
         <FaShoppingCart className="text-xl" />
         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">

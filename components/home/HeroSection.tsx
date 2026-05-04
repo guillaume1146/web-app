@@ -5,6 +5,43 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { useAppConfig } from '@/hooks/useAppConfig'
 import HeroBookingWidget from '@/components/home/HeroBookingWidget'
+import { FaCheckCircle, FaRobot, FaVideo, FaHome, FaPills } from 'react-icons/fa'
+
+interface HeroStats {
+  providers: number
+  specialties: number
+  countries: number
+  providerTypes: number
+}
+
+function useHeroStats(): HeroStats {
+  const [stats, setStats] = useState<HeroStats>({ providers: 500, specialties: 15, countries: 6, providerTypes: 11 })
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/roles?searchEnabled=true').then(r => r.json()),
+      fetch('/api/specialties').then(r => r.json()),
+      fetch('/api/regions').then(r => r.json()),
+    ]).then(([rolesJson, specJson, regionsJson]) => {
+      const totalProviders = rolesJson.success
+        ? (rolesJson.data as Array<{ providerCount: number }>).reduce((s, r) => s + (r.providerCount ?? 0), 0)
+        : 500
+      const specialtyCount = specJson.success ? (specJson.data as unknown[]).length : 15
+      const countryCount   = regionsJson.success ? (regionsJson.data as unknown[]).length : 6
+      const typeCount      = rolesJson.success
+        ? (rolesJson.data as unknown[]).filter((r: any) => r.isProvider).length
+        : 11
+      setStats({
+        providers:     Math.max(totalProviders, 1),
+        specialties:   Math.max(specialtyCount, 1),
+        countries:     Math.max(countryCount, 1),
+        providerTypes: Math.max(typeCount, 1),
+      })
+    }).catch(() => {})
+  }, [])
+
+  return stats
+}
 
 // ─── Flag mini-icons ──────────────────────────────────────────────────────────
 
@@ -80,6 +117,7 @@ const imageVariants = {
 const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode = 'MU' }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const { config } = useAppConfig()
+  const stats = useHeroStats()
 
   const defaultHeroImages = [
     { src: '/images/hero/gemini-doctor-3-removebg-1.png', alt: 'Specialist Medical Doctor',  title: 'Medical Specialists',      description: 'Consult verified specialists across 15+ fields' },
@@ -113,24 +151,24 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
       {/* ── 3-column flex row — fills the hero height ─────────────── */}
       <div className="flex flex-col lg:flex-row lg:items-stretch" style={{ minHeight: 'inherit' }}>
 
-        {/* ── COL 1: Platform description (left, ~37%) ─────────────── */}
+        {/* ── COL 1: Platform description (left, ~45%) ─────────────── */}
         <motion.div
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.7, ease: 'easeOut' }}
-          className="lg:flex-[37] flex flex-col justify-center
-            px-5 sm:px-8 lg:px-10 xl:px-12
+          className="lg:flex-[45] flex flex-col justify-center
+            px-6 sm:px-10 lg:px-12 xl:px-16
             py-8 sm:py-10 lg:py-0"
         >
           {/* Country flag + platform badge */}
-          <div className="inline-flex self-start items-center bg-white/10 rounded-lg px-3 py-1.5 mb-4 border border-white/20">
+          <div className="inline-flex self-start items-center bg-white/10 rounded-lg px-3 py-1.5 mb-5 border border-white/20">
             <CountryFlag countryCode={countryCode} className="mr-2" />
             <span className="text-xs font-semibold text-brand-sky tracking-wide uppercase">
               {content?.platformBadge || config.platformDescription || "Africa's #1 HealthTech Platform"}
             </span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl xl:text-5xl font-extrabold mb-3 leading-[1.08] text-white">
+          <h1 className="text-3xl sm:text-4xl xl:text-5xl font-extrabold mb-4 leading-[1.08] text-white">
             {titleParts.map((part, i) => (
               <span key={i} className={i === 1 ? 'text-brand-sky' : ''}>
                 {part.trim()}
@@ -139,43 +177,59 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
             ))}
           </h1>
 
-          <p className="text-sm sm:text-base text-gray-300 leading-relaxed max-w-md">
+          <p className="text-sm sm:text-base text-gray-300 leading-relaxed max-w-lg mb-5">
             {content?.subtitle ||
-              "Africa's most trusted health platform. Book verified specialists, get AI-powered insights, and access pharmacy — all in one place."}
+              "Connect with verified doctors, nurses, dentists, pharmacists, and 10+ specialist types across Africa. Book appointments, consult online, order medicines, and manage your health — all in one secure platform."}
           </p>
 
-          {/* Trust stats */}
-          <div className="flex flex-wrap gap-5 mt-5">
+          {/* Feature pills */}
+          <div className="flex flex-wrap gap-2 mb-6">
             {[
-              { value: '500+', label: 'Verified Providers' },
-              { value: '15+', label: 'Specialties' },
-              { value: '6', label: 'Countries' },
+              { icon: <FaRobot className="text-brand-sky" />,   label: 'AI Health Assistant' },
+              { icon: <FaVideo className="text-brand-sky" />,   label: 'Video Consultations' },
+              { icon: <FaHome  className="text-brand-sky" />,   label: 'Home Visits' },
+              { icon: <FaPills className="text-brand-sky" />,   label: 'Online Pharmacy' },
+            ].map(f => (
+              <span key={f.label} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/8 border border-white/15 text-[11px] font-medium text-white/80">
+                {f.icon} {f.label}
+              </span>
+            ))}
+          </div>
+
+          {/* Trust stats — dynamic from DB */}
+          <div className="flex flex-wrap gap-6">
+            {[
+              { value: stats.providers >= 500 ? '500+' : `${stats.providers}+`, label: 'Verified Providers',  sub: 'across all specialties' },
+              { value: `${stats.specialties}+`,                                  label: 'Medical Specialties', sub: 'doctors, nurses & more' },
+              { value: `${stats.countries}`,                                      label: 'Countries',           sub: 'across Africa' },
+              { value: `${stats.providerTypes}+`,                                 label: 'Provider Types',      sub: 'from 1 platform' },
             ].map(stat => (
               <div key={stat.label} className="flex flex-col">
-                <span className="text-xl font-black text-white leading-none">{stat.value}</span>
-                <span className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">{stat.label}</span>
+                <span className="text-2xl sm:text-3xl font-black text-white leading-none">{stat.value}</span>
+                <span className="text-xs font-semibold text-white/80 mt-0.5">{stat.label}</span>
+                <span className="text-[10px] text-white/40 mt-0.5">{stat.sub}</span>
               </div>
             ))}
           </div>
         </motion.div>
 
-        {/* ── COL 2: Booking widget — fills full height (center, ~36%) ── */}
+        {/* ── COL 2: Booking widget — fills full height (center, ~32%) ── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-          className="lg:flex-[36] flex flex-col
+          className="lg:flex-[32] flex flex-col
             border-t lg:border-t-0 lg:border-l lg:border-r border-white/10"
         >
           <HeroBookingWidget fullHeight />
         </motion.div>
 
-        {/* ── COL 3: Image animation + caption (right, ~27%) ───────── */}
+        {/* ── COL 3: Image animation + caption (right, ~23%) ───────── */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.9, delay: 0.3 }}
-          className="hidden lg:flex lg:flex-[27] relative overflow-hidden"
+          className="hidden lg:flex lg:flex-[23] relative overflow-hidden"
         >
           {/* Animated image carousel */}
           <AnimatePresence mode="wait">
@@ -192,7 +246,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
                 alt={heroImages[currentImageIndex].alt}
                 fill
                 className="object-cover object-center"
-                sizes="27vw"
+                sizes="23vw"
                 priority={currentImageIndex === 0}
               />
             </motion.div>
