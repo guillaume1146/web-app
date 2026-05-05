@@ -332,7 +332,7 @@ jobs:
             && echo "SMOKE TEST PASSED" \
             || echo "WARNING: Smoke test failed — check NestJS logs"
 
-          # ── Configure nginx + SSL (inline — no external script to avoid stale file) ──
+          # ── Configure nginx + SSL (no heredoc — heredocs break YAML block scalars) ──
           DOMAIN="$APP_DOMAIN"
           if [ -n "$DOMAIN" ] && command -v nginx >/dev/null 2>&1; then
             CERT_DIR=$(ls -d /etc/letsencrypt/live/${DOMAIN}* 2>/dev/null | head -1 || true)
@@ -341,39 +341,39 @@ jobs:
 
             if [ "$HAS_CERT" = "1" ]; then
               echo "=== SSL cert found at $CERT_DIR — configuring HTTPS nginx ==="
-              sudo tee /etc/nginx/sites-available/mediwyz > /dev/null << HTTPSEOF
-server {
-    listen 80;
-    server_name ${DOMAIN} www.${DOMAIN};
-    return 301 https://\$host\$request_uri;
-}
-server {
-    listen 443 ssl;
-    server_name ${DOMAIN} www.${DOMAIN};
-    ssl_certificate     ${CERT_DIR}/fullchain.pem;
-    ssl_certificate_key ${CERT_DIR}/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection upgrade;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        client_max_body_size 50M;
-    }
-    location /socket.io/ {
-        proxy_pass http://localhost:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection upgrade;
-        proxy_set_header Host \$host;
-    }
-}
-HTTPSEOF
+              {
+                echo "server {"
+                echo "    listen 80;"
+                echo "    server_name ${DOMAIN} www.${DOMAIN};"
+                echo "    return 301 https://\$host\$request_uri;"
+                echo "}"
+                echo "server {"
+                echo "    listen 443 ssl;"
+                echo "    server_name ${DOMAIN} www.${DOMAIN};"
+                echo "    ssl_certificate     ${CERT_DIR}/fullchain.pem;"
+                echo "    ssl_certificate_key ${CERT_DIR}/privkey.pem;"
+                echo "    ssl_protocols TLSv1.2 TLSv1.3;"
+                echo "    ssl_ciphers HIGH:!aNULL:!MD5;"
+                echo "    location / {"
+                echo "        proxy_pass http://localhost:3000;"
+                echo "        proxy_http_version 1.1;"
+                echo "        proxy_set_header Upgrade \$http_upgrade;"
+                echo "        proxy_set_header Connection upgrade;"
+                echo "        proxy_set_header Host \$host;"
+                echo "        proxy_set_header X-Real-IP \$remote_addr;"
+                echo "        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;"
+                echo "        proxy_set_header X-Forwarded-Proto \$scheme;"
+                echo "        client_max_body_size 50M;"
+                echo "    }"
+                echo "    location /socket.io/ {"
+                echo "        proxy_pass http://localhost:3001;"
+                echo "        proxy_http_version 1.1;"
+                echo "        proxy_set_header Upgrade \$http_upgrade;"
+                echo "        proxy_set_header Connection upgrade;"
+                echo "        proxy_set_header Host \$host;"
+                echo "    }"
+                echo "}"
+              } | sudo tee /etc/nginx/sites-available/mediwyz > /dev/null
               sudo ln -sf /etc/nginx/sites-available/mediwyz /etc/nginx/sites-enabled/mediwyz
               sudo rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
               sudo nginx -t && sudo systemctl reload nginx && echo "nginx HTTPS configured for $DOMAIN"
