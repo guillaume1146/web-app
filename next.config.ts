@@ -38,11 +38,10 @@ const securityHeaders = [
     key: 'X-DNS-Prefetch-Control',
     value: 'on',
   },
-  // HSTS re-enabled once SSL cert is provisioned on the VPS
-  // {
-  //   key: 'Strict-Transport-Security',
-  //   value: 'max-age=63072000; includeSubDomains; preload',
-  // },
+  {
+    key: 'Strict-Transport-Security',
+    value: 'max-age=63072000; includeSubDomains; preload',
+  },
 ]
 
 const nextConfig: NextConfig = {

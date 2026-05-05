@@ -148,10 +148,20 @@ jobs:
       - name: Deploy on VPS
         run: |
           set -e
-          DEPLOY_DIR="${{ secrets.DEPLOY_DIR || 'healthtech-app' }}"
+          DEPLOY_DIR="${{ secrets.DEPLOY_DIR || 'mediwyz' }}"
+
+          # Auto-recreate deploy dir if it was lost (e.g. after VPS reboot/cleanup)
+          if [ ! -d "/root/$DEPLOY_DIR" ]; then
+            echo "Deploy dir /root/$DEPLOY_DIR missing — cloning fresh..."
+            mkdir -p /root/$DEPLOY_DIR
+            git clone https://github.com/Mediwyz/platform.git /root/$DEPLOY_DIR
+            chmod 755 /root
+            chown -R runner:runner /root/$DEPLOY_DIR
+          fi
+
           cd /root/$DEPLOY_DIR
 
-          # Ensure remote points to new org URL (idempotent after repo transfer)
+          # Ensure remote points to correct org URL (idempotent)
           git remote set-url origin https://github.com/Mediwyz/platform.git 2>/dev/null || true
 
           # Pull latest code (docker-compose.yml, prisma schema, seeds)
