@@ -54,16 +54,112 @@ jobs:
           echo "=== certbot certificates ==="
           sudo certbot certificates 2>/dev/null || echo "certbot not installed yet"
 
-      - name: Run setup-nginx.sh (fixed — no recursion, dynamic cert dir)
+      - name: Configure nginx + HTTPS (inline — no script file)
         env:
           APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
           ADMIN_EMAIL: ${{ secrets.SUPER_ADMIN_EMAIL }}
         timeout-minutes: 5
         run: |
+          DOMAIN="$APP_DOMAIN"
+          echo "Domain: $DOMAIN"
+
+          # Pull latest code so VPS scripts are up-to-date going forward
           DEPLOY_DIR="${{ secrets.DEPLOY_DIR || 'mediwyz' }}"
-          sudo systemctl start nginx 2>/dev/null || true
-          APP_DOMAIN="$APP_DOMAIN" ADMIN_EMAIL="$ADMIN_EMAIL" \
-            bash /root/$DEPLOY_DIR/scripts/setup-nginx.sh
+          git -C /root/$DEPLOY_DIR pull origin main 2>/dev/null || true
+
+          # Find existing cert — handles mediwyz.com OR mediwyz.com-0001 suffixes
+          CERT_DIR=$(ls -d /etc/letsencrypt/live/${DOMAIN}* 2>/dev/null | head -1 || true)
+          HAS_CERT=0
+          if [ -n "$CERT_DIR" ] && [ -f "$CERT_DIR/fullchain.pem" ]; then
+            HAS_CERT=1
+            echo "Found cert at: $CERT_DIR (valid)"
+          else
+            echo "No cert found — will attempt to obtain one"
+          fi
+
+          # Start nginx with HTTP-only config first (needed for webroot challenge)
+          sudo tee /etc/nginx/sites-available/mediwyz > /dev/null << NGINXEOF
+server {
+    listen 80;
+    server_name ${DOMAIN} www.${DOMAIN};
+    location /.well-known/acme-challenge/ { root /var/www/html; }
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection upgrade;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        client_max_body_size 50M;
+    }
+    location /socket.io/ {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection upgrade;
+        proxy_set_header Host \$host;
+    }
+}
+NGINXEOF
+          sudo ln -sf /etc/nginx/sites-available/mediwyz /etc/nginx/sites-enabled/mediwyz
+          sudo rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+          sudo systemctl start nginx 2>/dev/null || sudo systemctl reload nginx
+          echo "nginx running (HTTP)"
+
+          # Obtain cert if missing
+          if [ "$HAS_CERT" = "0" ]; then
+            echo "Requesting cert via webroot..."
+            sudo mkdir -p /var/www/html/.well-known/acme-challenge
+            sudo certbot certonly --webroot -w /var/www/html \
+              -d "$DOMAIN" -d "www.$DOMAIN" \
+              --non-interactive --agree-tos -m "$ADMIN_EMAIL" && {
+              CERT_DIR=$(ls -d /etc/letsencrypt/live/${DOMAIN}* 2>/dev/null | head -1 || true)
+              [ -n "$CERT_DIR" ] && [ -f "$CERT_DIR/fullchain.pem" ] && HAS_CERT=1
+            } || echo "WARNING: certbot failed"
+          fi
+
+          # Write HTTPS config if cert is available
+          if [ "$HAS_CERT" = "1" ] && [ -n "$CERT_DIR" ]; then
+            echo "Writing HTTPS nginx config using cert: $CERT_DIR"
+            sudo tee /etc/nginx/sites-available/mediwyz > /dev/null << HTTPSEOF
+server {
+    listen 80;
+    server_name ${DOMAIN} www.${DOMAIN};
+    return 301 https://\$host\$request_uri;
+}
+server {
+    listen 443 ssl;
+    server_name ${DOMAIN} www.${DOMAIN};
+    ssl_certificate     ${CERT_DIR}/fullchain.pem;
+    ssl_certificate_key ${CERT_DIR}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection upgrade;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        client_max_body_size 50M;
+    }
+    location /socket.io/ {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection upgrade;
+        proxy_set_header Host \$host;
+    }
+}
+HTTPSEOF
+            sudo nginx -t && sudo systemctl reload nginx && echo "nginx reloaded with HTTPS"
+          else
+            echo "No cert — running HTTP only"
+          fi
 
       - name: Verify HTTPS
         env:
