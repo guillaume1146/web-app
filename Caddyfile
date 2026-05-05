@@ -1,0 +1,24 @@
+# MediWyz — Caddy reverse proxy
+# Caddy auto-provisions and renews Let's Encrypt certs for every domain listed.
+# No certbot, no cron, no nginx.
+#
+# APP_DOMAIN is injected via systemd environment:
+#   /etc/systemd/system/caddy.service.d/mediwyz.conf
+
+{env.APP_DOMAIN}, www.{env.APP_DOMAIN} {
+    # Socket.IO (NestJS, port 3001) — must come before the catch-all
+    reverse_proxy /socket.io/* localhost:3001
+
+    # Everything else → Next.js (port 3000)
+    # Next.js rewrites /api/* → localhost:3001 internally
+    reverse_proxy localhost:3000
+
+    # Gzip responses
+    encode gzip
+
+    # Access log
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}

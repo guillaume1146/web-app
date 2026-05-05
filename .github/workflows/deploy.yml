@@ -332,15 +332,19 @@ jobs:
             && echo "SMOKE TEST PASSED" \
             || echo "WARNING: Smoke test failed — check NestJS logs"
 
-          # ── Configure nginx + SSL (no heredoc — heredocs break YAML block scalars) ──
-          DOMAIN="$APP_DOMAIN"
-          if [ -n "$DOMAIN" ] && command -v nginx >/dev/null 2>&1; then
+          # ── Reload reverse proxy (Caddy if migrated, nginx otherwise) ──────────
+          if command -v caddy >/dev/null 2>&1 && systemctl is-active caddy >/dev/null 2>&1; then
+            DEPLOY_DIR="${{ secrets.DEPLOY_DIR || 'mediwyz' }}"
+            sudo cp /root/$DEPLOY_DIR/Caddyfile /etc/caddy/Caddyfile
+            sudo caddy validate --config /etc/caddy/Caddyfile \
+              && sudo systemctl reload caddy \
+              && echo "Caddy reloaded (HTTPS managed automatically)"
+          elif command -v nginx >/dev/null 2>&1; then
+            DOMAIN="$APP_DOMAIN"
             CERT_DIR=$(ls -d /etc/letsencrypt/live/${DOMAIN}* 2>/dev/null | head -1 || true)
             HAS_CERT=0
             [ -n "$CERT_DIR" ] && [ -f "$CERT_DIR/fullchain.pem" ] && HAS_CERT=1
-
             if [ "$HAS_CERT" = "1" ]; then
-              echo "=== SSL cert found at $CERT_DIR — configuring HTTPS nginx ==="
               {
                 echo "server {"
                 echo "    listen 80;"
@@ -376,9 +380,9 @@ jobs:
               } | sudo tee /etc/nginx/sites-available/mediwyz > /dev/null
               sudo ln -sf /etc/nginx/sites-available/mediwyz /etc/nginx/sites-enabled/mediwyz
               sudo rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
-              sudo nginx -t && sudo systemctl reload nginx && echo "nginx HTTPS configured for $DOMAIN"
+              sudo nginx -t && sudo systemctl reload nginx && echo "nginx HTTPS configured"
             else
-              echo "No SSL cert found — running HTTP only (run fix-vps-sudo workflow to get cert)"
+              echo "No SSL cert found — run fix-vps-sudo workflow to provision cert"
             fi
           fi
 
