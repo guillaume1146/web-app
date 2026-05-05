@@ -118,15 +118,19 @@ export class SearchService {
 
     const where: any = { userType: uType, accountStatus: 'active' };
 
-    // When serviceId is supplied, restrict results to providers who have that
-    // service enabled in their ProviderServiceConfig.
+    // When serviceId is supplied, prefer providers who have explicitly configured
+    // that service in ProviderServiceConfig.  If none have done so (e.g. freshly
+    // seeded DB where no provider has yet opted in), fall back to all providers of
+    // the requested type so the UI never shows an empty list.
     if (serviceId) {
       const configs = await this.prisma.providerServiceConfig.findMany({
         where: { platformServiceId: serviceId, isActive: true },
         select: { providerUserId: true },
       });
-      const providerIds = configs.map(c => c.providerUserId);
-      where.id = { in: providerIds };
+      if (configs.length > 0) {
+        where.id = { in: configs.map(c => c.providerUserId) };
+      }
+      // configs.length === 0 → no filter applied; show all providers of this type
     }
 
     if (query) {
