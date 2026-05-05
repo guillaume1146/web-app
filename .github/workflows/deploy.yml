@@ -251,6 +251,7 @@ jobs:
           fi
 
           echo "=== Starting Frontend (Next.js) ==="
+          docker rm -f mediwyz-app 2>/dev/null || true
           docker compose up -d --no-build --force-recreate app
 
           echo "Waiting for frontend to be healthy..."
