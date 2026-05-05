@@ -340,10 +340,6 @@ jobs:
               echo "    reverse_proxy /socket.io/* localhost:3001"
               echo "    reverse_proxy localhost:3000"
               echo "    encode gzip"
-              echo "    log {"
-              echo "        output file /var/log/caddy/access.log"
-              echo "        format json"
-              echo "    }"
               echo "}"
             } | sudo tee /etc/caddy/Caddyfile > /dev/null
             sudo caddy validate --config /etc/caddy/Caddyfile \

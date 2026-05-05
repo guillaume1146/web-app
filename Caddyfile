@@ -15,10 +15,4 @@
 
     # Gzip responses
     encode gzip
-
-    # Access log
-    log {
-        output file /var/log/caddy/access.log
-        format json
-    }
 }
