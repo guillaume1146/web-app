@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { FaSearch, FaUserMd, FaStar, FaArrowRight, FaCheckCircle } from 'react-icons/fa'
 import { avatarSrc } from '@/lib/utils/avatar'
+import { useBookingDrawer } from '@/lib/contexts/booking-drawer-context'
 
 interface ProviderCard {
   id: string
@@ -71,6 +72,7 @@ function hex2rgba(hex: string, alpha = 0.12) {
 }
 
 export default function ProvidersSection() {
+  const { openDrawer } = useBookingDrawer()
   const [groups, setGroups] = useState<ProviderGroup[]>([])
   const [roles, setRoles] = useState<RoleData[]>([])
   const [loading, setLoading] = useState(true)
@@ -276,7 +278,7 @@ export default function ProvidersSection() {
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                       {shown.map(provider => (
-                        <ProviderCardItem key={provider.id} provider={provider} color={group.color} slug={group.slug} />
+                        <ProviderCardItem key={provider.id} provider={provider} color={group.color} slug={group.slug} onBook={() => openDrawer({ provider: { id: provider.id, name: `${provider.firstName} ${provider.lastName}`, userType: provider.userType, profileImage: provider.profileImage, rating: provider.rating ?? undefined, specializations: provider.specialty ? [provider.specialty as string] : [] } })} />
                       ))}
                     </div>
                   </div>
@@ -306,7 +308,7 @@ export default function ProvidersSection() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
               {filteredGrid.map(provider => (
-                <ProviderCardItem key={provider.id} provider={provider} color={gridColor} slug={gridSlug} />
+                <ProviderCardItem key={provider.id} provider={provider} color={gridColor} slug={gridSlug} onBook={() => openDrawer({ provider: { id: provider.id, name: `${provider.firstName} ${provider.lastName}`, userType: provider.userType, profileImage: provider.profileImage, rating: provider.rating ?? undefined, specializations: provider.specialty ? [provider.specialty as string] : [] } })} />
               ))}
             </div>
           )
@@ -316,16 +318,16 @@ export default function ProvidersSection() {
   )
 }
 
-function ProviderCardItem({ provider, color, slug }: { provider: ProviderCard; color: string; slug: string }) {
+function ProviderCardItem({ provider, color, slug, onBook }: { provider: ProviderCard; color: string; slug: string; onBook: () => void }) {
   const bgLight  = hex2rgba(color, 0.10)
   const bgMedium = hex2rgba(color, 0.20)
   const avatarUrl = avatarSrc(provider.profileImage, provider.firstName, provider.lastName)
 
   return (
-    <Link
-      href={`/profile/${provider.id}`}
-      className="group flex flex-col bg-white rounded-2xl border border-gray-100
-        hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
+    <button
+      onClick={onBook}
+      className="group flex flex-col bg-white rounded-2xl border border-gray-100 text-left w-full
+        hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden cursor-pointer"
     >
       {/* Avatar header */}
       <div
@@ -388,9 +390,9 @@ function ProviderCardItem({ provider, color, slug }: { provider: ProviderCard; c
           <span />
         )}
         <span className="text-[10px] font-semibold flex items-center gap-0.5 group-hover:gap-1 transition-all" style={{ color }}>
-          View <FaArrowRight className="text-[8px]" />
+          Book <FaArrowRight className="text-[8px]" />
         </span>
       </div>
-    </Link>
+    </button>
   )
 }

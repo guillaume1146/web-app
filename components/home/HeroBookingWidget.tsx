@@ -9,6 +9,7 @@ import {
   FaTimes, FaLock, FaArrowRight, FaCheckCircle, FaCalendarAlt,
 } from 'react-icons/fa'
 import { useBookingCart } from '@/lib/contexts/booking-cart-context'
+import { useBookingDrawer } from '@/lib/contexts/booking-drawer-context'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,6 +113,7 @@ interface HeroBookingWidgetProps {
 
 export default function HeroBookingWidget({ fullHeight = false }: HeroBookingWidgetProps) {
   const { setSelection, openLoginModal } = useBookingCart()
+  const { openDrawer } = useBookingDrawer()
   const [roles, setRoles] = useState<RoleData[]>(STUB_ROLES)
   const [activeRole, setActiveRole] = useState<RoleData>(STUB_ROLES[0])
   const [days] = useState<Date[]>(() => upcomingDays(7))
@@ -119,9 +121,6 @@ export default function HeroBookingWidget({ fullHeight = false }: HeroBookingWid
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [slotsLoading, setSlotsLoading] = useState(false)
-  const [services, setServices] = useState<ServiceItem[]>([])
-  const [modal, setModal] = useState<'none' | 'services' | 'cart'>('none')
-  const [cartService, setCartService] = useState<ServiceItem | null>(null)
   const pillsRef = useRef<HTMLDivElement>(null)
 
   function scrollPills(dir: 'left' | 'right') {
@@ -161,22 +160,6 @@ export default function HeroBookingWidget({ fullHeight = false }: HeroBookingWid
       .finally(() => setSlotsLoading(false))
   }, [selectedDay, activeRole.code])
 
-  // Load services when role changes
-  useEffect(() => {
-    fetch(`/api/services/catalog?providerType=${activeRole.code}`)
-      .then(r => r.json())
-      .then(j => {
-        if (j.success && j.data) {
-          const flat: ServiceItem[] = []
-          for (const g of j.data) {
-            for (const s of g.services || []) flat.push(s)
-          }
-          setServices(flat.slice(0, 6))
-        }
-      })
-      .catch(() => {})
-  }, [activeRole.code])
-
   const availableCount = slots.filter(s => !s.taken).length
   const isSunday = selectedDay.getDay() === 0
 
@@ -193,35 +176,15 @@ export default function HeroBookingWidget({ fullHeight = false }: HeroBookingWid
   function handleSlotClick(slot: TimeSlot) {
     if (slot.taken) return
     setSelectedSlot(slot)
-    if (!isLoggedIn()) {
-      // Use the global login modal (FloatingAuthFAB) — no redirect
-      openLoginModal(() => setModal('services'))
-    } else {
-      setModal('services')
-    }
-  }
-
-  function selectService(svc: ServiceItem) {
-    setCartService(svc)
-    setModal('cart')
-    // Also persist to global booking cart so FloatingBookingCart shows it
-    if (selectedSlot) {
-      setSelection({
-        role: activeRole,
-        service: svc,
-        date: selectedDay.toISOString().slice(0, 10),
-        time: `${selectedSlot.hour.toString().padStart(2, '0')}:${selectedSlot.minute.toString().padStart(2, '0')}`,
-        timeLabel: selectedSlot.label,
-        dateLabel: `${DOW[selectedDay.getDay()]}, ${MONTHS[selectedDay.getMonth()]} ${selectedDay.getDate()}`,
-      })
-    }
-  }
-
-  function confirmBooking() {
-    if (!cartService || !selectedSlot) return
     const dateStr = selectedDay.toISOString().slice(0, 10)
-    const timeStr = `${selectedSlot.hour.toString().padStart(2, '0')}:${selectedSlot.minute.toString().padStart(2, '0')}`
-    window.location.href = `/search/${activeRole.slug}?service=${cartService.id}&date=${dateStr}&time=${timeStr}`
+    const timeStr = `${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`
+    openDrawer({
+      role: activeRole,
+      date: dateStr,
+      time: timeStr,
+      timeLabel: slot.label,
+      dateLabel: `${DOW[selectedDay.getDay()]}, ${MONTHS[selectedDay.getMonth()]} ${selectedDay.getDate()}`,
+    })
   }
 
   const slotDateLabel = `${DOW[selectedDay.getDay()]}, ${MONTHS[selectedDay.getMonth()]} ${selectedDay.getDate()}`
@@ -396,159 +359,6 @@ export default function HeroBookingWidget({ fullHeight = false }: HeroBookingWid
         </div>
       </motion.div>
 
-      {/* ── Modals (fixed overlay — avoids overflow-hidden clipping) ─── */}
-      {/* Login is now handled globally by FloatingAuthFAB */}
-      <AnimatePresence>
-        {modal !== 'none' && (
-          <motion.div
-            key="overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,10,30,0.75)', backdropFilter: 'blur(4px)' }}
-            onClick={e => { if (e.target === e.currentTarget) setModal('none') }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 20 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
-            >
-              {/* ── Service picker ────────────────────── */}
-              {modal === 'services' && (
-                <>
-                  <div className="flex items-start justify-between px-5 pt-5 pb-3 border-b border-gray-100">
-                    <div>
-                      <h3 className="text-sm font-bold text-[#001E40]">Choose a service</h3>
-                      <p className="text-[11px] text-gray-500 mt-0.5">
-                        {activeRole.singularLabel} · {selectedSlot?.label} · {slotDateLabel}
-                      </p>
-                    </div>
-                    <button onClick={() => setModal('none')} className="p-1.5 text-gray-300 hover:text-gray-500 -mt-1 -mr-1 rounded-lg">
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </div>
-
-                  <div className="px-4 py-3 max-h-80 overflow-y-auto space-y-1.5">
-                    {services.length === 0 ? (
-                      <p className="text-xs text-gray-400 text-center py-6">Loading services…</p>
-                    ) : (
-                      services.map(svc => (
-                        <button
-                          key={svc.id}
-                          onClick={() => selectService(svc)}
-                          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl border border-gray-100
-                            hover:border-[#0C6780]/40 hover:bg-[#0C6780]/5 transition-all text-left group"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-[#0C6780]/10 flex items-center justify-center flex-shrink-0">
-                            {svc.iconKey ? (
-                              <Icon icon={svc.iconKey} width={18} height={18} color="#0C6780" />
-                            ) : (
-                              <span className="text-base">{svc.emoji ?? '⚕️'}</span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-gray-900 leading-tight">{svc.serviceName}</p>
-                            <p className="text-[10px] text-gray-400">{svc.category}</p>
-                          </div>
-                          <div className="flex-shrink-0 text-right">
-                            <p className="text-xs font-bold text-[#0C6780]">Rs {svc.defaultPrice.toLocaleString()}</p>
-                            <FaArrowRight className="text-[9px] text-gray-300 group-hover:text-[#0C6780] transition-colors ml-auto mt-0.5" />
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-
-                  <div className="px-4 pb-4 pt-2 border-t border-gray-100">
-                    <Link
-                      href={`/search/${activeRole.slug}`}
-                      className="block text-center text-xs text-[#0C6780] hover:underline font-medium"
-                    >
-                      Browse all {activeRole.label} providers →
-                    </Link>
-                  </div>
-                </>
-              )}
-
-              {/* ── Booking cart / summary ────────────── */}
-              {modal === 'cart' && cartService && (
-                <>
-                  <div className="flex items-start justify-between px-5 pt-5 pb-4">
-                    <div>
-                      <h3 className="text-sm font-bold text-[#001E40]">Booking Summary</h3>
-                      <p className="text-[11px] text-gray-500 mt-0.5">Review your selection</p>
-                    </div>
-                    <button onClick={() => setModal('none')} className="p-1.5 text-gray-300 hover:text-gray-500 -mt-1 -mr-1 rounded-lg">
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </div>
-
-                  {/* Cart details */}
-                  <div className="px-5 pb-5 space-y-3">
-                    {/* Provider type row */}
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: `${activeRole.color}18` }}>
-                        {activeRole.iconKey && <Icon icon={activeRole.iconKey} width={20} height={20} color={activeRole.color} />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Provider</p>
-                        <p className="text-xs font-bold text-gray-900">{activeRole.singularLabel}</p>
-                      </div>
-                    </div>
-
-                    {/* Service row */}
-                    <div className="flex items-center gap-3 p-3 bg-[#0C6780]/5 rounded-xl border border-[#0C6780]/20">
-                      <div className="w-9 h-9 rounded-lg bg-[#0C6780]/10 flex items-center justify-center flex-shrink-0">
-                        {cartService.iconKey ? (
-                          <Icon icon={cartService.iconKey} width={20} height={20} color="#0C6780" />
-                        ) : (
-                          <span className="text-base">{cartService.emoji ?? '⚕️'}</span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Service</p>
-                        <p className="text-xs font-bold text-gray-900 leading-tight">{cartService.serviceName}</p>
-                        <p className="text-[10px] text-gray-500">{cartService.category}</p>
-                      </div>
-                      <p className="text-sm font-black text-[#0C6780] flex-shrink-0">Rs {cartService.defaultPrice.toLocaleString()}</p>
-                    </div>
-
-                    {/* Date + time row */}
-                    <div className="flex items-center gap-2.5 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                      <FaCalendarAlt className="text-[#0C6780] text-sm flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-gray-900">{slotDateLabel}</p>
-                        <p className="text-[10px] text-gray-500">{selectedSlot?.label}</p>
-                      </div>
-                      <FaCheckCircle className="text-emerald-500 text-sm flex-shrink-0" />
-                    </div>
-
-                    {/* CTA */}
-                    <button
-                      onClick={confirmBooking}
-                      className="w-full py-3 bg-[#0C6780] text-white rounded-xl text-sm font-bold
-                        hover:bg-[#0a5a6e] transition-colors flex items-center justify-center gap-2 shadow-lg shadow-[#0C6780]/30"
-                    >
-                      Book Now <FaArrowRight className="text-xs" />
-                    </button>
-
-                    <button
-                      onClick={() => setModal('services')}
-                      className="w-full py-2 text-xs text-gray-500 hover:text-gray-700 transition-colors font-medium"
-                    >
-                      ← Change service
-                    </button>
-                  </div>
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   )
 }

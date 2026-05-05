@@ -32,9 +32,10 @@ export class SearchController {
     @Query('type') type: string, @Query('q') q?: string,
     @Query('page') page?: string, @Query('limit') limit?: string,
     @Query('specialty') specialty?: string,
+    @Query('serviceId') serviceId?: string,
   ) {
     const result = await this.searchService.searchProviders(
-      type, q, page ? parseInt(page) : undefined, limit ? parseInt(limit) : undefined, specialty,
+      type, q, page ? parseInt(page) : undefined, limit ? parseInt(limit) : undefined, specialty, serviceId,
     );
     return { success: true, ...result };
   }

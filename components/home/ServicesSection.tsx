@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { FaSearch, FaConciergeBell, FaClock, FaArrowRight } from 'react-icons/fa'
 import { Icon } from '@iconify/react'
+import { useBookingDrawer } from '@/lib/contexts/booking-drawer-context'
 
 interface ServiceItem {
   id: string
@@ -37,6 +38,7 @@ function hex2rgba(hex: string, alpha = 0.12) {
 }
 
 export default function ServicesSection() {
+  const { openDrawer } = useBookingDrawer()
   const [services, setServices] = useState<ServiceItem[]>([])
   const [roles, setRoles] = useState<RoleData[]>([])
   const [loading, setLoading] = useState(true)
@@ -176,7 +178,7 @@ export default function ServicesSection() {
               const role = roleMap[svc.providerType]
               const color = role?.color ?? '#0C6780'
               const slug = role?.slug ?? svc.providerType.toLowerCase()
-              return <ServiceCard key={svc.id} service={svc} color={color} slug={slug} roleLabel={role?.label ?? svc.providerType} />
+              return <ServiceCard key={svc.id} service={svc} color={color} slug={slug} roleLabel={role?.label ?? svc.providerType} onBook={() => openDrawer({ service: { id: svc.id, serviceName: svc.serviceName, category: svc.category, description: svc.description ?? undefined, defaultPrice: svc.defaultPrice, duration: svc.duration ?? undefined, providerType: svc.providerType, iconKey: svc.iconKey, emoji: svc.emoji } })} />
             })}
           </div>
         )}
@@ -194,15 +196,15 @@ export default function ServicesSection() {
   )
 }
 
-function ServiceCard({ service, color, slug, roleLabel }: { service: ServiceItem; color: string; slug: string; roleLabel: string }) {
+function ServiceCard({ service, color, slug, roleLabel, onBook }: { service: ServiceItem; color: string; slug: string; roleLabel: string; onBook: () => void }) {
   const bgLight  = hex2rgba(color, 0.10)
   const bgMedium = hex2rgba(color, 0.20)
 
   return (
-    <Link
-      href={`/search/${slug}`}
-      className="group flex flex-col bg-white rounded-2xl border border-gray-100
-        hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
+    <button
+      onClick={onBook}
+      className="group flex flex-col bg-white rounded-2xl border border-gray-100 text-left w-full
+        hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden cursor-pointer"
     >
       {/* Illustration header */}
       <div
@@ -268,6 +270,6 @@ function ServiceCard({ service, color, slug, roleLabel }: { service: ServiceItem
           </span>
         )}
       </div>
-    </Link>
+    </button>
   )
 }

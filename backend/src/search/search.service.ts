@@ -109,7 +109,7 @@ export class SearchService {
     return { slots, providerCount: providers.length };
   }
 
-  async searchProviders(type: string, query?: string, page?: number, limit?: number, specialty?: string) {
+  async searchProviders(type: string, query?: string, page?: number, limit?: number, specialty?: string, serviceId?: string) {
     if (!type) throw new BadRequestException('type parameter is required');
     const uType = type.toUpperCase();
     const take = Math.min(limit || 50, 100);
@@ -117,6 +117,18 @@ export class SearchService {
     const skip = (pageNum - 1) * take;
 
     const where: any = { userType: uType, accountStatus: 'active' };
+
+    // When serviceId is supplied, restrict results to providers who have that
+    // service enabled in their ProviderServiceConfig.
+    if (serviceId) {
+      const configs = await this.prisma.providerServiceConfig.findMany({
+        where: { platformServiceId: serviceId, isActive: true },
+        select: { providerUserId: true },
+      });
+      const providerIds = configs.map(c => c.providerUserId);
+      where.id = { in: providerIds };
+    }
+
     if (query) {
       where.OR = [
         { firstName: { contains: query, mode: 'insensitive' } },

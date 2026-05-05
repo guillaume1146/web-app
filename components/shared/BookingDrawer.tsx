@@ -1,0 +1,1067 @@
+'use client'
+
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import Image from 'next/image'
+import {
+  FaTimes, FaArrowLeft, FaArrowRight, FaCheckCircle, FaCalendarAlt,
+  FaUserMd, FaConciergeBell, FaClock, FaLock, FaStar,
+} from 'react-icons/fa'
+import { useBookingDrawer, DrawerService, DrawerProvider, DrawerRole } from '@/lib/contexts/booking-drawer-context'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type DrawerStep = 'service' | 'providers' | 'workflow' | 'slot' | 'auth' | 'confirm'
+
+interface WorkflowOption {
+  id: string
+  name: string
+  serviceMode: string
+}
+
+interface TimeSlot {
+  time: string    // 'HH:MM'
+  label: string   // '9:00 AM'
+  taken: boolean
+}
+
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+const MODE_LABEL: Record<string, string> = {
+  office: 'In-Person',
+  home: 'Home Visit',
+  video: 'Video Call',
+}
+const MODE_EMOJI: Record<string, string> = {
+  office: '🏥',
+  home: '🏠',
+  video: '📹',
+}
+
+function toSlotLabel(time: string): string {
+  const [h, m] = time.split(':').map(Number)
+  const period = h >= 12 ? 'PM' : 'AM'
+  const display = h > 12 ? h - 12 : h === 0 ? 12 : h
+  return `${display}:${String(m).padStart(2, '0')} ${period}`
+}
+
+function upcomingDays(n: number): Date[] {
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() + i)
+    return d
+  })
+}
+
+function isLoggedIn(): boolean {
+  if (typeof document === 'undefined') return false
+  return document.cookie.split(';').some(c => c.trim().startsWith('mediwyz_userType='))
+}
+
+function avatarUrl(provider: DrawerProvider): string {
+  if (provider.profileImage) return provider.profileImage
+  const name = encodeURIComponent(provider.name || 'P')
+  return `https://ui-avatars.com/api/?name=${name}&background=0C6780&color=fff&size=80`
+}
+
+// ─── Step tracker ─────────────────────────────────────────────────────────────
+
+const STEP_LABELS: Record<DrawerStep, string> = {
+  service: 'Service',
+  providers: 'Provider',
+  workflow: 'Appointment type',
+  slot: 'Date & time',
+  auth: 'Sign in',
+  confirm: 'Confirm',
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function BookingDrawer() {
+  const { isOpen, options, closeDrawer } = useBookingDrawer()
+
+  // ── Wizard state ──────────────────────────────────────────────────────────
+  const [step, setStep] = useState<DrawerStep>('service')
+  const [stepHistory, setStepHistory] = useState<DrawerStep[]>([])
+
+  const [selectedService, setSelectedService] = useState<DrawerService | null>(null)
+  const [selectedProvider, setSelectedProvider] = useState<DrawerProvider | null>(null)
+  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowOption | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [selectedTime, setSelectedTime] = useState<string | null>(null)
+
+  // ── Data lists ────────────────────────────────────────────────────────────
+  const [services, setServices] = useState<DrawerService[]>([])
+  const [providers, setProviders] = useState<DrawerProvider[]>([])
+  const [workflows, setWorkflows] = useState<WorkflowOption[]>([])
+  const [slots, setSlots] = useState<TimeSlot[]>([])
+  const [days] = useState<Date[]>(() => upcomingDays(14))
+
+  // ── Loading / error ───────────────────────────────────────────────────────
+  const [servicesLoading, setServicesLoading] = useState(false)
+  const [providersLoading, setProvidersLoading] = useState(false)
+  const [slotsLoading, setSlotsLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [authLoading, setAuthLoading] = useState(false)
+  const [loggedIn, setLoggedIn] = useState(false)
+
+  // ── Reason ────────────────────────────────────────────────────────────────
+  const [reason, setReason] = useState('')
+
+  // ─── Reset when drawer opens/closes ──────────────────────────────────────
+  useEffect(() => {
+    if (!isOpen) return
+    setError(null)
+    setSubmitting(false)
+    setAuthError(null)
+    setAuthEmail('')
+    setAuthPassword('')
+    setReason('')
+    setLoggedIn(isLoggedIn())
+
+    // Pre-populate from entry options
+    const { service, provider, role, date, time } = options
+
+    if (service) {
+      setSelectedService(service)
+      setSelectedProvider(provider ?? null)
+      setSelectedWorkflow(null)
+      setSelectedDate(date ? new Date(date + 'T12:00:00') : null)
+      setSelectedTime(time ?? null)
+      // 'service' is kept in history so the back button returns to it
+      setStep('providers')
+      setStepHistory(['service', 'providers'])
+      fetchProviders(service)
+    } else if (provider) {
+      setSelectedService(null)
+      setSelectedProvider(provider)
+      setSelectedWorkflow(null)
+      setSelectedDate(date ? new Date(date + 'T12:00:00') : null)
+      setSelectedTime(time ?? null)
+      setStep('service')
+      setStepHistory(['service'])
+      fetchServicesForProvider(provider)
+    } else {
+      // Hero widget entry: role + date + time pre-filled
+      setSelectedService(null)
+      setSelectedProvider(null)
+      setSelectedWorkflow(null)
+      setSelectedDate(date ? new Date(date + 'T12:00:00') : null)
+      setSelectedTime(time ?? null)
+      setStep('service')
+      setStepHistory(['service'])
+      if (role) fetchServicesForRole(role.code)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
+
+  // ─── Step navigation ──────────────────────────────────────────────────────
+
+  function goTo(next: DrawerStep) {
+    setStepHistory(prev => [...prev, next])
+    setStep(next)
+  }
+
+  function goBack() {
+    setStepHistory(prev => {
+      const updated = [...prev]
+      updated.pop()                         // remove current
+      const previous = updated[updated.length - 1] ?? 'service'
+      setStep(previous)
+      return updated
+    })
+  }
+
+  const canGoBack = stepHistory.length > 1
+
+  // ─── Data fetchers ────────────────────────────────────────────────────────
+
+  async function fetchServicesForRole(roleCode: string) {
+    setServicesLoading(true)
+    setServices([])
+    try {
+      const res = await fetch(`/api/search/services?providerType=${roleCode}&limit=50`)
+      const j = await res.json()
+      if (j.success) setServices(j.data ?? [])
+    } catch { /* non-fatal */ }
+    finally { setServicesLoading(false) }
+  }
+
+  async function fetchServicesForProvider(provider: DrawerProvider) {
+    setServicesLoading(true)
+    setServices([])
+    try {
+      const res = await fetch(`/api/providers/${provider.id}/services`)
+      const j = await res.json()
+      if (j.success) {
+        setServices((j.data ?? []).map((s: any) => ({
+          id: s.id,
+          serviceName: s.serviceName,
+          category: s.category,
+          description: s.description,
+          defaultPrice: s.price ?? s.defaultPrice ?? 0,
+          duration: s.duration,
+          providerType: provider.userType,
+          // keep workflows stashed for later
+          _workflows: s.workflows,
+        } as DrawerService & { _workflows?: WorkflowOption[] })))
+      }
+    } catch { /* non-fatal */ }
+    finally { setServicesLoading(false) }
+  }
+
+  async function fetchProviders(service: DrawerService) {
+    setProvidersLoading(true)
+    setProviders([])
+    try {
+      const params = new URLSearchParams({ type: service.providerType ?? '', serviceId: service.id, limit: '30' })
+      const res = await fetch(`/api/search/providers?${params}`)
+      const j = await res.json()
+      if (j.success) {
+        setProviders((j.data ?? []).map((p: any) => ({
+          id: p.id,
+          name: p.name ?? `${p.firstName} ${p.lastName}`,
+          userType: p.userType,
+          profileImage: p.profileImage ?? null,
+          address: p.address ?? null,
+          rating: p.rating ?? 0,
+          specializations: p.specializations ?? [],
+          bio: p.bio ?? '',
+        } as DrawerProvider)))
+      }
+    } catch { /* non-fatal */ }
+    finally { setProvidersLoading(false) }
+  }
+
+  async function fetchWorkflowsForProviderService(provider: DrawerProvider, service: DrawerService) {
+    try {
+      const res = await fetch(`/api/providers/${provider.id}/services`)
+      const j = await res.json()
+      if (!j.success) return []
+      const match = (j.data ?? []).find((s: any) => s.id === service.id)
+      return (match?.workflows ?? []) as WorkflowOption[]
+    } catch { return [] }
+  }
+
+  async function fetchSlots(provider: DrawerProvider, date: Date) {
+    setSlotsLoading(true)
+    setSlots([])
+    const dateStr = date.toISOString().slice(0, 10)
+    try {
+      const res = await fetch(
+        `/api/bookings/available-slots?providerId=${provider.id}&providerUserId=${provider.id}&date=${dateStr}&providerType=${provider.userType}`
+      )
+      const j = await res.json()
+      if (j.success && j.slots?.length) {
+        setSlots(j.slots.map((s: any) => ({ time: s.time, label: toSlotLabel(s.time), taken: s.taken })))
+      } else {
+        setSlots(generateFallbackSlots(date))
+      }
+    } catch { setSlots(generateFallbackSlots(date)) }
+    finally { setSlotsLoading(false) }
+  }
+
+  function generateFallbackSlots(date: Date): TimeSlot[] {
+    if (date.getDay() === 0) return []
+    const slots: TimeSlot[] = []
+    const endH = date.getDay() === 6 ? 13 : 17
+    for (let h = 9; h < endH; h++) {
+      if (h === 12) continue
+      for (const m of [0, 30]) {
+        const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+        slots.push({ time, label: toSlotLabel(time), taken: false })
+      }
+    }
+    return slots
+  }
+
+  // ─── Selection handlers ────────────────────────────────────────────────────
+
+  async function handleSelectService(service: DrawerService) {
+    setSelectedService(service)
+    setError(null)
+
+    if (selectedProvider) {
+      // Provider already known → get workflows for this service
+      const wfs = ((service as any)._workflows as WorkflowOption[] | undefined) ??
+        await fetchWorkflowsForProviderService(selectedProvider, service)
+      setWorkflows(wfs)
+      if (wfs.length > 1) {
+        goTo('workflow')
+      } else {
+        if (wfs.length === 1) setSelectedWorkflow(wfs[0])
+        // Slot already pre-filled from hero widget?
+        if (selectedTime && selectedDate) {
+          goTo('confirm')
+        } else {
+          goTo('slot')
+          fetchSlots(selectedProvider, selectedDate ?? new Date())
+        }
+      }
+    } else {
+      // No provider yet → go to providers step
+      goTo('providers')
+      fetchProviders(service)
+    }
+  }
+
+  async function handleSelectProvider(provider: DrawerProvider) {
+    setSelectedProvider(provider)
+    setError(null)
+
+    if (selectedService) {
+      const wfs = await fetchWorkflowsForProviderService(provider, selectedService)
+      setWorkflows(wfs)
+      if (wfs.length > 1) {
+        goTo('workflow')
+      } else {
+        if (wfs.length === 1) setSelectedWorkflow(wfs[0])
+        if (selectedTime && selectedDate) {
+          goTo('confirm')
+        } else {
+          goTo('slot')
+          fetchSlots(provider, selectedDate ?? new Date())
+        }
+      }
+    }
+  }
+
+  function handleSelectWorkflow(wf: WorkflowOption) {
+    setSelectedWorkflow(wf)
+    if (selectedTime && selectedDate) {
+      goTo('confirm')
+    } else {
+      goTo('slot')
+      if (selectedProvider) fetchSlots(selectedProvider, selectedDate ?? new Date())
+    }
+  }
+
+  function handleSelectDate(date: Date) {
+    setSelectedDate(date)
+    setSelectedTime(null)
+    if (selectedProvider) fetchSlots(selectedProvider, date)
+  }
+
+  function handleSelectTime(time: string) {
+    setSelectedTime(time)
+  }
+
+  function handleSlotNext() {
+    if (!selectedDate || !selectedTime) return
+    if (loggedIn) {
+      goTo('confirm')
+    } else {
+      goTo('auth')
+    }
+  }
+
+  // ─── Auth ──────────────────────────────────────────────────────────────────
+
+  async function handleLogin() {
+    if (!authEmail || !authPassword) {
+      setAuthError('Email and password are required')
+      return
+    }
+    setAuthLoading(true)
+    setAuthError(null)
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: authEmail, password: authPassword }),
+      })
+      const j = await res.json()
+      if (!j.success) {
+        setAuthError(j.message ?? 'Invalid credentials')
+        return
+      }
+      setLoggedIn(true)
+      goTo('confirm')
+    } catch {
+      setAuthError('Login failed. Please try again.')
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
+  // ─── Submit booking ───────────────────────────────────────────────────────
+
+  async function handleSubmit() {
+    if (!selectedService || !selectedProvider || !selectedDate || !selectedTime) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      const dateStr = selectedDate.toISOString().slice(0, 10)
+      const body: Record<string, unknown> = {
+        providerUserId: selectedProvider.id,
+        providerType: selectedProvider.userType,
+        platformServiceId: selectedService.id,
+        serviceName: selectedService.serviceName,
+        servicePrice: selectedService.defaultPrice,
+        scheduledDate: dateStr,
+        scheduledTime: selectedTime,
+        duration: selectedService.duration ?? 30,
+        reason: reason || undefined,
+        consultationType: selectedWorkflow?.serviceMode ?? 'office',
+        workflowTemplateId: selectedWorkflow?.id ?? undefined,
+      }
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const j = await res.json()
+      if (!j.success) {
+        setError(j.message ?? 'Booking failed')
+        return
+      }
+      // Booking created — close drawer and optionally navigate
+      closeDrawer()
+      // Navigate to the booking confirmation page
+      const userType = document.cookie.split(';')
+        .find(c => c.trim().startsWith('mediwyz_userType='))
+        ?.split('=')?.[1] ?? 'patient'
+      window.location.href = `/${userType}/bookings`
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // ─── Derived labels ────────────────────────────────────────────────────────
+
+  const dateLabel = useMemo(() => {
+    if (!selectedDate) return ''
+    return `${DOW[selectedDate.getDay()]}, ${MONTHS[selectedDate.getMonth()]} ${selectedDate.getDate()}`
+  }, [selectedDate])
+
+  const timeLabel = useMemo(() => {
+    if (!selectedTime) return ''
+    return options.timeLabel ?? toSlotLabel(selectedTime)
+  }, [selectedTime, options.timeLabel])
+
+  const roleColor = options.role?.color ?? '#0C6780'
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm"
+            onClick={closeDrawer}
+          />
+
+          {/* Panel — bottom sheet on mobile, right panel on ≥640px */}
+          <motion.div
+            key="panel"
+            initial={{ y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+            className="fixed bottom-0 left-0 right-0 z-[301] bg-white rounded-t-3xl shadow-2xl
+              flex flex-col max-h-[92vh]
+              sm:top-0 sm:bottom-0 sm:left-auto sm:right-0 sm:rounded-none sm:rounded-l-3xl sm:max-h-full sm:w-[420px]"
+            style={{}}
+          >
+            {/* ── Header ── */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                {canGoBack && (
+                  <button
+                    onClick={goBack}
+                    className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors"
+                    aria-label="Go back"
+                  >
+                    <FaArrowLeft className="text-gray-600 text-xs" />
+                  </button>
+                )}
+                <div>
+                  <h2 className="text-sm font-bold text-[#001E40]">{STEP_LABELS[step]}</h2>
+                  <p className="text-[11px] text-gray-400 mt-0.5">{buildBreadcrumb()}</p>
+                </div>
+              </div>
+              <button
+                onClick={closeDrawer}
+                className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors"
+                aria-label="Close"
+              >
+                <FaTimes className="text-gray-600 text-xs" />
+              </button>
+            </div>
+
+            {/* ── Step progress dots ── */}
+            <StepDots step={step} skippedSlot={!!(selectedTime && selectedDate && step !== 'slot')} />
+
+            {/* ── Body ── */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={step}
+                  initial={{ opacity: 0, x: 18 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -18 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  {step === 'service'    && <ServiceStep services={services} loading={servicesLoading} onSelect={handleSelectService} selectedId={selectedService?.id} roleColor={roleColor} />}
+                  {step === 'providers'  && <ProviderStep providers={providers} loading={providersLoading} onSelect={handleSelectProvider} selectedId={selectedProvider?.id} service={selectedService} roleColor={roleColor} />}
+                  {step === 'workflow'   && <WorkflowStep workflows={workflows} onSelect={handleSelectWorkflow} selectedId={selectedWorkflow?.id} roleColor={roleColor} />}
+                  {step === 'slot'       && <SlotStep days={days} selectedDate={selectedDate} selectedTime={selectedTime} slots={slots} loading={slotsLoading} onSelectDate={handleSelectDate} onSelectTime={handleSelectTime} onNext={handleSlotNext} roleColor={roleColor} />}
+                  {step === 'auth'       && <AuthStep email={authEmail} password={authPassword} onEmailChange={setAuthEmail} onPasswordChange={setAuthPassword} onSubmit={handleLogin} loading={authLoading} error={authError} />}
+                  {step === 'confirm'    && <ConfirmStep service={selectedService} provider={selectedProvider} workflow={selectedWorkflow} dateLabel={dateLabel} timeLabel={timeLabel} reason={reason} onReasonChange={setReason} onSubmit={handleSubmit} submitting={submitting} error={error} roleColor={roleColor} />}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  )
+
+  function buildBreadcrumb() {
+    const parts: string[] = []
+    if (selectedService) parts.push(selectedService.serviceName)
+    if (selectedProvider) parts.push(selectedProvider.name)
+    if (selectedWorkflow) parts.push(MODE_LABEL[selectedWorkflow.serviceMode] ?? selectedWorkflow.name)
+    return parts.join(' · ') || 'Book an appointment'
+  }
+}
+
+// ─── Step progress dots ────────────────────────────────────────────────────────
+
+const STEP_ORDER: DrawerStep[] = ['service', 'providers', 'workflow', 'slot', 'auth', 'confirm']
+
+function StepDots({ step, skippedSlot }: { step: DrawerStep; skippedSlot: boolean }) {
+  const visible = STEP_ORDER.filter(s => !(s === 'auth') && !(s === 'workflow') && !(skippedSlot && s === 'slot'))
+  const current = visible.indexOf(step)
+  return (
+    <div className="flex items-center justify-center gap-1.5 py-2 flex-shrink-0">
+      {visible.map((s, i) => (
+        <div
+          key={s}
+          className="rounded-full transition-all duration-300"
+          style={{
+            width: i === current ? 20 : 6,
+            height: 6,
+            backgroundColor: i <= current ? '#0C6780' : '#E5E7EB',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ─── SERVICE STEP ──────────────────────────────────────────────────────────────
+
+function ServiceStep({
+  services, loading, onSelect, selectedId, roleColor,
+}: {
+  services: DrawerService[]
+  loading: boolean
+  onSelect: (s: DrawerService) => void
+  selectedId?: string
+  roleColor: string
+}) {
+  const [q, setQ] = useState('')
+  const filtered = services.filter(s =>
+    !q || s.serviceName.toLowerCase().includes(q.toLowerCase()) || s.category.toLowerCase().includes(q.toLowerCase())
+  )
+
+  return (
+    <div className="px-4 pt-3 pb-6">
+      <input
+        type="text"
+        placeholder="Search services…"
+        value={q}
+        onChange={e => setQ(e.target.value)}
+        className="w-full mb-3 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C6780]/30"
+      />
+      {loading ? (
+        <LoadingList />
+      ) : filtered.length === 0 ? (
+        <EmptyState icon="🩺" text={q ? 'No services match your search' : 'No services available'} />
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(svc => (
+            <button
+              key={svc.id}
+              onClick={() => onSelect(svc)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 text-left transition-all
+                ${svc.id === selectedId
+                  ? 'border-[#0C6780] bg-[#0C6780]/5'
+                  : 'border-gray-100 hover:border-[#0C6780]/40 hover:bg-gray-50'
+                }`}
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+                style={{ backgroundColor: `${roleColor}18` }}>
+                {svc.emoji ?? '⚕️'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-[#001E40] leading-tight truncate">{svc.serviceName}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">{svc.category}</p>
+              </div>
+              <div className="flex-shrink-0 text-right">
+                <p className="text-sm font-bold" style={{ color: roleColor }}>Rs {(svc.defaultPrice ?? 0).toLocaleString()}</p>
+                {svc.duration && <p className="text-[10px] text-gray-400">{svc.duration} min</p>}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── PROVIDER STEP ─────────────────────────────────────────────────────────────
+
+function ProviderStep({
+  providers, loading, onSelect, selectedId, service, roleColor,
+}: {
+  providers: DrawerProvider[]
+  loading: boolean
+  onSelect: (p: DrawerProvider) => void
+  selectedId?: string
+  service: DrawerService | null
+  roleColor: string
+}) {
+  const [q, setQ] = useState('')
+  const filtered = providers.filter(p =>
+    !q || p.name.toLowerCase().includes(q.toLowerCase()) || (p.address ?? '').toLowerCase().includes(q.toLowerCase())
+  )
+
+  return (
+    <div className="px-4 pt-3 pb-6">
+      {service && (
+        <div className="mb-3 px-3 py-2 bg-[#0C6780]/8 rounded-xl flex items-center gap-2">
+          <span className="text-base">{service.emoji ?? '⚕️'}</span>
+          <p className="text-xs font-medium text-[#0C6780] truncate">{service.serviceName}</p>
+        </div>
+      )}
+      <input
+        type="text"
+        placeholder="Search providers…"
+        value={q}
+        onChange={e => setQ(e.target.value)}
+        className="w-full mb-3 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C6780]/30"
+      />
+      {loading ? (
+        <LoadingList />
+      ) : filtered.length === 0 ? (
+        <EmptyState icon="👨‍⚕️" text={q ? 'No providers match your search' : 'No providers available for this service'} />
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(p => (
+            <button
+              key={p.id}
+              onClick={() => onSelect(p)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 text-left transition-all
+                ${p.id === selectedId
+                  ? 'border-[#0C6780] bg-[#0C6780]/5'
+                  : 'border-gray-100 hover:border-[#0C6780]/40 hover:bg-gray-50'
+                }`}
+            >
+              <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+                <img
+                  src={avatarUrl(p)}
+                  alt={p.name}
+                  className="w-full h-full object-cover"
+                  onError={e => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=0C6780&color=fff&size=80` }}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-[#001E40] leading-tight">{p.name}</p>
+                {p.specializations?.length ? (
+                  <p className="text-[11px] text-gray-400 truncate">{p.specializations.slice(0, 2).join(', ')}</p>
+                ) : p.address ? (
+                  <p className="text-[11px] text-gray-400 truncate">{p.address}</p>
+                ) : null}
+              </div>
+              {(p.rating ?? 0) > 0 && (
+                <div className="flex items-center gap-0.5 flex-shrink-0">
+                  <FaStar className="text-amber-400 text-[10px]" />
+                  <span className="text-[11px] font-semibold text-gray-700">{(p.rating ?? 0).toFixed(1)}</span>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── WORKFLOW STEP ─────────────────────────────────────────────────────────────
+
+function WorkflowStep({
+  workflows, onSelect, selectedId, roleColor,
+}: {
+  workflows: WorkflowOption[]
+  onSelect: (wf: WorkflowOption) => void
+  selectedId?: string
+  roleColor: string
+}) {
+  return (
+    <div className="px-4 pt-4 pb-6">
+      <p className="text-xs text-gray-500 mb-4">How would you like this appointment?</p>
+      <div className="space-y-3">
+        {workflows.map(wf => {
+          const label = MODE_LABEL[wf.serviceMode] ?? wf.name
+          const emoji = MODE_EMOJI[wf.serviceMode] ?? '📋'
+          const selected = wf.id === selectedId
+          return (
+            <button
+              key={wf.id}
+              onClick={() => onSelect(wf)}
+              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 transition-all
+                ${selected ? 'border-[#0C6780] bg-[#0C6780]/5 shadow-sm' : 'border-gray-200 hover:border-[#0C6780]/40'}`}
+            >
+              <span className="text-2xl">{emoji}</span>
+              <div className="flex-1 text-left">
+                <p className={`text-sm font-semibold ${selected ? 'text-[#0C6780]' : 'text-[#001E40]'}`}>{label}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">{wf.name}</p>
+              </div>
+              {selected && <FaCheckCircle style={{ color: roleColor }} className="text-base flex-shrink-0" />}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── SLOT STEP ─────────────────────────────────────────────────────────────────
+
+function SlotStep({
+  days, selectedDate, selectedTime, slots, loading,
+  onSelectDate, onSelectTime, onNext, roleColor,
+}: {
+  days: Date[]
+  selectedDate: Date | null
+  selectedTime: string | null
+  slots: TimeSlot[]
+  loading: boolean
+  onSelectDate: (d: Date) => void
+  onSelectTime: (t: string) => void
+  onNext: () => void
+  roleColor: string
+}) {
+  const availableSlots = slots.filter(s => !s.taken)
+
+  return (
+    <div className="px-4 pt-3 pb-6">
+      {/* Date strip */}
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-3 [&::-webkit-scrollbar]:hidden">
+        {days.map(d => {
+          const isSel = selectedDate?.toDateString() === d.toDateString()
+          const isToday = d.toDateString() === new Date().toDateString()
+          const closed = d.getDay() === 0
+          return (
+            <button
+              key={d.toDateString()}
+              onClick={() => !closed && onSelectDate(d)}
+              disabled={closed}
+              className={`flex-shrink-0 flex flex-col items-center px-3 py-2.5 rounded-xl min-w-[50px] transition-all
+                ${closed ? 'opacity-25 cursor-not-allowed' : ''}
+                ${isSel ? 'bg-[#001E40] text-white shadow-lg' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}
+            >
+              <span className="text-[9px] font-bold uppercase tracking-wider">{DOW[d.getDay()]}</span>
+              <span className={`text-sm font-black mt-0.5 ${isToday && !isSel ? 'text-[#0C6780]' : ''}`}>{d.getDate()}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Time slots */}
+      {loading ? (
+        <div className="py-8 flex justify-center gap-2">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="w-2 h-2 rounded-full bg-gray-300 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+          ))}
+        </div>
+      ) : !selectedDate ? (
+        <p className="text-xs text-gray-400 text-center py-8">Select a date above</p>
+      ) : availableSlots.length === 0 ? (
+        <EmptyState icon="📅" text="No slots available for this day" />
+      ) : (
+        <>
+          <div className="grid grid-cols-4 gap-2 max-h-52 overflow-y-auto mb-4">
+            {slots.map(slot => {
+              const isSel = selectedTime === slot.time
+              return (
+                <button
+                  key={slot.time}
+                  onClick={() => !slot.taken && onSelectTime(slot.time)}
+                  disabled={slot.taken}
+                  className={`py-2.5 rounded-xl text-[11px] font-semibold transition-all text-center
+                    ${slot.taken
+                      ? 'bg-gray-50 text-gray-300 cursor-not-allowed line-through'
+                      : isSel
+                        ? 'bg-[#001E40] text-white shadow-md ring-2 ring-[#0C6780]/40'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                  {slot.label}
+                </button>
+              )
+            })}
+          </div>
+          <button
+            onClick={onNext}
+            disabled={!selectedTime}
+            className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition-all
+              disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ backgroundColor: roleColor }}
+          >
+            Continue <FaArrowRight className="inline ml-1 text-xs" />
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── AUTH STEP ────────────────────────────────────────────────────────────────
+
+function AuthStep({
+  email, password, onEmailChange, onPasswordChange, onSubmit, loading, error,
+}: {
+  email: string
+  password: string
+  onEmailChange: (v: string) => void
+  onPasswordChange: (v: string) => void
+  onSubmit: () => void
+  loading: boolean
+  error: string | null
+}) {
+  return (
+    <div className="px-5 pt-4 pb-8">
+      <div className="flex items-center gap-2 mb-5">
+        <div className="w-9 h-9 rounded-xl bg-[#0C6780]/10 flex items-center justify-center">
+          <FaLock className="text-[#0C6780] text-sm" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-[#001E40]">Sign in to complete booking</p>
+          <p className="text-[11px] text-gray-400">Your appointment is ready — just log in</p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mb-3 px-3 py-2.5 rounded-xl bg-red-50 border border-red-100">
+          <p className="text-xs text-red-600">{error}</p>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        <div>
+          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => onEmailChange(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && onSubmit()}
+            placeholder="you@example.com"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C6780]/30"
+          />
+        </div>
+        <div>
+          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={e => onPasswordChange(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && onSubmit()}
+            placeholder="••••••••"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C6780]/30"
+          />
+        </div>
+        <button
+          onClick={onSubmit}
+          disabled={loading || !email || !password}
+          className="w-full py-3.5 bg-[#0C6780] text-white rounded-xl text-sm font-bold
+            hover:bg-[#0a5a6e] transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <span className="flex gap-1.5">
+              {[0, 1, 2].map(i => <span key={i} className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
+            </span>
+          ) : 'Sign in & confirm booking'}
+        </button>
+        <p className="text-center text-xs text-gray-400">
+          No account?{' '}
+          <a href="/signup" className="text-[#0C6780] font-medium hover:underline">Create one here →</a>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ─── CONFIRM STEP ─────────────────────────────────────────────────────────────
+
+function ConfirmStep({
+  service, provider, workflow, dateLabel, timeLabel,
+  reason, onReasonChange, onSubmit, submitting, error, roleColor,
+}: {
+  service: DrawerService | null
+  provider: DrawerProvider | null
+  workflow: WorkflowOption | null
+  dateLabel: string
+  timeLabel: string
+  reason: string
+  onReasonChange: (v: string) => void
+  onSubmit: () => void
+  submitting: boolean
+  error: string | null
+  roleColor: string
+}) {
+  return (
+    <div className="px-4 pt-3 pb-8 space-y-3">
+      {error && (
+        <div className="px-3 py-2.5 rounded-xl bg-red-50 border border-red-100">
+          <p className="text-xs text-red-600">{error}</p>
+        </div>
+      )}
+
+      {/* Service card */}
+      {service && (
+        <SummaryRow
+          icon={<span className="text-xl">{service.emoji ?? '⚕️'}</span>}
+          label="Service"
+          primary={service.serviceName}
+          secondary={service.category}
+          right={<span className="text-sm font-black" style={{ color: roleColor }}>Rs {(service.defaultPrice ?? 0).toLocaleString()}</span>}
+          color={roleColor}
+        />
+      )}
+
+      {/* Provider card */}
+      {provider && (
+        <SummaryRow
+          icon={
+            <img
+              src={avatarUrl(provider)}
+              alt={provider.name}
+              className="w-full h-full object-cover"
+              onError={e => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(provider.name)}&background=0C6780&color=fff&size=80` }}
+            />
+          }
+          label="Provider"
+          primary={provider.name}
+          secondary={provider.address ?? undefined}
+          color={roleColor}
+        />
+      )}
+
+      {/* Workflow */}
+      {workflow && (
+        <SummaryRow
+          icon={<span className="text-xl">{MODE_EMOJI[workflow.serviceMode] ?? '📋'}</span>}
+          label="Appointment type"
+          primary={MODE_LABEL[workflow.serviceMode] ?? workflow.name}
+          color={roleColor}
+        />
+      )}
+
+      {/* Date + time */}
+      {dateLabel && timeLabel && (
+        <SummaryRow
+          icon={<FaCalendarAlt style={{ color: roleColor }} className="text-base" />}
+          label="Date & time"
+          primary={dateLabel}
+          secondary={timeLabel}
+          right={<FaCheckCircle className="text-emerald-500 text-base flex-shrink-0" />}
+          color={roleColor}
+        />
+      )}
+
+      {/* Optional reason */}
+      <div>
+        <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5 block">
+          Reason for visit <span className="text-gray-300 font-normal normal-case">(optional)</span>
+        </label>
+        <textarea
+          value={reason}
+          onChange={e => onReasonChange(e.target.value)}
+          rows={2}
+          placeholder="e.g. Annual check-up, chest pain…"
+          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#0C6780]/30"
+        />
+      </div>
+
+      <button
+        onClick={onSubmit}
+        disabled={submitting || !service || !provider || !dateLabel || !timeLabel}
+        className="w-full py-4 rounded-xl text-sm font-bold text-white transition-all
+          hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2 shadow-lg"
+        style={{ backgroundColor: roleColor }}
+      >
+        {submitting ? (
+          <span className="flex gap-1.5">
+            {[0, 1, 2].map(i => <span key={i} className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
+          </span>
+        ) : (
+          <>Confirm Booking <FaArrowRight className="text-xs" /></>
+        )}
+      </button>
+    </div>
+  )
+}
+
+// ─── Shared UI ────────────────────────────────────────────────────────────────
+
+function SummaryRow({ icon, label, primary, secondary, right, color }: {
+  icon: React.ReactNode
+  label: string
+  primary: string
+  secondary?: string
+  right?: React.ReactNode
+  color: string
+}) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100">
+      <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0"
+        style={{ backgroundColor: `${color}12` }}>
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">{label}</p>
+        <p className="text-sm font-semibold text-[#001E40] leading-tight truncate">{primary}</p>
+        {secondary && <p className="text-[11px] text-gray-400 truncate">{secondary}</p>}
+      </div>
+      {right && <div className="flex-shrink-0">{right}</div>}
+    </div>
+  )
+}
+
+function LoadingList() {
+  return (
+    <div className="space-y-2">
+      {[0, 1, 2, 4].map(i => (
+        <div key={i} className="animate-pulse h-[68px] bg-gray-100 rounded-2xl" />
+      ))}
+    </div>
+  )
+}
+
+function EmptyState({ icon, text }: { icon: string; text: string }) {
+  return (
+    <div className="py-12 text-center">
+      <span className="text-4xl">{icon}</span>
+      <p className="text-sm text-gray-400 mt-3">{text}</p>
+    </div>
+  )
+}
