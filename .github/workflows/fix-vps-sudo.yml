@@ -1,0 +1,64 @@
+name: Fix VPS — Grant sudo + Open 443 + Provision SSL
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    name: Fix VPS permissions and provision SSL
+    runs-on: [self-hosted, mediwyz]
+    steps:
+      - name: Grant runner passwordless sudo via Docker
+        run: |
+          # The runner is in the docker group so it can run docker commands.
+          # We mount /etc from the host inside an alpine container to write
+          # the sudoers file — no existing sudo needed.
+          RUNNER_USER="$(whoami)"
+          echo "Runner is running as: $RUNNER_USER"
+
+          docker run --rm \
+            -v /etc:/host-etc \
+            -v /usr/sbin:/host-usrsbin \
+            alpine sh -c "
+              echo '${RUNNER_USER} ALL=(ALL) NOPASSWD: ALL' > /host-etc/sudoers.d/runner-nopasswd
+              chmod 440 /host-etc/sudoers.d/runner-nopasswd
+              echo 'Sudoers entry written for ${RUNNER_USER}'
+            "
+
+      - name: Verify sudo works
+        run: sudo id
+
+      - name: Open port 443 in UFW
+        run: |
+          sudo ufw allow 443/tcp || true
+          sudo ufw allow 'Nginx Full' || true
+          sudo ufw --force enable || true
+          sudo ufw status
+
+      - name: Stop host nginx if running (to free ports)
+        run: sudo systemctl stop nginx 2>/dev/null || true
+
+      - name: Install certbot if missing
+        run: |
+          if ! command -v certbot >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y certbot python3-certbot-nginx
+          fi
+          certbot --version
+
+      - name: Start nginx and provision SSL cert
+        env:
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+          ADMIN_EMAIL: ${{ secrets.SUPER_ADMIN_EMAIL }}
+        run: |
+          DEPLOY_DIR="${{ secrets.DEPLOY_DIR || 'mediwyz' }}"
+          sudo systemctl start nginx
+          APP_DOMAIN="$APP_DOMAIN" ADMIN_EMAIL="$ADMIN_EMAIL" \
+            bash /root/$DEPLOY_DIR/scripts/setup-nginx.sh
+
+      - name: Verify HTTPS
+        env:
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+        run: |
+          sleep 5
+          curl -sI https://$APP_DOMAIN | head -5 || echo "HTTPS check failed — check certbot logs on VPS"
