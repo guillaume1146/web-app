@@ -31,66 +31,89 @@ export class ProvidersService {
   }
 
   // ─── GET /providers/:id/services ───────────────────────────────────────
-  // Returns ALL active PlatformServices for this provider's role type that
-  // have at least one active workflow template. Provider-specific price
-  // overrides (ProviderServiceConfig.priceOverride) are applied on top.
-  // Starting from PlatformService instead of ProviderServiceConfig ensures
-  // every bookable service appears even if the provider hasn't customised it.
+  // Returns active PlatformServices for this provider with their attached
+  // workflow templates.
+  //
+  // Workflow resolution (most-specific wins):
+  //   1. Provider explicitly attached templates via ProviderServiceWorkflow
+  //      → use exactly those (respects per-provider appointment type choice)
+  //   2. Service-specific templates (WorkflowTemplate.platformServiceId = svc.id)
+  //      for this provider type created by system or regional admin
+  //   3. Generic templates (platformServiceId = null) for this provider type
+  //      (system defaults + regional admin)
+  //
+  // Only services where the provider has a ProviderServiceConfig are returned
+  // (the provider must have opted in to offer the service).
 
   async getServices(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { userType: true },
+      select: { userType: true, regionId: true },
     });
     if (!user) return [];
 
-    // All active platform services for this role — no workflow-linkage filter
-    // because most templates resolve generically (platformServiceId = null).
-    const platformServices = await this.prisma.platformService.findMany({
-      where: { providerType: user.userType as string, isActive: true },
-      include: {
+    // Provider's service configs — the source of truth for "what does this provider offer"
+    // Cast to any[] because the Prisma client may not yet reflect the new
+    // ProviderServiceWorkflow relation (regenerated in CI after schema push).
+    const configs: any[] = await (this.prisma.providerServiceConfig as any).findMany({
+      where: { providerUserId: userId, isActive: true },
+      select: {
+        platformServiceId: true,
+        priceOverride: true,
         workflowTemplates: {
-          where: {
-            isActive: true,
-            OR: [
-              { createdByProviderId: null },   // system / regional-admin defaults
-              { createdByProviderId: userId },  // this provider's own custom templates
-            ],
+          select: {
+            workflowTemplate: {
+              select: { id: true, name: true, serviceMode: true, steps: true, isActive: true },
+            },
           },
-          select: { id: true, name: true, serviceMode: true, isDefault: true, steps: true },
-          orderBy: { isDefault: 'desc' },
         },
       },
+    });
+
+    if (configs.length === 0) return [];
+
+    // Fetch the platform service details for all opted-in services
+    const svcIds = configs.map(c => c.platformServiceId);
+    const platformServices = await this.prisma.platformService.findMany({
+      where: { id: { in: svcIds }, isActive: true },
       orderBy: { serviceName: 'asc' },
     });
 
-    // Generic templates (platformServiceId = null) for this role — used as the
-    // fallback workflow list for services that have no service-specific templates.
-    // This mirrors the registry cascade: specific > generic.
-    const genericTemplates = await this.prisma.workflowTemplate.findMany({
+    // Fallback templates — used when a config has no explicitly attached workflows.
+    // Fetch once: service-specific + generic for this provider type, from system & regional admin.
+    const fallbackTemplates = await this.prisma.workflowTemplate.findMany({
       where: {
         isActive: true,
         providerType: user.userType as string,
-        platformServiceId: null,
+        createdByProviderId: null,   // system or regional admin only
         OR: [
-          { createdByProviderId: null },
-          { createdByProviderId: userId },
+          { platformServiceId: { in: svcIds } },  // service-specific
+          { platformServiceId: null },              // generic for this role
         ],
       },
-      select: { id: true, name: true, serviceMode: true, isDefault: true, steps: true },
-      orderBy: [{ isDefault: 'desc' }, { serviceMode: 'asc' }],
+      select: { id: true, name: true, serviceMode: true, steps: true, platformServiceId: true },
+      orderBy: [{ platformServiceId: 'desc' }, { isDefault: 'desc' }, { serviceMode: 'asc' }],
     });
 
-    const configs = await this.prisma.providerServiceConfig.findMany({
-      where: { providerUserId: userId, isActive: true },
-      select: { platformServiceId: true, priceOverride: true },
-    });
-    const priceMap = new Map(configs.map(c => [c.platformServiceId, c.priceOverride]));
+    // Build maps for fast lookup
+    const configMap = new Map(configs.map(c => [c.platformServiceId, c]));
+    const svcSpecificFallback = new Map<string, typeof fallbackTemplates>();
+    const genericFallback: typeof fallbackTemplates = [];
+    for (const t of fallbackTemplates) {
+      if (t.platformServiceId) {
+        const list = svcSpecificFallback.get(t.platformServiceId) ?? [];
+        list.push(t);
+        svcSpecificFallback.set(t.platformServiceId, list);
+      } else {
+        genericFallback.push(t);
+      }
+    }
 
     const normaliseSteps = (raw: any[]) =>
       [...raw]
         .sort((a, b) => (a.stepOrder ?? a.order ?? 0) - (b.stepOrder ?? b.order ?? 0))
-        .map(s => ({ order: s.stepOrder ?? s.order ?? 0, label: s.label ?? '', statusCode: s.statusCode ?? '' }));
+        .map(s => ({ order: s.stepOrder ?? s.order ?? 0, label: s.label ?? '', statusCode: s.statusCode ?? '' }))
+        .filter(s => s.label);
 
     const toWorkflow = (wf: { id: string; name: string; serviceMode: string; steps: any }) => ({
       id: wf.id,
@@ -99,18 +122,35 @@ export class ProvidersService {
       steps: normaliseSteps(Array.isArray(wf.steps) ? wf.steps : []),
     });
 
-    return platformServices.map(svc => ({
-      id: svc.id,
-      serviceName: svc.serviceName,
-      category: svc.category,
-      description: svc.description,
-      price: priceMap.get(svc.id) ?? svc.defaultPrice,
-      duration: svc.duration,
-      // Service-specific templates take priority; fall back to generic role templates.
-      workflows: svc.workflowTemplates.length > 0
-        ? svc.workflowTemplates.map(toWorkflow)
-        : genericTemplates.map(toWorkflow),
-    }));
+    return platformServices.map(svc => {
+      const config = configMap.get(svc.id);
+      const price = config?.priceOverride ?? svc.defaultPrice;
+
+      // Priority 1: workflows explicitly attached by the provider for this service
+      const explicitWorkflows = (config?.workflowTemplates ?? [])
+        .map(link => link.workflowTemplate)
+        .filter(wt => wt.isActive);
+
+      // Priority 2: service-specific system/admin templates
+      const svcFallback = svcSpecificFallback.get(svc.id) ?? [];
+
+      // Priority 3: generic role templates
+      const workflows = explicitWorkflows.length > 0
+        ? explicitWorkflows.map(toWorkflow)
+        : svcFallback.length > 0
+          ? svcFallback.map(toWorkflow)
+          : genericFallback.map(toWorkflow);
+
+      return {
+        id: svc.id,
+        serviceName: svc.serviceName,
+        category: svc.category,
+        description: svc.description,
+        price,
+        duration: svc.duration,
+        workflows,
+      };
+    });
   }
 
   // ─── GET /providers/:id/reviews ────────────────────────────────────────

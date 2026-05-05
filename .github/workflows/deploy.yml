@@ -230,6 +230,7 @@ jobs:
           done
 
           echo "=== Starting API (NestJS) ==="
+          docker rm -f mediwyz-api 2>/dev/null || true
           docker compose up -d --no-build --force-recreate api
 
           echo "Waiting for API to be healthy..."

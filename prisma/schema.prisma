@@ -2538,9 +2538,26 @@ model ProviderServiceConfig {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
+  // Workflow templates explicitly attached by the provider when they offer this service
+  workflowTemplates ProviderServiceWorkflow[]
+
   @@unique([platformServiceId, providerUserId])
   @@index([providerUserId])
   @@index([platformServiceId])
+}
+
+// Join table: which workflow templates a provider offers for a specific service
+model ProviderServiceWorkflow {
+  id                      String                @id @default(uuid())
+  providerServiceConfigId String
+  providerServiceConfig   ProviderServiceConfig @relation(fields: [providerServiceConfigId], references: [id], onDelete: Cascade)
+  workflowTemplateId      String
+  workflowTemplate        WorkflowTemplate      @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
+  createdAt               DateTime              @default(now())
+
+  @@unique([providerServiceConfigId, workflowTemplateId])
+  @@index([providerServiceConfigId])
+  @@index([workflowTemplateId])
 }
 
 // ─── Service Groups (regional admin groups services for plans) ───────────────
@@ -2714,6 +2731,7 @@ model WorkflowTemplate {
 
   instances             WorkflowInstance[]
   notificationTemplates WorkflowNotificationTemplate[]
+  providerServiceLinks  ProviderServiceWorkflow[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
