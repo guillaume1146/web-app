@@ -215,28 +215,33 @@ export class BookingsService {
       await Promise.all(slotUpserts);
     } catch { /* non-fatal — slot blocking is a UX optimisation, not a hard constraint */ }
 
-    // Resolve the service mode from the linked workflow template when a
-    // platformServiceId is given. This ensures the mode is always
-    // authoritative (server-side from the workflow) and never client-supplied.
+    // Derive the service mode (consultation type) from the workflow template.
+    // Priority: user-selected workflowTemplateId > service-linked default > client hint.
     let derivedConsultationType = data.consultationType || data.type;
-    if (data.platformServiceId) {
+    if (data.workflowTemplateId) {
+      const pinnedTemplate = await this.prisma.workflowTemplate.findUnique({
+        where: { id: data.workflowTemplateId },
+        select: { serviceMode: true },
+      });
+      if (pinnedTemplate) derivedConsultationType = pinnedTemplate.serviceMode;
+    } else if (data.platformServiceId) {
       const linkedTemplate = await this.prisma.workflowTemplate.findFirst({
         where: { platformServiceId: data.platformServiceId, isActive: true },
         select: { serviceMode: true },
         orderBy: { isDefault: 'desc' },
       });
-      if (linkedTemplate) {
-        derivedConsultationType = linkedTemplate.serviceMode;
-      }
+      if (linkedTemplate) derivedConsultationType = linkedTemplate.serviceMode;
     }
 
-    // Attach workflow (uses 'service' as the universal booking route)
+    // Attach workflow — pass workflowTemplateId so the registry pins to the
+    // template the patient explicitly selected instead of running the full cascade.
     const wf = await this.workflowEngine.attachWorkflow({
       bookingId: booking.id, bookingRoute: 'service', patientUserId,
       providerUserId: data.providerUserId, providerType,
       consultationType: derivedConsultationType,
       servicePrice: fee, regionCode: provider.regionId,
       platformServiceId: data.platformServiceId,
+      workflowTemplateId: data.workflowTemplateId,
     });
 
     if (!wf.workflowInstanceId) {

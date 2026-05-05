@@ -93,15 +93,26 @@ export class WorkflowEngineService {
     bookingId: string; bookingType: string; platformServiceId?: string | null;
     providerUserId: string; providerType: string; patientUserId: string;
     serviceMode: 'office' | 'home' | 'video'; regionCode?: string | null;
+    workflowTemplateId?: string | null;
     metadata?: Record<string, unknown>;
   }) {
-    const template = await this.registry.resolveTemplate({
-      platformServiceId: params.platformServiceId,
-      providerUserId: params.providerUserId,
-      providerType: params.providerType,
-      serviceMode: params.serviceMode,
-      regionCode: params.regionCode,
-    });
+    // When the caller pins a specific template (patient selected a workflow),
+    // bypass the registry cascade and use that template directly.
+    let template = params.workflowTemplateId
+      ? await this.prisma.workflowTemplate.findFirst({
+          where: { id: params.workflowTemplateId, isActive: true },
+        })
+      : null;
+
+    if (!template) {
+      template = await this.registry.resolveTemplate({
+        platformServiceId: params.platformServiceId,
+        providerUserId: params.providerUserId,
+        providerType: params.providerType,
+        serviceMode: params.serviceMode,
+        regionCode: params.regionCode,
+      });
+    }
 
     if (!template) return { success: false as const, error: 'No workflow template found for this service and mode' };
 
@@ -625,6 +636,7 @@ export class WorkflowEngineService {
     bookingId: string; bookingRoute: string; patientUserId: string;
     providerUserId: string; providerType: string; consultationType?: string;
     servicePrice?: number; platformServiceId?: string | null; regionCode?: string | null;
+    workflowTemplateId?: string | null;
   }): Promise<{ workflowInstanceId?: string; workflowError?: string }> {
     try {
       const bookingType = this.bookingTypeMap[params.bookingRoute] || params.bookingRoute;
@@ -634,6 +646,7 @@ export class WorkflowEngineService {
         providerUserId: params.providerUserId, providerType: params.providerType,
         patientUserId: params.patientUserId, serviceMode,
         regionCode: params.regionCode,
+        workflowTemplateId: params.workflowTemplateId,
         metadata: {
           ...(params.servicePrice ? { servicePrice: params.servicePrice } : {}),
           ...(params.consultationType ? { consultationType: params.consultationType } : {}),

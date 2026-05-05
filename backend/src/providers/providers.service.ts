@@ -38,23 +38,25 @@ export class ProvidersService {
   // every bookable service appears even if the provider hasn't customised it.
 
   async getServices(userId: string) {
-    // 1. Resolve provider's role
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { userType: true },
     });
     if (!user) return [];
 
-    // 2. All platform services for this role with at least one active workflow
+    // All active platform services for this role — no workflow-linkage filter
+    // because most templates resolve generically (platformServiceId = null).
     const platformServices = await this.prisma.platformService.findMany({
-      where: {
-        providerType: user.userType as string,
-        isActive: true,
-        workflowTemplates: { some: { isActive: true } },
-      },
+      where: { providerType: user.userType as string, isActive: true },
       include: {
         workflowTemplates: {
-          where: { isActive: true },
+          where: {
+            isActive: true,
+            OR: [
+              { createdByProviderId: null },   // system / regional-admin defaults
+              { createdByProviderId: userId },  // this provider's own custom templates
+            ],
+          },
           select: { id: true, name: true, serviceMode: true, isDefault: true, steps: true },
           orderBy: { isDefault: 'desc' },
         },
@@ -62,18 +64,40 @@ export class ProvidersService {
       orderBy: { serviceName: 'asc' },
     });
 
-    // 3. Provider-specific price overrides (keyed by platformServiceId)
+    // Generic templates (platformServiceId = null) for this role — used as the
+    // fallback workflow list for services that have no service-specific templates.
+    // This mirrors the registry cascade: specific > generic.
+    const genericTemplates = await this.prisma.workflowTemplate.findMany({
+      where: {
+        isActive: true,
+        providerType: user.userType as string,
+        platformServiceId: null,
+        OR: [
+          { createdByProviderId: null },
+          { createdByProviderId: userId },
+        ],
+      },
+      select: { id: true, name: true, serviceMode: true, isDefault: true, steps: true },
+      orderBy: [{ isDefault: 'desc' }, { serviceMode: 'asc' }],
+    });
+
     const configs = await this.prisma.providerServiceConfig.findMany({
       where: { providerUserId: userId, isActive: true },
       select: { platformServiceId: true, priceOverride: true },
     });
     const priceMap = new Map(configs.map(c => [c.platformServiceId, c.priceOverride]));
 
-    // 4. Merge
     const normaliseSteps = (raw: any[]) =>
       [...raw]
         .sort((a, b) => (a.stepOrder ?? a.order ?? 0) - (b.stepOrder ?? b.order ?? 0))
         .map(s => ({ order: s.stepOrder ?? s.order ?? 0, label: s.label ?? '', statusCode: s.statusCode ?? '' }));
+
+    const toWorkflow = (wf: { id: string; name: string; serviceMode: string; steps: any }) => ({
+      id: wf.id,
+      name: wf.name,
+      serviceMode: wf.serviceMode,
+      steps: normaliseSteps(Array.isArray(wf.steps) ? wf.steps : []),
+    });
 
     return platformServices.map(svc => ({
       id: svc.id,
@@ -82,12 +106,10 @@ export class ProvidersService {
       description: svc.description,
       price: priceMap.get(svc.id) ?? svc.defaultPrice,
       duration: svc.duration,
-      workflows: svc.workflowTemplates.map(wf => ({
-        id: wf.id,
-        name: wf.name,
-        serviceMode: wf.serviceMode,
-        steps: normaliseSteps(Array.isArray(wf.steps) ? wf.steps : []),
-      })),
+      // Service-specific templates take priority; fall back to generic role templates.
+      workflows: svc.workflowTemplates.length > 0
+        ? svc.workflowTemplates.map(toWorkflow)
+        : genericTemplates.map(toWorkflow),
     }));
   }
 
