@@ -153,10 +153,10 @@ jobs:
           # Auto-recreate deploy dir if it was lost (e.g. after VPS reboot/cleanup)
           if [ ! -d "/root/$DEPLOY_DIR" ]; then
             echo "Deploy dir /root/$DEPLOY_DIR missing — cloning fresh..."
-            mkdir -p /root/$DEPLOY_DIR
-            git clone https://github.com/Mediwyz/platform.git /root/$DEPLOY_DIR
-            chmod 755 /root
-            chown -R runner:runner /root/$DEPLOY_DIR
+            sudo mkdir -p /root/$DEPLOY_DIR
+            sudo git clone https://github.com/Mediwyz/platform.git /root/$DEPLOY_DIR
+            sudo chmod 755 /root
+            sudo chown -R "$(whoami):$(whoami)" /root/$DEPLOY_DIR
           fi
 
           cd /root/$DEPLOY_DIR
