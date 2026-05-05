@@ -214,6 +214,10 @@ jobs:
 
           # ── Start services in dependency order: db → api → app ────────────
           echo "=== Starting database ==="
+          # Remove any container with the same name that compose doesn't own
+          # (happens when compose project labels drift between deploys).
+          # The pgdata volume is untouched by container removal, so data is safe.
+          docker rm -f mediwyz-db 2>/dev/null || true
           docker compose up -d db
           echo "Waiting for DB to be healthy..."
           for i in $(seq 1 12); do
