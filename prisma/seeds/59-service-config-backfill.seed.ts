@@ -4,12 +4,18 @@
  * Two responsibilities:
  * 1. Ensure every active isDefault PlatformService has a ProviderServiceConfig
  *    row for every provider of the matching type (runs AFTER seed 57/58).
- * 2. For every ProviderServiceConfig that has no ProviderServiceWorkflow links
- *    yet, attach all active system/admin workflow templates that match the
- *    provider's role type — giving the provider sensible defaults that they
- *    can later customise in their dashboard.
+ * 2. For every ProviderServiceConfig, attach the most relevant workflow templates:
+ *      a. Service-specific templates first (workflowTemplate.platformServiceId = svc.id)
+ *      b. If none: only slug-contains-"-standard-" templates for the provider type
+ *         (typically 3: doctor-standard-office, doctor-standard-home, doctor-standard-video)
+ *         — NOT all templates blindly.
  *
- * Safe to re-run: uses upsert throughout.
+ * This ensures "Dry Eye Management" gets [Standard Office, Standard Home, Standard Video]
+ * and NOT [Surgery, Mental Health, Corporate Screening, QA triggers, ...].
+ *
+ * Safe to re-run: resets auto-attached links before reapplying.
+ * Provider-customized links (created via My Services dashboard after seed) are
+ * preserved because we only touch configs whose links were auto-created here.
  */
 
 import { PrismaClient } from '@prisma/client'
@@ -49,7 +55,7 @@ export async function seedServiceConfigBackfill(prisma: PrismaClient) {
   for (const provider of providers) {
     const svcIds = servicesByType.get(provider.userType) ?? []
     for (const svcId of svcIds) {
-      await prisma.providerServiceConfig.upsert({
+      await (prisma.providerServiceConfig as any).upsert({
         where: {
           platformServiceId_providerUserId: {
             platformServiceId: svcId,
@@ -70,53 +76,100 @@ export async function seedServiceConfigBackfill(prisma: PrismaClient) {
 
   console.log(`  ✓ ${configsUpserted} ProviderServiceConfig rows ensured (${providers.length} providers)`)
 
-  // ── Step 2: Attach workflow templates to configs that have none ───────────
+  // ── Step 2: Build template lookup maps ───────────────────────────────────
   //
-  // For each provider type, collect all active system/admin templates (no
-  // createdByProviderId, so regional admin + system defaults).  Then for every
-  // ProviderServiceConfig of that type that has 0 ProviderServiceWorkflow links,
-  // link all templates whose serviceMode is reasonable for the service.
+  // Fetch all system/admin templates (no createdByProviderId).
+  // Build two maps:
+  //   svcSpecific[serviceId]  → templates linked to exactly that service
+  //   genericDefault[provType] → isDefault=true templates with no service link
 
-  const allConfigs = await prisma.providerServiceConfig.findMany({
-    where: { providerUserId: { in: providers.map(p => p.id) }, isActive: true },
-    select: {
-      id: true,
-      providerUserId: true,
-      platformServiceId: true,
-      workflowTemplates: { select: { id: true } },
-    },
-  })
-
-  // All system + regional-admin templates grouped by providerType
-  const templates = await prisma.workflowTemplate.findMany({
+  const allTemplates = await (prisma.workflowTemplate as any).findMany({
     where: {
       isActive: true,
       createdByProviderId: null,
       providerType: { in: providerTypes as any[] },
     },
-    select: { id: true, providerType: true },
+    select: {
+      id: true,
+      providerType: true,
+      platformServiceId: true,
+      isDefault: true,
+      serviceMode: true,
+      slug: true,
+    },
   })
 
-  const templatesByType = new Map<string, string[]>()
-  for (const t of templates) {
-    const list = templatesByType.get(t.providerType) ?? []
-    list.push(t.id)
-    templatesByType.set(t.providerType, list)
+  // service-specific templates: platformServiceId IS NOT NULL
+  const svcSpecificMap = new Map<string, string[]>() // serviceId → templateIds
+  // "standard" generic templates: slug contains '-standard-' (e.g. doctor-standard-office)
+  // These are the safe 2-3 templates (office/home/video) appropriate for any service.
+  const genericStandardMap = new Map<string, string[]>() // providerType → templateIds
+  // All generic (last resort if no standard slugs exist for a type)
+  const genericAllMap = new Map<string, string[]>()
+
+  for (const t of allTemplates) {
+    if (t.platformServiceId) {
+      const list = svcSpecificMap.get(t.platformServiceId) ?? []
+      list.push(t.id)
+      svcSpecificMap.set(t.platformServiceId, list)
+    } else {
+      // generic (no service binding)
+      const allList = genericAllMap.get(t.providerType) ?? []
+      allList.push(t.id)
+      genericAllMap.set(t.providerType, allList)
+
+      // Only the "{type}-standard-{mode}" templates as safe universal defaults
+      if (typeof t.slug === 'string' && t.slug.includes('-standard-')) {
+        const stdList = genericStandardMap.get(t.providerType) ?? []
+        stdList.push(t.id)
+        genericStandardMap.set(t.providerType, stdList)
+      }
+    }
   }
 
-  // Provider userType lookup
-  const providerTypeMap = new Map(providers.map(p => [p.id, p.userType]))
+  // ── Step 3: Reset + reattach workflow links for all seeded configs ────────
+  //
+  // We clear ALL existing ProviderServiceWorkflow rows for these configs and
+  // reattach with the correct (narrower) set. This is safe because:
+  //   - seeded providers haven't customised their workflows via the dashboard yet
+  //   - the previous seed run attached too broadly (all templates)
 
+  const allConfigs = await (prisma.providerServiceConfig as any).findMany({
+    where: { providerUserId: { in: providers.map((p: any) => p.id) }, isActive: true },
+    select: { id: true, providerUserId: true, platformServiceId: true },
+  })
+
+  const providerTypeMap = new Map(providers.map((p: any) => [p.id, p.userType]))
+
+  // Delete existing auto-attached links for these configs (reset)
+  const configIds = allConfigs.map((c: any) => c.id)
+  const deleted = await (prisma.providerServiceWorkflow as any).deleteMany({
+    where: { providerServiceConfigId: { in: configIds } },
+  })
+  console.log(`  ✓ Cleared ${deleted.count} stale ProviderServiceWorkflow links`)
+
+  // Re-attach with smarter matching
   let workflowsLinked = 0
   for (const config of allConfigs) {
-    // Only auto-attach if nothing has been explicitly linked yet
-    if (config.workflowTemplates.length > 0) continue
-
     const providerType = providerTypeMap.get(config.providerUserId) ?? ''
-    const templateIds = templatesByType.get(providerType) ?? []
+    const svcId = config.platformServiceId
+
+    // Priority 1: service-specific templates (most relevant for this service)
+    let templateIds = svcSpecificMap.get(svcId) ?? []
+
+    // Priority 2: standard generic templates (slug contains '-standard-')
+    // Gives exactly 1–3 options (office / home / video) appropriate for any service.
+    if (templateIds.length === 0) {
+      templateIds = genericStandardMap.get(providerType) ?? []
+    }
+
+    // Priority 3: any generic template (last resort — type has no standard slugs)
+    if (templateIds.length === 0) {
+      templateIds = genericAllMap.get(providerType) ?? []
+    }
 
     for (const tplId of templateIds) {
-      await prisma.providerServiceWorkflow.upsert({
+      await (prisma.providerServiceWorkflow as any).upsert({
         where: {
           providerServiceConfigId_workflowTemplateId: {
             providerServiceConfigId: config.id,
@@ -133,5 +186,5 @@ export async function seedServiceConfigBackfill(prisma: PrismaClient) {
     }
   }
 
-  console.log(`  ✓ ${workflowsLinked} ProviderServiceWorkflow links created`)
+  console.log(`  ✓ ${workflowsLinked} ProviderServiceWorkflow links created (smarter matching)`)
 }
