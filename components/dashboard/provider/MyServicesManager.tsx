@@ -1,0 +1,856 @@
+'use client'
+
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Icon } from '@iconify/react'
+import {
+  FaPlus, FaTrash, FaSearch, FaCheckCircle, FaTimes, FaEdit,
+  FaConciergeBell, FaListAlt, FaArrowLeft, FaExclamationTriangle,
+  FaCog, FaSave,
+} from 'react-icons/fa'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface WorkflowStep {
+  order: number
+  label: string
+  statusCode: string
+}
+
+interface WorkflowTemplate {
+  id: string
+  name: string
+  serviceMode: string
+  steps: WorkflowStep[]
+  isDefault?: boolean
+  createdByAdminId?: string | null
+  createdByProviderId?: string | null
+}
+
+interface ServiceConfig {
+  id: string
+  platformServiceId: string
+  priceOverride: number | null
+  isActive: boolean
+  workflows: WorkflowTemplate[]
+  platformService: {
+    id: string
+    serviceName: string
+    category: string
+    description: string | null
+    defaultPrice: number
+    duration: number | null
+    iconKey: string | null
+    emoji: string | null
+    currency: string
+  }
+}
+
+interface CatalogService {
+  id: string
+  serviceName: string
+  defaultPrice: number
+  description: string | null
+  duration: number | null
+  iconKey: string | null
+  emoji: string | null
+}
+
+interface CatalogGroup {
+  category: string
+  services: CatalogService[]
+}
+
+// ─── Constants ─────────────────────────────────────────────────────────────────
+
+const MODE_LABEL: Record<string, string> = {
+  office: 'In-Person', home: 'Home Visit', video: 'Video Call',
+}
+const MODE_COLOR: Record<string, string> = {
+  office: 'bg-sky-100 text-sky-700 border-sky-200',
+  home:   'bg-orange-100 text-orange-700 border-orange-200',
+  video:  'bg-purple-100 text-purple-700 border-purple-200',
+}
+const MODE_EMOJI: Record<string, string> = {
+  office: '🏥', home: '🏠', video: '📹',
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────────
+
+export default function MyServicesManager({ providerType, slug }: { providerType: string; slug?: string }) {
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [configs, setConfigs] = useState<ServiceConfig[]>([])
+  const [catalogGroups, setCatalogGroups] = useState<CatalogGroup[]>([])
+  const [availableTemplates, setAvailableTemplates] = useState<WorkflowTemplate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Panel views: 'list' | 'add-catalog' | 'manage-workflows' | 'edit-price'
+  type Panel = 'list' | 'add-catalog' | 'manage-workflows' | 'edit-price'
+  const [panel, setPanel] = useState<Panel>('list')
+
+  // Catalog add flow
+  const [catalogSearch, setCatalogSearch] = useState('')
+  const [selectedCatalogSvc, setSelectedCatalogSvc] = useState<CatalogService | null>(null)
+  const [newPriceOverride, setNewPriceOverride] = useState('')
+  const [newWorkflowIds, setNewWorkflowIds] = useState<Set<string>>(new Set())
+  const [saving, setSaving] = useState(false)
+
+  // Manage workflows for existing service
+  const [managingConfig, setManagingConfig] = useState<ServiceConfig | null>(null)
+  const [managedWorkflowIds, setManagedWorkflowIds] = useState<Set<string>>(new Set())
+
+  // Edit price for existing service
+  const [editingConfig, setEditingConfig] = useState<ServiceConfig | null>(null)
+  const [editPriceValue, setEditPriceValue] = useState('')
+
+  // ── Data fetchers ──────────────────────────────────────────────────────────
+
+  const fetchMyServices = useCallback(async () => {
+    try {
+      const res = await fetch('/api/services/my-services', { credentials: 'include' })
+      const j = await res.json()
+      if (j.success) setConfigs(j.data ?? [])
+    } catch { /* non-fatal */ }
+    finally { setLoading(false) }
+  }, [])
+
+  const fetchCatalog = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/services/catalog?providerType=${providerType}`)
+      const j = await res.json()
+      if (j.success) setCatalogGroups(j.data ?? [])
+    } catch { /* non-fatal */ }
+  }, [providerType])
+
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/workflow/templates?providerType=${providerType}`, { credentials: 'include' })
+      const j = await res.json()
+      if (j.success) setAvailableTemplates(j.data ?? [])
+    } catch { /* non-fatal */ }
+  }, [providerType])
+
+  useEffect(() => {
+    fetchMyServices()
+    fetchCatalog()
+    fetchTemplates()
+  }, [fetchMyServices, fetchCatalog, fetchTemplates])
+
+  // ── Toast helper ───────────────────────────────────────────────────────────
+
+  function showToast(type: 'success' | 'error', text: string) {
+    setToast({ type, text })
+    setTimeout(() => setToast(null), 4000)
+  }
+
+  // ── Derived ────────────────────────────────────────────────────────────────
+
+  // Services already offered by this provider (by platformServiceId)
+  const offeredIds = useMemo(() => new Set(configs.filter(c => c.isActive).map(c => c.platformServiceId)), [configs])
+
+  // Catalog services not yet offered
+  const filteredCatalog = useMemo(() => {
+    const q = catalogSearch.toLowerCase()
+    return catalogGroups.map(group => ({
+      ...group,
+      services: group.services.filter(s =>
+        !offeredIds.has(s.id) &&
+        (!q || s.serviceName.toLowerCase().includes(q))
+      ),
+    })).filter(g => g.services.length > 0)
+  }, [catalogGroups, offeredIds, catalogSearch])
+
+  // Active configs
+  const activeConfigs = configs.filter(c => c.isActive)
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
+
+  function openAddCatalog() {
+    setCatalogSearch('')
+    setSelectedCatalogSvc(null)
+    setNewPriceOverride('')
+    setNewWorkflowIds(new Set())
+    setPanel('add-catalog')
+  }
+
+  function openManageWorkflows(config: ServiceConfig) {
+    setManagingConfig(config)
+    setManagedWorkflowIds(new Set(config.workflows.map(w => w.id)))
+    setPanel('manage-workflows')
+  }
+
+  function openEditPrice(config: ServiceConfig) {
+    setEditingConfig(config)
+    setEditPriceValue(config.priceOverride != null ? String(config.priceOverride) : '')
+    setPanel('edit-price')
+  }
+
+  function toggleNewWorkflow(id: string) {
+    setNewWorkflowIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleManagedWorkflow(id: string) {
+    setManagedWorkflowIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  async function handleAddService() {
+    if (!selectedCatalogSvc) return
+    if (newWorkflowIds.size === 0) {
+      showToast('error', 'Select at least one appointment type (workflow) to continue')
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/services/my-services/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          platformServiceId: selectedCatalogSvc.id,
+          priceOverride: newPriceOverride ? Number(newPriceOverride) : undefined,
+          workflowTemplateIds: [...newWorkflowIds],
+        }),
+      })
+      const j = await res.json()
+      if (!j.success) throw new Error(j.message)
+      showToast('success', `"${selectedCatalogSvc.serviceName}" added to your services`)
+      setPanel('list')
+      fetchMyServices()
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Failed to add service')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleSaveWorkflows() {
+    if (!managingConfig) return
+    if (managedWorkflowIds.size === 0) {
+      showToast('error', 'At least one appointment type is required')
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/services/my-services/${managingConfig.platformServiceId}/workflows`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ workflowTemplateIds: [...managedWorkflowIds] }),
+      })
+      const j = await res.json()
+      if (!j.success) throw new Error(j.message)
+      showToast('success', 'Appointment types updated')
+      setPanel('list')
+      fetchMyServices()
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Failed to update')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleSavePrice() {
+    if (!editingConfig) return
+    setSaving(true)
+    try {
+      const res = await fetch('/api/services/my-services', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          configId: editingConfig.id,
+          priceOverride: editPriceValue !== '' ? Number(editPriceValue) : null,
+        }),
+      })
+      const j = await res.json()
+      if (!j.success) throw new Error(j.message)
+      showToast('success', 'Price updated')
+      setPanel('list')
+      fetchMyServices()
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Failed to update price')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleRemoveService(config: ServiceConfig) {
+    if (!confirm(`Remove "${config.platformService.serviceName}" from your services? Patients will no longer be able to book this.`)) return
+    try {
+      const res = await fetch(`/api/services/my-services/${config.platformServiceId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      const j = await res.json()
+      if (!j.success) throw new Error(j.message)
+      showToast('success', 'Service removed')
+      fetchMyServices()
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Failed to remove service')
+    }
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="space-y-5">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-[500] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-sm font-medium
+          ${toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
+          {toast.type === 'success' ? <FaCheckCircle /> : <FaExclamationTriangle />}
+          {toast.text}
+          <button onClick={() => setToast(null)} className="ml-1 opacity-80 hover:opacity-100"><FaTimes /></button>
+        </div>
+      )}
+
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          {panel !== 'list' ? (
+            <button
+              onClick={() => setPanel('list')}
+              className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#0C6780] mb-2 transition-colors"
+            >
+              <FaArrowLeft className="text-xs" /> Back to My Services
+            </button>
+          ) : null}
+
+          <h1 className="text-2xl font-bold text-[#001E40]">
+            {panel === 'list'             && 'My Services'}
+            {panel === 'add-catalog'      && 'Add a Service'}
+            {panel === 'manage-workflows' && 'Appointment Types'}
+            {panel === 'edit-price'       && 'Edit Price'}
+          </h1>
+          <p className="text-sm text-gray-400 mt-0.5">
+            {panel === 'list'             && `${activeConfigs.length} service${activeConfigs.length !== 1 ? 's' : ''} — patients see these when booking`}
+            {panel === 'add-catalog'      && 'Pick a service from the platform catalog and choose which appointment types you offer'}
+            {panel === 'manage-workflows' && `Appointment types patients can choose for "${managingConfig?.platformService.serviceName}"`}
+            {panel === 'edit-price'       && `Override the default price for "${editingConfig?.platformService.serviceName}"`}
+          </p>
+        </div>
+
+        {panel === 'list' && (
+          <button
+            onClick={openAddCatalog}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#0C6780] text-white rounded-xl text-sm font-semibold hover:bg-[#0a5a6e] transition-colors shadow-sm"
+          >
+            <FaPlus className="text-xs" /> Add Service
+          </button>
+        )}
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* PANEL: LIST                                                        */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {panel === 'list' && (
+        loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[0,1,2,3,4,5].map(i => (
+              <div key={i} className="animate-pulse bg-gray-100 rounded-2xl h-48" />
+            ))}
+          </div>
+        ) : activeConfigs.length === 0 ? (
+          <EmptyServicesState onAdd={openAddCatalog} />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activeConfigs.map(config => (
+              <ServiceCard
+                key={config.id}
+                config={config}
+                onManageWorkflows={() => openManageWorkflows(config)}
+                onEditPrice={() => openEditPrice(config)}
+                onRemove={() => handleRemoveService(config)}
+              />
+            ))}
+            {/* Add tile */}
+            <button
+              onClick={openAddCatalog}
+              className="flex flex-col items-center justify-center gap-3 min-h-[180px] rounded-2xl border-2 border-dashed border-gray-200
+                hover:border-[#0C6780] hover:bg-[#0C6780]/5 transition-all group"
+            >
+              <div className="w-12 h-12 rounded-xl bg-gray-100 group-hover:bg-[#0C6780]/15 flex items-center justify-center transition-colors">
+                <FaPlus className="text-gray-400 group-hover:text-[#0C6780] transition-colors" />
+              </div>
+              <p className="text-sm font-medium text-gray-400 group-hover:text-[#0C6780] transition-colors">Add a service</p>
+            </button>
+          </div>
+        )
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* PANEL: ADD FROM CATALOG                                            */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {panel === 'add-catalog' && (
+        <div className="space-y-5">
+          {!selectedCatalogSvc ? (
+            <>
+              {/* Step 1: pick a service from catalog */}
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white">
+                <FaSearch className="text-gray-400 text-sm" />
+                <input
+                  type="text"
+                  placeholder="Search services…"
+                  value={catalogSearch}
+                  onChange={e => setCatalogSearch(e.target.value)}
+                  className="flex-1 text-sm outline-none bg-transparent"
+                  autoFocus
+                />
+              </div>
+
+              {filteredCatalog.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <FaConciergeBell className="text-3xl mx-auto mb-3" />
+                  <p className="text-sm">
+                    {offeredIds.size > 0 && !catalogSearch
+                      ? 'You\'re already offering all available platform services!'
+                      : 'No services match your search.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredCatalog.map(group => (
+                    <div key={group.category}>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">
+                        {group.category.replace(/^[A-Z_]+\s—\s/, '')}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {group.services.map(svc => (
+                          <button
+                            key={svc.id}
+                            onClick={() => { setSelectedCatalogSvc(svc); setNewWorkflowIds(new Set()) }}
+                            className="flex items-center gap-3 px-4 py-3 rounded-2xl border-2 border-gray-100 bg-white
+                              hover:border-[#0C6780]/60 hover:bg-[#0C6780]/5 transition-all text-left"
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-[#0C6780]/10 flex items-center justify-center flex-shrink-0">
+                              {svc.emoji ? (
+                                <span className="text-xl">{svc.emoji}</span>
+                              ) : svc.iconKey ? (
+                                <Icon icon={svc.iconKey} width={24} height={24} color="#0C6780" />
+                              ) : (
+                                <FaConciergeBell className="text-[#0C6780]" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-[#001E40] truncate">{svc.serviceName}</p>
+                              <p className="text-xs text-gray-400">Rs {svc.defaultPrice.toLocaleString()}
+                                {svc.duration ? ` · ${svc.duration}m` : ''}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Step 2: configure workflows + price */}
+              <div className="flex items-center gap-3 px-4 py-3 bg-[#0C6780]/8 rounded-xl border border-[#0C6780]/20">
+                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                  {selectedCatalogSvc.emoji ? (
+                    <span className="text-xl">{selectedCatalogSvc.emoji}</span>
+                  ) : selectedCatalogSvc.iconKey ? (
+                    <Icon icon={selectedCatalogSvc.iconKey} width={22} height={22} color="#0C6780" />
+                  ) : (
+                    <FaConciergeBell className="text-[#0C6780]" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-[#001E40]">{selectedCatalogSvc.serviceName}</p>
+                  <p className="text-xs text-gray-500">Default price: Rs {selectedCatalogSvc.defaultPrice.toLocaleString()}</p>
+                </div>
+                <button
+                  onClick={() => setSelectedCatalogSvc(null)}
+                  className="text-xs text-gray-400 hover:text-gray-600 underline"
+                >
+                  Change
+                </button>
+              </div>
+
+              {/* Workflow selection */}
+              <div>
+                <p className="text-sm font-semibold text-[#001E40] mb-1">
+                  Appointment types <span className="text-red-500">*</span>
+                </p>
+                <p className="text-xs text-gray-400 mb-3">
+                  Choose how patients can book this service. At least one is required.
+                </p>
+                <WorkflowSelector
+                  templates={availableTemplates}
+                  selectedIds={newWorkflowIds}
+                  onToggle={toggleNewWorkflow}
+                />
+              </div>
+
+              {/* Price override */}
+              <div>
+                <p className="text-sm font-semibold text-[#001E40] mb-1">Your price (optional)</p>
+                <p className="text-xs text-gray-400 mb-2">Leave blank to use the default price of Rs {selectedCatalogSvc.defaultPrice.toLocaleString()}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 font-medium">Rs</span>
+                  <input
+                    type="number"
+                    value={newPriceOverride}
+                    onChange={e => setNewPriceOverride(e.target.value)}
+                    placeholder={String(selectedCatalogSvc.defaultPrice)}
+                    className="w-40 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0C6780]/30"
+                  />
+                </div>
+              </div>
+
+              {/* CTA */}
+              <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                <button
+                  onClick={() => setSelectedCatalogSvc(null)}
+                  className="px-4 py-2.5 text-sm text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleAddService}
+                  disabled={saving || newWorkflowIds.size === 0}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#0C6780] text-white rounded-xl text-sm font-semibold
+                    hover:bg-[#0a5a6e] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {saving ? (
+                    <span className="flex gap-1">{[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 rounded-full bg-white/70 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}</span>
+                  ) : (
+                    <><FaPlus className="text-xs" /> Add to My Services</>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* PANEL: MANAGE WORKFLOWS                                            */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {panel === 'manage-workflows' && managingConfig && (
+        <div className="space-y-5">
+          <p className="text-xs text-gray-400">
+            These define what appointment types patients can choose when they book this service from you.
+            Changes take effect immediately for new bookings.
+          </p>
+
+          <WorkflowSelector
+            templates={availableTemplates}
+            selectedIds={managedWorkflowIds}
+            onToggle={toggleManagedWorkflow}
+          />
+
+          <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+            <button
+              onClick={() => setPanel('list')}
+              className="px-4 py-2.5 text-sm text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveWorkflows}
+              disabled={saving || managedWorkflowIds.size === 0}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#0C6780] text-white rounded-xl text-sm font-semibold
+                hover:bg-[#0a5a6e] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {saving ? (
+                <span className="flex gap-1">{[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 rounded-full bg-white/70 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}</span>
+              ) : (
+                <><FaSave className="text-xs" /> Save Appointment Types</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* PANEL: EDIT PRICE                                                  */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {panel === 'edit-price' && editingConfig && (
+        <div className="max-w-sm space-y-5">
+          <div className="px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
+            <p className="text-xs text-gray-400 mb-0.5">Platform default</p>
+            <p className="text-base font-bold text-gray-600">
+              Rs {editingConfig.platformService.defaultPrice.toLocaleString()}
+            </p>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-[#001E40] mb-1.5 block">Your price (Rs)</label>
+            <p className="text-xs text-gray-400 mb-2">Leave blank to use the platform default price.</p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500 font-medium">Rs</span>
+              <input
+                type="number"
+                value={editPriceValue}
+                onChange={e => setEditPriceValue(e.target.value)}
+                placeholder={String(editingConfig.platformService.defaultPrice)}
+                className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0C6780]/30"
+                autoFocus
+              />
+            </div>
+            {editPriceValue && (
+              <button
+                onClick={() => setEditPriceValue('')}
+                className="mt-1.5 text-xs text-gray-400 hover:text-gray-600 underline"
+              >
+                Reset to default
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+            <button onClick={() => setPanel('list')} className="px-4 py-2.5 text-sm text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">
+              Cancel
+            </button>
+            <button
+              onClick={handleSavePrice}
+              disabled={saving}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#0C6780] text-white rounded-xl text-sm font-semibold
+                hover:bg-[#0a5a6e] transition-colors disabled:opacity-40"
+            >
+              {saving ? (
+                <span className="flex gap-1">{[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 rounded-full bg-white/70 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}</span>
+              ) : (
+                <><FaSave className="text-xs" /> Save Price</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Service Card ──────────────────────────────────────────────────────────────
+
+function ServiceCard({
+  config, onManageWorkflows, onEditPrice, onRemove,
+}: {
+  config: ServiceConfig
+  onManageWorkflows: () => void
+  onEditPrice: () => void
+  onRemove: () => void
+}) {
+  const svc = config.platformService
+  const price = config.priceOverride ?? svc.defaultPrice
+  const hasPriceOverride = config.priceOverride != null
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col">
+      {/* Illustration header */}
+      <div className="h-20 bg-gradient-to-br from-[#0C6780]/10 to-sky-50 flex items-center justify-center relative">
+        {svc.emoji ? (
+          <span className="text-4xl select-none">{svc.emoji}</span>
+        ) : svc.iconKey ? (
+          <Icon icon={svc.iconKey} width={40} height={40} color="#0C6780" />
+        ) : (
+          <FaConciergeBell className="text-3xl text-[#0C6780]/40" />
+        )}
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0C6780]" />
+      </div>
+
+      <div className="p-4 flex-1 flex flex-col gap-3">
+        {/* Title row */}
+        <div>
+          <h3 className="font-bold text-[#001E40] text-sm leading-tight line-clamp-2">{svc.serviceName}</h3>
+          <span className="text-[10px] text-[#0C6780] font-semibold uppercase tracking-wider">{svc.category}</span>
+        </div>
+
+        {/* Price */}
+        <div className="flex items-center gap-2">
+          <span className="text-base font-black text-[#001E40]">Rs {price.toLocaleString()}</span>
+          {hasPriceOverride && (
+            <span className="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full font-semibold">YOUR PRICE</span>
+          )}
+          {svc.duration && <span className="text-xs text-gray-400 ml-auto">{svc.duration}m</span>}
+        </div>
+
+        {/* Workflow chips */}
+        <div>
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Appointment types</p>
+          {config.workflows.length === 0 ? (
+            <button
+              onClick={onManageWorkflows}
+              className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg hover:bg-amber-100 transition-colors w-full justify-center"
+            >
+              <FaExclamationTriangle className="text-[10px]" /> No appointment types — tap to set
+            </button>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {config.workflows.map(wf => (
+                <span
+                  key={wf.id}
+                  className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${MODE_COLOR[wf.serviceMode] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}
+                >
+                  {MODE_EMOJI[wf.serviceMode] ?? '📋'} {MODE_LABEL[wf.serviceMode] ?? wf.serviceMode}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1.5 pt-2 border-t border-gray-100 mt-auto">
+          <button
+            onClick={onManageWorkflows}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-semibold
+              text-[#0C6780] bg-[#0C6780]/8 hover:bg-[#0C6780]/15 transition-colors"
+            title="Manage appointment types"
+          >
+            <FaCog className="text-[10px]" /> Appt. Types
+          </button>
+          <button
+            onClick={onEditPrice}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-semibold
+              text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+            title="Edit price"
+          >
+            <FaEdit className="text-[10px]" /> Price
+          </button>
+          <button
+            onClick={onRemove}
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+            title="Remove service"
+          >
+            <FaTrash className="text-[10px]" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Workflow Selector ─────────────────────────────────────────────────────────
+
+function WorkflowSelector({
+  templates, selectedIds, onToggle,
+}: {
+  templates: WorkflowTemplate[]
+  selectedIds: Set<string>
+  onToggle: (id: string) => void
+}) {
+  if (templates.length === 0) {
+    return (
+      <div className="text-center py-8 bg-amber-50 rounded-2xl border border-amber-200">
+        <FaExclamationTriangle className="text-amber-500 text-2xl mx-auto mb-2" />
+        <p className="text-sm font-semibold text-amber-800">No workflow templates found</p>
+        <p className="text-xs text-amber-600 mt-1">A regional admin must create workflow templates for your role before you can offer services.</p>
+      </div>
+    )
+  }
+
+  // Group by serviceMode
+  const grouped = templates.reduce<Record<string, WorkflowTemplate[]>>((acc, t) => {
+    const key = t.serviceMode ?? 'other'
+    if (!acc[key]) acc[key] = []
+    acc[key].push(t)
+    return acc
+  }, {})
+
+  return (
+    <div className="space-y-4">
+      {Object.entries(grouped).map(([mode, wfs]) => (
+        <div key={mode}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-base">{MODE_EMOJI[mode] ?? '📋'}</span>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              {MODE_LABEL[mode] ?? mode}
+            </p>
+          </div>
+          <div className="space-y-2">
+            {wfs.map(wf => {
+              const selected = selectedIds.has(wf.id)
+              const source = wf.createdByAdminId ? 'Regional Admin' : wf.isDefault ? 'Platform Default' : 'Custom'
+              const steps = Array.isArray(wf.steps) ? wf.steps : []
+              return (
+                <button
+                  key={wf.id}
+                  onClick={() => onToggle(wf.id)}
+                  className={`w-full text-left rounded-2xl border-2 overflow-hidden transition-all duration-150
+                    ${selected
+                      ? 'border-[#0C6780] shadow-sm shadow-[#0C6780]/15'
+                      : 'border-gray-200 hover:border-gray-300'}`}
+                >
+                  {/* Header */}
+                  <div className={`flex items-center gap-3 px-4 py-3 ${selected ? 'bg-[#0C6780]/5' : 'bg-white'}`}>
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
+                      style={{ backgroundColor: selected ? '#0C678018' : '#F3F4F6' }}
+                    >
+                      {MODE_EMOJI[mode] ?? '📋'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-semibold truncate ${selected ? 'text-[#0C6780]' : 'text-[#001E40]'}`}>{wf.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${MODE_COLOR[mode] ?? 'bg-gray-100 text-gray-500 border-gray-200'} border`}>
+                          {MODE_LABEL[mode] ?? mode}
+                        </span>
+                        <span className="text-[10px] text-gray-400">{source} · {steps.length} steps</span>
+                      </div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center border-2 transition-all
+                      ${selected ? 'bg-[#0C6780] border-[#0C6780]' : 'border-gray-300 bg-white'}`}>
+                      {selected && <FaCheckCircle className="text-white text-[10px]" />}
+                    </div>
+                  </div>
+
+                  {/* Steps timeline — visible when selected */}
+                  {selected && steps.length > 0 && (
+                    <div className="px-4 pb-3 pt-1 bg-gray-50 border-t border-gray-100">
+                      <div className="flex items-center gap-2 overflow-x-auto pb-0.5">
+                        {steps.slice(0, 6).map((step, i) => (
+                          <div key={i} className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap
+                              ${i === 0 ? 'bg-[#0C6780] text-white' : i === steps.length - 1 ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                              {step.label}
+                            </span>
+                            {i < steps.length - 1 && <span className="text-gray-300 text-[10px]">›</span>}
+                          </div>
+                        ))}
+                        {steps.length > 6 && <span className="text-[10px] text-gray-400 flex-shrink-0">+{steps.length - 6} more</span>}
+                      </div>
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Empty State ───────────────────────────────────────────────────────────────
+
+function EmptyServicesState({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+      <div className="w-16 h-16 bg-[#0C6780]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <FaListAlt className="text-[#0C6780] text-2xl" />
+      </div>
+      <h3 className="text-base font-bold text-[#001E40] mb-1">No services yet</h3>
+      <p className="text-sm text-gray-400 max-w-xs mx-auto mb-5">
+        Add services from the platform catalog. For each service, choose which appointment types (workflows) you offer — patients will see these choices when booking.
+      </p>
+      <button
+        onClick={onAdd}
+        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0C6780] text-white rounded-xl text-sm font-semibold hover:bg-[#0a5a6e] transition-colors"
+      >
+        <FaPlus className="text-xs" /> Add Your First Service
+      </button>
+    </div>
+  )
+}

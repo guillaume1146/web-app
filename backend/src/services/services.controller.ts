@@ -79,12 +79,128 @@ export class ServicesController {
   /** GET /api/services/my-services — provider's configured services */
   @Get('my-services')
   async myServices(@CurrentUser() user: JwtPayload) {
-    const configs = await this.prisma.providerServiceConfig.findMany({
+    const configs: any[] = await (this.prisma.providerServiceConfig as any).findMany({
       where: { providerUserId: user.sub },
-      include: { platformService: true },
+      include: {
+        platformService: true,
+        workflowTemplates: {
+          include: {
+            workflowTemplate: {
+              select: { id: true, name: true, serviceMode: true, steps: true, isActive: true },
+            },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
-    return { success: true, data: configs };
+    // Flatten for frontend: each config gets a `workflows` array
+    const data = configs.map((c: any) => ({
+      ...c,
+      workflows: (c.workflowTemplates ?? [])
+        .map((link: any) => link.workflowTemplate)
+        .filter((wt: any) => wt?.isActive),
+    }));
+    return { success: true, data };
+  }
+
+  /** POST /api/services/my-services/add — add a catalog service to provider's offerings */
+  @Post('my-services/add')
+  async addMyService(
+    @Body() body: { platformServiceId: string; priceOverride?: number; workflowTemplateIds: string[] },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    if (!body.platformServiceId) throw new BadRequestException('platformServiceId is required');
+    if (!body.workflowTemplateIds?.length) throw new BadRequestException('At least one workflow template is required');
+
+    // Upsert the config (re-activating if previously removed)
+    const config: any = await (this.prisma.providerServiceConfig as any).upsert({
+      where: {
+        platformServiceId_providerUserId: {
+          platformServiceId: body.platformServiceId,
+          providerUserId: user.sub,
+        },
+      },
+      update: { isActive: true, priceOverride: body.priceOverride ?? null },
+      create: {
+        platformServiceId: body.platformServiceId,
+        providerUserId: user.sub,
+        priceOverride: body.priceOverride ?? null,
+        isActive: true,
+      },
+    });
+
+    // Replace workflow links
+    await (this.prisma.providerServiceWorkflow as any).deleteMany({
+      where: { providerServiceConfigId: config.id },
+    });
+    for (const tplId of body.workflowTemplateIds) {
+      await (this.prisma.providerServiceWorkflow as any).create({
+        data: { providerServiceConfigId: config.id, workflowTemplateId: tplId },
+      });
+    }
+
+    return { success: true, data: config };
+  }
+
+  /** DELETE /api/services/my-services/:platformServiceId — remove a service from provider's offerings */
+  @Delete('my-services/:platformServiceId')
+  async removeMyService(
+    @Param('platformServiceId') platformServiceId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const config: any = await (this.prisma.providerServiceConfig as any).findUnique({
+      where: {
+        platformServiceId_providerUserId: {
+          platformServiceId,
+          providerUserId: user.sub,
+        },
+      },
+    });
+    if (!config) throw new NotFoundException('Service config not found');
+    await this.prisma.providerServiceConfig.update({
+      where: { id: config.id },
+      data: { isActive: false },
+    });
+    return { success: true, message: 'Service removed from your offerings' };
+  }
+
+  /** PATCH /api/services/my-services/:platformServiceId/workflows — set workflow templates for a service */
+  @Patch('my-services/:platformServiceId/workflows')
+  async updateServiceWorkflows(
+    @Param('platformServiceId') platformServiceId: string,
+    @Body() body: { workflowTemplateIds: string[] },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    if (!body.workflowTemplateIds?.length) throw new BadRequestException('At least one workflow template is required');
+
+    const config: any = await (this.prisma.providerServiceConfig as any).findUnique({
+      where: {
+        platformServiceId_providerUserId: {
+          platformServiceId,
+          providerUserId: user.sub,
+        },
+      },
+    });
+    if (!config) throw new NotFoundException('Service config not found');
+
+    // Replace all workflow links
+    await (this.prisma.providerServiceWorkflow as any).deleteMany({
+      where: { providerServiceConfigId: config.id },
+    });
+    for (const tplId of body.workflowTemplateIds) {
+      await (this.prisma.providerServiceWorkflow as any).upsert({
+        where: {
+          providerServiceConfigId_workflowTemplateId: {
+            providerServiceConfigId: config.id,
+            workflowTemplateId: tplId,
+          },
+        },
+        update: {},
+        create: { providerServiceConfigId: config.id, workflowTemplateId: tplId },
+      });
+    }
+
+    return { success: true, message: 'Workflow templates updated' };
   }
 
   /** PATCH /api/services/my-services — update price/active */
