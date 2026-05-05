@@ -36,10 +36,23 @@ jobs:
           echo "Caddy environment set: APP_DOMAIN=$APP_DOMAIN"
 
       - name: Deploy Caddyfile from repo
+        env:
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
         run: |
-          DEPLOY_DIR="${{ secrets.DEPLOY_DIR || 'mediwyz' }}"
-          git -C /root/$DEPLOY_DIR pull origin main 2>/dev/null || true
-          sudo cp /root/$DEPLOY_DIR/Caddyfile /etc/caddy/Caddyfile
+          DOMAIN="$APP_DOMAIN"
+          # Write Caddyfile with the real domain substituted (env vars aren't
+          # available to 'caddy validate' since they come from systemd, not the shell)
+          {
+            echo "${DOMAIN}, www.${DOMAIN} {"
+            echo "    reverse_proxy /socket.io/* localhost:3001"
+            echo "    reverse_proxy localhost:3000"
+            echo "    encode gzip"
+            echo "    log {"
+            echo "        output file /var/log/caddy/access.log"
+            echo "        format json"
+            echo "    }"
+            echo "}"
+          } | sudo tee /etc/caddy/Caddyfile > /dev/null
           sudo caddy validate --config /etc/caddy/Caddyfile && echo "Caddyfile valid"
 
       - name: Stop and disable nginx
