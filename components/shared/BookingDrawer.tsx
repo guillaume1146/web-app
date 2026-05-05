@@ -13,10 +13,17 @@ import { useBookingDrawer, DrawerService, DrawerProvider, DrawerRole } from '@/l
 
 type DrawerStep = 'service' | 'providers' | 'workflow' | 'slot' | 'auth' | 'confirm'
 
+interface WorkflowStep {
+  order: number
+  label: string
+  statusCode: string
+}
+
 interface WorkflowOption {
   id: string
   name: string
   serviceMode: string
+  steps: WorkflowStep[]
 }
 
 interface TimeSlot {
@@ -44,6 +51,23 @@ function toSlotLabel(time: string): string {
   const period = h >= 12 ? 'PM' : 'AM'
   const display = h > 12 ? h - 12 : h === 0 ? 12 : h
   return `${display}:${String(m).padStart(2, '0')} ${period}`
+}
+
+function normaliseWorkflows(raw: any[]): WorkflowOption[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map(wf => ({
+    id: wf.id,
+    name: wf.name,
+    serviceMode: wf.serviceMode ?? 'office',
+    steps: (Array.isArray(wf.steps) ? wf.steps : [])
+      .sort((a: any, b: any) => (a.order ?? a.stepOrder ?? 0) - (b.order ?? b.stepOrder ?? 0))
+      .map((s: any) => ({
+        order: s.order ?? s.stepOrder ?? 0,
+        label: s.label ?? '',
+        statusCode: s.statusCode ?? '',
+      }))
+      .filter((s: WorkflowStep) => s.label),
+  }))
 }
 
 function upcomingDays(n: number): Date[] {
@@ -209,8 +233,7 @@ export default function BookingDrawer() {
           defaultPrice: s.price ?? s.defaultPrice ?? 0,
           duration: s.duration,
           providerType: provider.userType,
-          // keep workflows stashed for later
-          _workflows: s.workflows,
+          _workflows: normaliseWorkflows(s.workflows),
         } as DrawerService & { _workflows?: WorkflowOption[] })))
       }
     } catch { /* non-fatal */ }
@@ -246,7 +269,7 @@ export default function BookingDrawer() {
       const j = await res.json()
       if (!j.success) return []
       const match = (j.data ?? []).find((s: any) => s.id === service.id)
-      return (match?.workflows ?? []) as WorkflowOption[]
+      return normaliseWorkflows(match?.workflows ?? [])
     } catch { return [] }
   }
 
@@ -707,6 +730,22 @@ function ProviderStep({
 
 // ─── WORKFLOW STEP ─────────────────────────────────────────────────────────────
 
+const STEP_STATUS_EMOJI: Record<string, string> = {
+  pending: '⏳', confirmed: '✅', scheduled: '📅',
+  in_progress: '▶️', completed: '🏁', cancelled: '❌',
+  video_call: '📹', payment: '💳', prescription: '📋',
+  sample_collected: '🧪', results_ready: '📊', delivered: '📦',
+  home_visit: '🏠', on_the_way: '🚗', arrived: '📍',
+}
+
+function stepEmoji(statusCode: string): string {
+  const lc = statusCode.toLowerCase()
+  for (const [key, val] of Object.entries(STEP_STATUS_EMOJI)) {
+    if (lc.includes(key)) return val
+  }
+  return '•'
+}
+
 function WorkflowStep({
   workflows, onSelect, selectedId, roleColor,
 }: {
@@ -715,31 +754,134 @@ function WorkflowStep({
   selectedId?: string
   roleColor: string
 }) {
+  const [expanded, setExpanded] = useState<string | null>(null)
+
+  if (workflows.length === 0) {
+    return <EmptyState icon="📋" text="No appointment types available" />
+  }
+
   return (
-    <div className="px-4 pt-4 pb-6">
-      <p className="text-xs text-gray-500 mb-4">How would you like this appointment?</p>
-      <div className="space-y-3">
-        {workflows.map(wf => {
-          const label = MODE_LABEL[wf.serviceMode] ?? wf.name
-          const emoji = MODE_EMOJI[wf.serviceMode] ?? '📋'
-          const selected = wf.id === selectedId
-          return (
+    <div className="px-4 pt-3 pb-6 space-y-3">
+      <p className="text-xs text-gray-400">Choose how you'd like this appointment — tap to see what happens at each step.</p>
+      {workflows.map(wf => {
+        const modeLabel = MODE_LABEL[wf.serviceMode] ?? wf.serviceMode
+        const modeEmoji = MODE_EMOJI[wf.serviceMode] ?? '📋'
+        const selected = wf.id === selectedId
+        const isExpanded = expanded === wf.id || selected
+
+        return (
+          <div
+            key={wf.id}
+            className={`rounded-2xl border-2 overflow-hidden transition-all duration-200
+              ${selected
+                ? 'border-[#0C6780] shadow-md shadow-[#0C6780]/10'
+                : 'border-gray-200 hover:border-gray-300'}`}
+          >
+            {/* Header row — always visible */}
             <button
-              key={wf.id}
-              onClick={() => onSelect(wf)}
-              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 transition-all
-                ${selected ? 'border-[#0C6780] bg-[#0C6780]/5 shadow-sm' : 'border-gray-200 hover:border-[#0C6780]/40'}`}
+              onClick={() => {
+                setExpanded(prev => (prev === wf.id ? null : wf.id))
+                onSelect(wf)
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors
+                ${selected ? 'bg-[#0C6780]/5' : 'bg-white hover:bg-gray-50'}`}
             >
-              <span className="text-2xl">{emoji}</span>
-              <div className="flex-1 text-left">
-                <p className={`text-sm font-semibold ${selected ? 'text-[#0C6780]' : 'text-[#001E40]'}`}>{label}</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">{wf.name}</p>
+              {/* Mode badge */}
+              <div
+                className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg"
+                style={{ backgroundColor: selected ? `${roleColor}20` : '#F3F4F6' }}
+              >
+                {modeEmoji}
               </div>
-              {selected && <FaCheckCircle style={{ color: roleColor }} className="text-base flex-shrink-0" />}
+
+              <div className="flex-1 min-w-0">
+                {/* Mode type */}
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
+                    style={{
+                      backgroundColor: selected ? `${roleColor}18` : '#F3F4F6',
+                      color: selected ? roleColor : '#6B7280',
+                    }}
+                  >
+                    {modeLabel}
+                  </span>
+                </div>
+                {/* Template name */}
+                <p className={`text-sm font-semibold leading-tight truncate ${selected ? 'text-[#0C6780]' : 'text-[#001E40]'}`}>
+                  {wf.name}
+                </p>
+                {wf.steps.length > 0 && (
+                  <p className="text-[10px] text-gray-400 mt-0.5">{wf.steps.length} steps</p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {selected && <FaCheckCircle style={{ color: roleColor }} className="text-base" />}
+                <span
+                  className={`text-[10px] text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                  style={{ display: 'inline-block' }}
+                >
+                  ▾
+                </span>
+              </div>
             </button>
-          )
-        })}
-      </div>
+
+            {/* Steps timeline — visible when expanded */}
+            {isExpanded && wf.steps.length > 0 && (
+              <div className="px-4 pb-4 pt-1 bg-gray-50 border-t border-gray-100">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2.5">What happens</p>
+                <div className="relative">
+                  {/* Vertical connector line */}
+                  <div className="absolute left-[14px] top-2 bottom-2 w-px bg-gray-200" />
+
+                  <div className="space-y-2">
+                    {wf.steps.map((step, idx) => {
+                      const isFirst = idx === 0
+                      const isLast = idx === wf.steps.length - 1
+                      return (
+                        <div key={step.statusCode || idx} className="flex items-start gap-3 relative">
+                          {/* Step dot */}
+                          <div
+                            className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[11px] border-2 relative z-10"
+                            style={
+                              isFirst
+                                ? { backgroundColor: roleColor, borderColor: roleColor, color: '#fff' }
+                                : isLast
+                                  ? { backgroundColor: '#fff', borderColor: '#10B981', color: '#10B981' }
+                                  : { backgroundColor: '#fff', borderColor: '#D1D5DB', color: '#6B7280' }
+                            }
+                          >
+                            {isFirst ? '1' : isLast ? '✓' : String(idx + 1)}
+                          </div>
+
+                          {/* Step content */}
+                          <div className="flex-1 min-w-0 pt-0.5">
+                            <p className={`text-xs font-semibold leading-tight ${isFirst ? 'text-[#001E40]' : 'text-gray-600'}`}>
+                              {step.label}
+                            </p>
+                            <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{step.statusCode}</p>
+                          </div>
+
+                          {/* Step emoji hint */}
+                          <span className="text-sm flex-shrink-0 pt-0.5">{stepEmoji(step.statusCode)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* No steps yet message */}
+            {isExpanded && wf.steps.length === 0 && (
+              <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                <p className="text-xs text-gray-400 italic">Standard booking flow applies.</p>
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -971,7 +1113,8 @@ function ConfirmStep({
         <SummaryRow
           icon={<span className="text-xl">{MODE_EMOJI[workflow.serviceMode] ?? '📋'}</span>}
           label="Appointment type"
-          primary={MODE_LABEL[workflow.serviceMode] ?? workflow.name}
+          primary={workflow.name}
+          secondary={MODE_LABEL[workflow.serviceMode] ?? workflow.serviceMode}
           color={roleColor}
         />
       )}
