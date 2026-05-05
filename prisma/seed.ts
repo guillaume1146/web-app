@@ -52,6 +52,7 @@ import { seedSarahJohnsonAndServices } from './seeds/55-sarah-johnson-services.s
 import { seedIconKeys } from './seeds/56-icon-keys.seed'
 import { seedDoctorSpecialtyServices } from './seeds/57-doctor-specialty-services.seed'
 import { seedHealthShopCategories } from './seeds/58-health-shop-categories.seed'
+import { seedServiceConfigBackfill } from './seeds/59-service-config-backfill.seed'
 
 const prisma = new PrismaClient()
 
@@ -263,6 +264,7 @@ async function main() {
   await seedIconKeys()
   await seedDoctorSpecialtyServices()
   await seedHealthShopCategories(prisma)
+  await seedServiceConfigBackfill(prisma)   // must run after 57 + 58
 
   // ── Final step: ensure ALL users have subscriptions ──────────────
   console.log('  Ensuring all users have subscriptions...')
