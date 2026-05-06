@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 const mockPrisma: any = {
   user: { findUnique: jest.fn() },
   providerServiceConfig: { findMany: jest.fn() },
+  platformService: { findMany: jest.fn() },
   providerAvailability: { findMany: jest.fn() },
   workflowInstance: { findMany: jest.fn(), count: jest.fn() },
   serviceBooking: { findMany: jest.fn() },
@@ -84,31 +85,41 @@ describe('ProvidersService', () => {
   // ─── getServices ────────────────────────────────────────────────────────
 
   describe('getServices', () => {
-    it('should return active ProviderServiceConfig entries with platform service data', async () => {
-      const configs = [
-        {
-          id: 'PSC001', providerUserId: 'DOC001', priceOverride: 2000,
-          platformService: { id: 'PS001', serviceName: 'Video Consultation', defaultPrice: 1500, duration: 30, category: 'Consultation', description: 'Video call' },
-        },
-      ];
-      mockPrisma.providerServiceConfig.findMany.mockResolvedValue(configs);
+    it('should return mapped service data with workflows for each platform service', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ id: 'DOC001', userType: 'DOCTOR', regionId: 'R001' });
+      mockPrisma.providerServiceConfig.findMany.mockResolvedValue([
+        { platformServiceId: 'PS001', priceOverride: 2000, workflowTemplates: [] },
+      ]);
+      mockPrisma.platformService.findMany.mockResolvedValue([
+        { id: 'PS001', serviceName: 'Video Consultation', defaultPrice: 1500, duration: 30, category: 'Consultation', description: 'Video call', isActive: true },
+      ]);
 
       const result = await service.getServices('DOC001');
 
-      expect(result).toEqual(configs);
+      expect(result).toEqual([
+        { id: 'PS001', serviceName: 'Video Consultation', category: 'Consultation', description: 'Video call', price: 2000, duration: 30, workflows: [] },
+      ]);
       expect(mockPrisma.providerServiceConfig.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { providerUserId: 'DOC001', isActive: true },
-          include: expect.objectContaining({
-            platformService: expect.objectContaining({
-              select: expect.objectContaining({ serviceName: true }),
-            }),
-          }),
-        }),
+        expect.objectContaining({ where: { providerUserId: 'DOC001', isActive: true } }),
       );
     });
 
+    it('should use defaultPrice when provider has no priceOverride', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ id: 'DOC001', userType: 'DOCTOR', regionId: 'R001' });
+      mockPrisma.providerServiceConfig.findMany.mockResolvedValue([
+        { platformServiceId: 'PS001', priceOverride: null, workflowTemplates: [] },
+      ]);
+      mockPrisma.platformService.findMany.mockResolvedValue([
+        { id: 'PS001', serviceName: 'Home Visit', defaultPrice: 1000, duration: 60, category: 'Home', description: '', isActive: true },
+      ]);
+
+      const result = await service.getServices('DOC001');
+
+      expect((result[0] as any).price).toBe(1000);
+    });
+
     it('should return empty array when provider has no services configured', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ id: 'NEW-DOC', userType: 'DOCTOR', regionId: 'R001' });
       mockPrisma.providerServiceConfig.findMany.mockResolvedValue([]);
 
       const result = await service.getServices('NEW-DOC');

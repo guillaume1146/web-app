@@ -13,6 +13,8 @@ import type { ActionRole, ContentType } from './types';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
 import { TransitionDto } from './dto/transition.dto';
+import { GenerateTemplateDto } from './dto/generate-template.dto';
+import { WorkflowGeneratorService } from './workflow-generator.service';
 
 const CONTENT_TYPES = ['prescription', 'lab_result', 'care_notes', 'report', 'dental_chart', 'eye_prescription', 'meal_plan', 'exercise_plan'] as const;
 
@@ -53,6 +55,7 @@ export class WorkflowController {
     private templateRepo: WorkflowTemplateRepository,
     private prisma: PrismaService,
     private aiAssist: WorkflowAiAssistService,
+    private generatorService: WorkflowGeneratorService,
   ) {}
 
   // ─── POST /api/workflow/transition ─────────────────────────────────────
@@ -366,6 +369,23 @@ export class WorkflowController {
     const template = await this.templateRepo.findById(id);
     if (!template) throw new NotFoundException('Template not found');
     return { success: true, data: template };
+  }
+
+  // ─── POST /api/workflow/templates/generate ─────────────────────────────
+
+  /**
+   * Generate a workflow template from 5 axes (location, sample, careModel,
+   * urgency, recurrenceType) without persisting to the DB. The caller can
+   * inspect the result and then POST to /api/workflow/templates to save it.
+   *
+   * Marked @Public() so the workflow builder wizard can call it before the
+   * user is logged in (preview mode).
+   */
+  @Post('workflow/templates/generate')
+  @HttpCode(HttpStatus.OK)
+  async generateTemplate(@Body() dto: GenerateTemplateDto) {
+    const result = this.generatorService.generate(dto);
+    return { success: true, data: result };
   }
 
   // ─── POST /api/workflow/templates ──────────────────────────────────────

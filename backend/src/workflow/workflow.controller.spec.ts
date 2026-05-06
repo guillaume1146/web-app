@@ -5,6 +5,7 @@ import { WorkflowInstanceRepository } from './repositories/workflow-instance.rep
 import { WorkflowTemplateRepository } from './repositories/workflow-template.repository';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkflowAiAssistService } from './workflow-ai-assist.service';
+import { WorkflowGeneratorService } from './workflow-generator.service';
 
 const mockEngine = { transition: jest.fn(), attachWorkflow: jest.fn() };
 const mockInstanceRepo = { findMany: jest.fn(), findById: jest.fn(), getTimeline: jest.fn() };
@@ -14,6 +15,7 @@ const mockPrisma = {
   workflowTemplate: { findMany: jest.fn() },
 };
 const mockAiAssist = { draftSteps: jest.fn() };
+const mockGenerator = { generate: jest.fn() };
 
 describe('WorkflowController', () => {
   let controller: WorkflowController;
@@ -27,6 +29,7 @@ describe('WorkflowController', () => {
         { provide: WorkflowTemplateRepository, useValue: mockTemplateRepo },
         { provide: PrismaService, useValue: mockPrisma },
         { provide: WorkflowAiAssistService, useValue: mockAiAssist },
+        { provide: WorkflowGeneratorService, useValue: mockGenerator },
       ],
     }).compile();
 

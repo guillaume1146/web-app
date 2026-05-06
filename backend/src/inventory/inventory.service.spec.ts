@@ -382,7 +382,7 @@ describe('InventoryService', () => {
   describe('searchShop', () => {
     it('should return filtered items with total count', async () => {
       const items = [
-        { id: 'I1', name: 'Vitamin C', price: 50, inStock: true, isActive: true },
+        { id: 'I1', name: 'Vitamin C', price: 50, inStock: true, isActive: true, isRecommended: false },
       ];
       mockPrisma.providerInventoryItem.findMany.mockResolvedValue(items);
       mockPrisma.providerInventoryItem.count.mockResolvedValue(1);

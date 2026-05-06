@@ -7,6 +7,7 @@ import { WorkflowInstanceRepository } from './repositories/workflow-instance.rep
 import { WorkflowStepLogRepository } from './repositories/workflow-step-log.repository';
 import { WorkflowTemplateRepository } from './repositories/workflow-template.repository';
 import { WorkflowAiAssistService } from './workflow-ai-assist.service';
+import { WorkflowGeneratorService } from './workflow-generator.service';
 
 // Step Flag Strategies (10)
 import { VideoCallStrategy, AudioCallStrategy } from './strategies/video-call.strategy';
@@ -41,6 +42,7 @@ const ALL_STRATEGIES = [
     WorkflowStepLogRepository,
     WorkflowTemplateRepository,
     WorkflowAiAssistService,
+    WorkflowGeneratorService,
 
     // All 10 strategies
     ...ALL_STRATEGIES,
