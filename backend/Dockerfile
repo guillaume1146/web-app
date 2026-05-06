@@ -2,7 +2,7 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY backend/package.json backend/package-lock.json ./
-RUN npm ci --install-strategy=nested
+RUN npm ci --install-strategy=nested --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
 
 # ─── Stage 2: Build ───────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
