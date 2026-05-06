@@ -1,0 +1,172 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+import { FaSearch, FaMapMarkerAlt, FaHospital, FaBriefcaseMedical, FaFlask, FaTooth, FaEye, FaHeart } from 'react-icons/fa'
+import { MdVerified } from 'react-icons/md'
+
+interface ClinicEntity {
+  id: string
+  name: string
+  type: string
+  description: string | null
+  address: string | null
+  city: string | null
+  country: string
+  phone: string | null
+  logoUrl: string | null
+  isVerified: boolean
+  providerCount: number
+  sampleProviders: { id: string; name: string; profileImage: string | null }[]
+}
+
+const TYPE_COLORS: Record<string, string> = {
+  clinic: '#0C6780',
+  hospital: '#C53030',
+  laboratory: '#805AD5',
+  dental_clinic: '#3182CE',
+  optical_center: '#38A169',
+  wellness_center: '#DD6B20',
+  other: '#718096',
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const TYPE_ICONS: Record<string, React.ComponentType<any>> = {
+  clinic: FaBriefcaseMedical,
+  hospital: FaHospital,
+  laboratory: FaFlask,
+  dental_clinic: FaTooth,
+  optical_center: FaEye,
+  wellness_center: FaHeart,
+  other: FaBriefcaseMedical,
+}
+
+function ClinicCard({ entity }: { entity: ClinicEntity }) {
+  const color = TYPE_COLORS[entity.type] ?? '#0C6780'
+  const Icon = TYPE_ICONS[entity.type] ?? FaBriefcaseMedical
+
+  return (
+    <Link
+      href={`/search/clinics/${entity.id}`}
+      className="w-[200px] sm:w-[220px] flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden block"
+    >
+      <div className="h-1" style={{ background: color }} />
+      <div className="p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}18` }}>
+            {entity.logoUrl ? (
+              <Image src={entity.logoUrl} alt={entity.name} width={32} height={32} className="rounded-lg object-cover" />
+            ) : (
+              <Icon style={{ color }} className="text-lg" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1">
+              <p className="text-xs font-bold text-[#001E40] leading-tight line-clamp-2">{entity.name}</p>
+              {entity.isVerified && <MdVerified className="text-[#0C6780] flex-shrink-0" size={13} />}
+            </div>
+            <span className="text-[10px] font-medium capitalize" style={{ color }}>{entity.type.replace('_', ' ')}</span>
+          </div>
+        </div>
+
+        {entity.address && (
+          <div className="flex items-start gap-1 mb-2">
+            <FaMapMarkerAlt className="flex-shrink-0 mt-0.5 text-gray-300" size={9} />
+            <p className="text-[10px] text-gray-400 line-clamp-1">{entity.city ?? entity.address}</p>
+          </div>
+        )}
+
+        {entity.sampleProviders.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="flex -space-x-1.5">
+              {entity.sampleProviders.slice(0, 3).map(p => (
+                <div key={p.id} className="w-5 h-5 rounded-full bg-gray-100 border border-white flex items-center justify-center overflow-hidden">
+                  {p.profileImage ? (
+                    <Image src={p.profileImage} alt={p.name} width={20} height={20} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-[8px] font-bold text-gray-400">{p.name.charAt(0)}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <span className="text-[10px] text-gray-400">{entity.providerCount} provider{entity.providerCount !== 1 ? 's' : ''}</span>
+          </div>
+        )}
+      </div>
+    </Link>
+  )
+}
+
+export default function ClinicsSection() {
+  const [query, setQuery] = useState('')
+  const [entities, setEntities] = useState<ClinicEntity[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    const params = new URLSearchParams({ limit: '12' })
+    if (query) params.set('q', query)
+    fetch(`/api/search/clinics?${params}`)
+      .then(r => r.json())
+      .then(j => { if (j.success) setEntities(j.data ?? []) })
+      .finally(() => setLoading(false))
+  }, [query])
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Section header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🏥</span>
+          <h3 className="font-bold text-[#001E40] text-lg">Find a Clinic or Hospital</h3>
+        </div>
+        <Link href="/search/clinics" className="text-xs text-[#0C6780] font-medium hover:underline">See All →</Link>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative mb-5">
+        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search by name or city..."
+          className="w-full max-w-sm pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C53030]/20"
+        />
+      </div>
+
+      {/* Cards */}
+      {loading ? (
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="w-[200px] flex-shrink-0 h-36 bg-gray-100 animate-pulse rounded-2xl" />
+          ))}
+        </div>
+      ) : entities.length === 0 ? (
+        <div className="text-center py-10">
+          <span className="text-4xl block mb-2">🏥</span>
+          <p className="text-sm text-gray-500">
+            {query ? `No clinics matching "${query}"` : 'No clinics registered yet.'}
+          </p>
+          <Link href="/search/clinics" className="mt-3 inline-block text-[#C53030] text-sm font-medium hover:underline">
+            Browse all →
+          </Link>
+        </div>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
+          {entities.map(entity => (
+            <ClinicCard key={entity.id} entity={entity} />
+          ))}
+          {/* See more card */}
+          <Link
+            href="/search/clinics"
+            className="w-[200px] sm:w-[220px] flex-shrink-0 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
+          >
+            <span className="text-sm text-gray-400 font-medium">See All →</span>
+          </Link>
+        </div>
+      )}
+    </div>
+  )
+}

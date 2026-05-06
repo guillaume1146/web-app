@@ -270,4 +270,56 @@ export class ProvidersService {
       take: limit,
     });
   }
+
+  // ─── GET /providers/:id/workplaces — public workplace list ─────────────
+
+  async getWorkplaces(providerUserId: string) {
+    const workplaces = await (this.prisma.providerWorkplace as any).findMany({
+      where: { providerUserId, isActive: true },
+      include: {
+        entity: {
+          select: {
+            id: true, name: true, type: true, description: true,
+            address: true, city: true, country: true, phone: true,
+            email: true, website: true, logoUrl: true, isVerified: true,
+          },
+        },
+      },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+    });
+    return workplaces;
+  }
+
+  // ─── POST /providers/:id/workplaces — join / update workplace ──────────
+
+  async addWorkplace(providerUserId: string, body: { healthcareEntityId: string; role?: string; isPrimary?: boolean }) {
+    // If setting this as primary, clear any existing primary flag
+    if (body.isPrimary) {
+      await (this.prisma.providerWorkplace as any).updateMany({
+        where: { providerUserId, isPrimary: true },
+        data: { isPrimary: false },
+      });
+    }
+
+    return (this.prisma.providerWorkplace as any).upsert({
+      where: {
+        providerUserId_healthcareEntityId: {
+          providerUserId,
+          healthcareEntityId: body.healthcareEntityId,
+        },
+      },
+      update: {
+        role: body.role ?? undefined,
+        isPrimary: body.isPrimary ?? undefined,
+        isActive: true,
+      },
+      create: {
+        providerUserId,
+        healthcareEntityId: body.healthcareEntityId,
+        role: body.role ?? null,
+        isPrimary: body.isPrimary ?? false,
+        isActive: true,
+      },
+    });
+  }
 }

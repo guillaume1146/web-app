@@ -53,6 +53,7 @@ import { seedIconKeys } from './seeds/56-icon-keys.seed'
 import { seedDoctorSpecialtyServices } from './seeds/57-doctor-specialty-services.seed'
 import { seedHealthShopCategories } from './seeds/58-health-shop-categories.seed'
 import { seedServiceConfigBackfill } from './seeds/59-service-config-backfill.seed'
+import { seedHealthcareEntities } from './seeds/60-healthcare-entities.seed'
 
 const prisma = new PrismaClient()
 
@@ -265,6 +266,7 @@ async function main() {
   await seedDoctorSpecialtyServices()
   await seedHealthShopCategories(prisma)
   await seedServiceConfigBackfill(prisma)   // must run after 57 + 58
+  await seedHealthcareEntities(prisma)      // seed 60 — clinics/hospitals + provider links
 
   // ── Final step: ensure ALL users have subscriptions ──────────────
   console.log('  Ensuring all users have subscriptions...')

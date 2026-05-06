@@ -3,9 +3,24 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useUser } from '@/hooks/useUser'
-import { FaCalendarCheck, FaClock, FaCheckCircle, FaChartLine, FaComments, FaMoneyBillWave, FaRobot } from 'react-icons/fa'
+import { FaCalendarCheck, FaClock, FaCheckCircle, FaChartLine, FaComments, FaMoneyBillWave, FaRobot, FaHospital, FaMapMarkerAlt, FaPlus } from 'react-icons/fa'
+import { MdVerified } from 'react-icons/md'
 import Link from 'next/link'
 import DashboardStatCard from '@/components/shared/DashboardStatCard'
+
+interface Workplace {
+  id: string
+  isPrimary: boolean
+  role: string | null
+  entity: {
+    id: string
+    name: string
+    type: string
+    city: string | null
+    country: string
+    isVerified: boolean
+  }
+}
 
 interface Booking {
   id: string
@@ -23,6 +38,7 @@ export default function DynamicProviderDashboard() {
   const { user } = useUser()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
+  const [workplaces, setWorkplaces] = useState<Workplace[]>([])
 
   useEffect(() => {
     if (!user?.id) return
@@ -40,7 +56,15 @@ export default function DynamicProviderDashboard() {
         setLoading(false)
       }
     }
+    const fetchWorkplaces = async () => {
+      try {
+        const res = await fetch(`/api/providers/${user.id}/workplaces`)
+        const json = await res.json()
+        if (json.success) setWorkplaces(json.data ?? [])
+      } catch { /* non-critical */ }
+    }
     fetchBookings()
+    fetchWorkplaces()
   }, [user?.id])
 
   const totalBookings = bookings.length
@@ -126,6 +150,45 @@ export default function DynamicProviderDashboard() {
             <span className="text-sm font-medium text-gray-700">{link.label}</span>
           </Link>
         ))}
+      </div>
+
+      {/* My Workplace */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold text-gray-900">My Workplace</h2>
+          <Link href={`/search/clinics`} className="text-xs text-[#0C6780] font-medium hover:underline flex items-center gap-1">
+            <FaPlus size={10} /> Add Workplace
+          </Link>
+        </div>
+        {workplaces.length === 0 ? (
+          <div className="bg-white rounded-xl border border-dashed border-gray-200 p-5 text-center">
+            <FaHospital className="text-gray-300 text-2xl mx-auto mb-2" />
+            <p className="text-sm text-gray-500 mb-2">You have not linked a clinic or hospital yet.</p>
+            <Link href="/search/clinics" className="text-xs text-[#0C6780] font-medium hover:underline">Find and join a healthcare entity →</Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {workplaces.map(wp => (
+              <div key={wp.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+                  <FaHospital className="text-red-600" size={16} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1">
+                    <p className="text-sm font-semibold text-[#001E40] truncate">{wp.entity.name}</p>
+                    {wp.entity.isVerified && <MdVerified className="text-[#0C6780] flex-shrink-0" size={13} />}
+                    {wp.isPrimary && <span className="text-[10px] bg-[#0C6780]/10 text-[#0C6780] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0">Primary</span>}
+                  </div>
+                  {wp.role && <p className="text-xs text-gray-500">{wp.role}</p>}
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <FaMapMarkerAlt className="text-gray-300" size={9} />
+                    <p className="text-[10px] text-gray-400">{wp.entity.city ?? ''}{wp.entity.city ? ', ' : ''}{wp.entity.country}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Recent Activity */}

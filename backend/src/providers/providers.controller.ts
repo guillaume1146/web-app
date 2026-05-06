@@ -68,4 +68,23 @@ export class ProvidersController {
   async getAppointments(@Param('id') id: string, @Query('limit') limit?: string) {
     return { success: true, data: await this.providersService.getAppointments(id, limit ? parseInt(limit) : 50) };
   }
+
+  // ── GET /providers/:id/workplaces — public list of healthcare entities ──
+  @Public()
+  @Get('workplaces')
+  async getWorkplaces(@Param('id') id: string) {
+    return { success: true, data: await this.providersService.getWorkplaces(id) };
+  }
+
+  // ── POST /providers/:id/workplaces — join a healthcare entity ───────────
+  @Post('workplaces')
+  async addWorkplace(
+    @Param('id') id: string,
+    @Body() body: { healthcareEntityId: string; role?: string; isPrimary?: boolean },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    // Only the provider themselves can edit their workplaces
+    if (user.sub !== id) return { success: false, message: 'Forbidden' };
+    return { success: true, data: await this.providersService.addWorkplace(id, body) };
+  }
 }

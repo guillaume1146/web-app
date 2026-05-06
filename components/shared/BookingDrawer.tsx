@@ -438,6 +438,7 @@ export default function BookingDrawer() {
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(body),
       })
       const j = await res.json()

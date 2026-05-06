@@ -197,6 +197,79 @@ export class SearchController {
     }
   }
 
+  // ── GET /search/clinics — healthcare entity search ──────────────────────
+  @Public() @Get('clinics')
+  async searchClinics(
+    @Query('q') q?: string,
+    @Query('type') type?: string,
+    @Query('city') city?: string,
+    @Query('country') country?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    try {
+      const pageNum = Math.max(parseInt(page || '1'), 1);
+      const take = Math.min(parseInt(limit || '20'), 100);
+      const skip = (pageNum - 1) * take;
+
+      const where: any = { isActive: true };
+      if (type) where.type = type;
+      if (city) where.city = { contains: city, mode: 'insensitive' };
+      if (country) where.country = country.toUpperCase();
+      if (q) {
+        where.OR = [
+          { name: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+          { city: { contains: q, mode: 'insensitive' } },
+          { address: { contains: q, mode: 'insensitive' } },
+        ];
+      }
+
+      const [entities, total] = await Promise.all([
+        (this.prisma.healthcareEntity as any).findMany({
+          where,
+          include: {
+            providers: {
+              where: { isActive: true },
+              include: {
+                provider: {
+                  select: { id: true, firstName: true, lastName: true, userType: true, profileImage: true },
+                },
+              },
+              take: 5,
+            },
+          },
+          skip,
+          take,
+          orderBy: [{ isVerified: 'desc' }, { name: 'asc' }],
+        }),
+        (this.prisma.healthcareEntity as any).count({ where }),
+      ]);
+
+      return {
+        success: true,
+        data: entities.map((e: any) => ({
+          ...e,
+          providerCount: e.providers.length,
+          sampleProviders: e.providers.slice(0, 3).map((wp: any) => ({
+            id: wp.provider.id,
+            name: `${wp.provider.firstName} ${wp.provider.lastName}`,
+            userType: wp.provider.userType,
+            profileImage: wp.provider.profileImage,
+            role: wp.role,
+          })),
+        })),
+        total,
+        page: pageNum,
+        limit: take,
+        totalPages: Math.ceil(total / take),
+      };
+    } catch (error) {
+      console.error('GET /search/clinics error:', error);
+      return { success: false, data: [], message: 'Search failed' };
+    }
+  }
+
   // ── GET /search/medicines — medicine/inventory search ───────────────────
   @Public() @Get('medicines')
   async searchMedicines(@Query('q') q?: string, @Query('page') page?: string, @Query('limit') limit?: string) {

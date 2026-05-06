@@ -292,6 +292,9 @@ model User {
   memberPreAuths       PreAuthorization[]         @relation("MemberPreAuths")
   providerPreAuths     PreAuthorization[]         @relation("ProviderPreAuths")
 
+  // Healthcare entity workplaces (providers can belong to a clinic/hospital)
+  workplaces           ProviderWorkplace[]
+
   @@index([email])
   @@index([userType])
   @@index([verified, accountStatus])
@@ -2958,4 +2961,65 @@ model InventoryOrderItem {
 
   @@index([orderId])
   @@index([inventoryItemId])
+}
+
+// ─── Healthcare Entity (clinic, hospital, pharmacy chain, lab, etc.) ──────────
+// Represents a physical or virtual institution that providers work at.
+// Many providers can belong to many entities (join via ProviderWorkplace).
+
+model HealthcareEntity {
+  id          String  @id @default(uuid())
+  name        String
+  type        String  // clinic, hospital, pharmacy, laboratory, wellness_center, dental_clinic, optical_center, other
+  description String?
+  address     String?
+  city        String?
+  country     String  @default("MU") // ISO-2 country code
+  regionId    String?
+  phone       String?
+  email       String?
+  website     String?
+  logoUrl     String?
+
+  // Geo coordinates for nearest-clinic search (future GPS integration)
+  latitude    Float?
+  longitude   Float?
+
+  isVerified  Boolean @default(false)
+  isActive    Boolean @default(true)
+
+  // Providers affiliated with this entity
+  providers   ProviderWorkplace[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([name, city, country])
+  @@index([type])
+  @@index([city, country])
+  @@index([isActive])
+}
+
+// ─── Provider Workplace (many-to-many: provider ↔ HealthcareEntity) ──────────
+
+model ProviderWorkplace {
+  id                 String          @id @default(uuid())
+  providerUserId     String
+  provider           User            @relation(fields: [providerUserId], references: [id], onDelete: Cascade)
+  healthcareEntityId String
+  entity             HealthcareEntity @relation(fields: [healthcareEntityId], references: [id], onDelete: Cascade)
+
+  role               String?  // e.g. "Senior Consultant", "Visiting Physician" (provider's role at this entity)
+  isPrimary          Boolean  @default(false) // provider's main workplace shown on public profile
+  isActive           Boolean  @default(true)
+
+  startDate          DateTime?
+  endDate            DateTime?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([providerUserId, healthcareEntityId])
+  @@index([providerUserId])
+  @@index([healthcareEntityId])
 }
