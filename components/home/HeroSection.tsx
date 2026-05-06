@@ -213,12 +213,12 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, slides, countryCode 
           </div>
         </motion.div>
 
-        {/* ── COL 2: Booking widget — fills full height (center, ~32%) ── */}
+        {/* ── COL 2: Booking widget — inset with margin on all sides (center, ~32%) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-          className="lg:flex-[32] flex flex-col
+          className="lg:flex-[32] flex flex-col p-3
             border-t lg:border-t-0 lg:border-l lg:border-r border-white/10"
         >
           <HeroBookingWidget fullHeight />
