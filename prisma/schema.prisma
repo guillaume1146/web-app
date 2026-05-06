@@ -204,6 +204,8 @@ model User {
   dateOfBirth    DateTime?
   gender         String?
   address        String?
+  latitude       Float?    // GPS coordinates for nearest-provider search
+  longitude      Float?
   verified       Boolean   @default(false)
   accountStatus  String    @default("active") // active, suspended, pending
   referredByCode String? // Referral code used at signup

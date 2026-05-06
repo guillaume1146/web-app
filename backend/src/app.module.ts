@@ -42,6 +42,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { UploadModule } from './upload/upload.module';
 import { SharedModule } from './shared/shared.module';
 import { FavoritesModule } from './favorites/favorites.module';
+import { GeoModule } from './geo/geo.module';
 import { HealthStreakModule } from './health-streak/health-streak.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { OrganizationsModule } from './organizations/organizations.module';
@@ -76,6 +77,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
     ServicesModule,
     CorporateModule,
     FavoritesModule,
+    GeoModule,
     HealthStreakModule,
     RemindersModule,
     OrganizationsModule,
