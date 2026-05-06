@@ -48,7 +48,7 @@ interface ChoiceDef {
 const CHOICES: ChoiceDef[] = [
   { id: 'services',    emoji: '🩺', title: 'Book a Service',  color: '#0C6780' },
   { id: 'providers',   emoji: '👨‍⚕️', title: 'Find a Provider', color: '#001E40' },
-  { id: 'organizations', emoji: '🏥', title: 'Organizations 🏥', color: '#C53030' },
+  { id: 'organizations', emoji: '🏥', title: 'Organizations',    color: '#C53030' },
   { id: 'community',   emoji: '💬', title: 'Community',        color: '#0a5c73' },
   { id: 'health-shop', emoji: '🛒', title: 'Health Shop',      color: '#1a6b8a' },
 ]
@@ -77,24 +77,24 @@ export default function DiscoverSection() {
           </div>
         </div>
 
-        {/* Tab buttons */}
-        <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
+        {/* Tab buttons — full width, all on one line */}
+        <div className="flex gap-1.5 w-full">
           {CHOICES.map(c => {
             const active = selected === c.id
             return (
               <button
                 key={c.id}
                 onClick={() => setSelected(c.id)}
-                className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
-                  transition-all duration-200 border-2 focus:outline-none
+                className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold
+                  transition-all duration-200 border-2 focus:outline-none whitespace-nowrap
                   ${active
                     ? 'text-white shadow-md scale-[1.02]'
                     : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
                   }`}
                 style={active ? { backgroundColor: c.color, borderColor: c.color } : {}}
               >
-                <span className="text-base leading-none">{c.emoji}</span>
-                {c.title}
+                <span className="text-sm sm:text-base leading-none flex-shrink-0">{c.emoji}</span>
+                <span className="truncate">{c.title}</span>
               </button>
             )
           })}
