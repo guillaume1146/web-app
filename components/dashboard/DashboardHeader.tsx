@@ -1,14 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
  FaBars,
  FaTimes,
- FaBell,
  FaUser,
  FaSignOutAlt,
- FaCheckDouble,
  FaUserFriends,
  FaHome,
 } from 'react-icons/fa'
@@ -16,6 +15,8 @@ import HealthwyzLogo from '@/components/ui/HealthwyzLogo'
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher'
 import { useTranslation } from '@/lib/i18n'
 import { useCapacitor } from '@/hooks/useCapacitor'
+
+const NotificationBell = dynamic(() => import('@/components/shared/NotificationBell'), { ssr: false })
 
 interface NotificationItem {
  id: string
@@ -155,7 +156,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  userName,
  userImage,
  userSubtitle,
- notificationCount,
+ notificationCount: _notificationCount,
  profileHref,
  networkHref,
  sidebarOpen,
@@ -164,13 +165,10 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  userId,
 }) => {
  const { t } = useTranslation()
- const [showDropdown, setShowDropdown] = useState(false)
- const [notifications, setNotifications] = useState<NotificationItem[]>([])
- const [loadingNotifs, setLoadingNotifs] = useState(false)
  const [planLabel, setPlanLabel] = useState<string | null>(null)
- const dropdownRef = useRef<HTMLDivElement>(null)
+ const [pendingConnectionCount, setPendingConnectionCount] = useState(0)
 
- // Fetch user's subscription plan
+ // Fetch user's subscription plan label
  useEffect(() => {
  if (!userId) return
  fetch(`/api/users/${userId}/subscription`, { credentials: 'include' })
@@ -183,97 +181,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  }
  })
  .catch(() => {})
- }, [userId])
-
- const fetchNotifications = useCallback(async () => {
- if (!userId) return
- setLoadingNotifs(true)
- try {
- const res = await fetch(`/api/users/${userId}/notifications?limit=10`, { credentials: 'include' })
- const data = await res.json()
- if (data.data) {
- setNotifications(data.data)
- }
- } catch {
- // silent
- } finally {
- setLoadingNotifs(false)
- }
- }, [userId])
-
- const handleBellClick = () => {
- const opening = !showDropdown
- setShowDropdown(opening)
- if (opening) {
- fetchNotifications()
- }
- }
-
- const handleMarkAllRead = async () => {
- if (!userId) return
- try {
- await fetch(`/api/users/${userId}/notifications`, {
- method: 'PATCH',
- headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify({}),
- credentials: 'include',
- })
- setNotifications(prev => prev.map(n => ({ ...n, readAt: new Date().toISOString() })))
- } catch {
- // silent
- }
- }
-
- // Close dropdown on outside click
- useEffect(() => {
- const handleClickOutside = (e: MouseEvent) => {
- if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
- setShowDropdown(false)
- }
- }
- if (showDropdown) {
- document.addEventListener('mousedown', handleClickOutside)
- }
- return () => document.removeEventListener('mousedown', handleClickOutside)
- }, [showDropdown])
-
- // Real-time notification listener
- useEffect(() => {
- const handler = (e: CustomEvent<NotificationItem>) => {
-  const incoming = e.detail
-  // Defensive dedupe: ignore the same id landing twice (guards against
-  // any duplicate-event leak so the dropdown list doesn't get duplicate
-  // React keys).
-  setNotifications(prev => {
-   if (incoming?.id && prev.some(n => n.id === incoming.id)) return prev
-   return [incoming, ...prev].slice(0, 10)
-  })
- }
- window.addEventListener('notification:new' as string, handler as EventListener)
- return () => window.removeEventListener('notification:new' as string, handler as EventListener)
- }, [])
-
- const [autoUnreadCount, setAutoUnreadCount] = useState(0)
- const [pendingConnectionCount, setPendingConnectionCount] = useState(0)
-
- useEffect(() => {
- if (!userId) return
- const fetchUnreadCount = async () => {
- try {
- const res = await fetch(`/api/users/${userId}/notifications?unread=true&limit=1`, { credentials: 'include' })
- const data = await res.json()
- if (data.meta?.unreadCount != null) {
- setAutoUnreadCount(data.meta.unreadCount)
- } else if (data.meta?.total != null) {
- setAutoUnreadCount(data.meta.total)
- }
- } catch {
- // silent
- }
- }
- fetchUnreadCount()
- const interval = setInterval(fetchUnreadCount, 30000)
- return () => clearInterval(interval)
  }, [userId])
 
  // Fetch pending connection request count
@@ -294,8 +201,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  const interval = setInterval(fetchPendingConnections, 30000)
  return () => clearInterval(interval)
  }, [userId, networkHref])
-
- const unreadCount = notifications.filter(n => !n.readAt).length || autoUnreadCount || notificationCount
 
  const isCapacitor = useCapacitor()
 
@@ -385,122 +290,10 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
  </Link>
  )}
 
- {/* Notification bell + dropdown */}
- <div className="relative" ref={dropdownRef}>
- <button
- onClick={handleBellClick}
- className="relative p-2.5 sm:p-2.5 md:p-3 text-gray-600 hover:text-brand-teal bg-gray-100 rounded-lg hover:bg-sky-100 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
- aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
- aria-expanded={showDropdown}
- aria-haspopup="true"
- >
- <FaBell className="text-base sm:text-base md:text-lg" aria-hidden="true" />
- {unreadCount > 0 && (
- <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 flex items-center justify-center font-bold" aria-hidden="true">
- {unreadCount > 9 ? '9+' : unreadCount}
- </span>
+ {/* Notification bell + dropdown (real-time, socket-powered) */}
+ {userId && (
+ <NotificationBell userId={userId} profileHref={profileHref} />
  )}
- </button>
-
- {showDropdown && (
- <div role="region" aria-label="Notifications" aria-live="polite" className={`fixed left-0 right-0 ${isCapacitor ? 'top-[112px] max-h-[calc(100vh-112px)]' : 'top-[60px] max-h-[calc(100vh-60px)]'} sm:absolute sm:left-auto sm:right-0 sm:top-full mt-0 sm:mt-2 w-full sm:w-96 bg-white sm:rounded-xl shadow-2xl border border-gray-200 z-50 sm:max-h-[70vh] overflow-hidden`}>
- <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
- <h3 className="font-semibold text-gray-900 text-sm" id="notifications-heading">Notifications</h3>
- {notifications.some(n => !n.readAt) && (
- <button
- onClick={handleMarkAllRead}
- className="text-xs text-brand-teal hover:text-brand-navy flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal rounded"
- aria-label="Mark all notifications as read"
- >
- <FaCheckDouble className="text-[10px]" aria-hidden="true" />
- Mark all read
- </button>
- )}
- </div>
-
- <div className="overflow-y-auto max-h-[calc(70vh-48px)]" role="list" aria-labelledby="notifications-heading">
- {loadingNotifs ? (
- <div className="p-6 text-center text-gray-500 text-sm" role="status">
- Loading...
- </div>
- ) : notifications.length === 0 ? (
- <div className="p-6 text-center text-gray-500 text-sm">
- No notifications yet
- </div>
- ) : (
- notifications.map(n => {
- const notifHref = getNotificationHref(n, profileHref)
- const isCorporateInvite = n.type === 'corporate_enrollment' && n.title?.includes('Invitation') && !n.readAt
-
- const handleEnrollmentAction = async (action: 'accept' | 'decline') => {
- try {
- // Accept: self-enroll by confirming the pending enrollment
- // The referenceId is the company profile ID
- const res = await fetch(`/api/corporate/enrollment/${action}`, {
- method: 'POST',
- headers: { 'Content-Type': 'application/json' },
- credentials: 'include',
- body: JSON.stringify({ notificationId: n.id, companyId: n.referenceId }),
- })
- if (res.ok) {
- // Mark notification as read
- await fetch(`/api/users/${userId}/notifications`, {
- method: 'PATCH',
- headers: { 'Content-Type': 'application/json' },
- credentials: 'include',
- body: JSON.stringify({ ids: [n.id] }),
- })
- window.location.reload()
- }
- } catch { /* silent */ }
- }
-
- const content = (
- <>
- <div className="flex items-start justify-between gap-2">
- <div className="flex-1 min-w-0">
- <p className="text-sm font-medium text-gray-900 truncate">{n.title}</p>
- <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{n.message}</p>
- </div>
- {!n.readAt && (
- <span className="w-2 h-2 bg-brand-navy rounded-full flex-shrink-0 mt-1.5" aria-label="Unread" />
- )}
- </div>
- {isCorporateInvite && (
- <div className="flex gap-2 mt-2">
- <button
- onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnrollmentAction('accept') }}
- className="flex-1 text-xs font-medium py-1.5 px-3 rounded-lg bg-[#0C6780] text-white hover:bg-[#0a5568] transition-colors"
- >
- Accept
- </button>
- <button
- onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnrollmentAction('decline') }}
- className="flex-1 text-xs font-medium py-1.5 px-3 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
- >
- Decline
- </button>
- </div>
- )}
- <p className="text-[10px] text-gray-400 mt-1">{timeAgo(n.createdAt)}</p>
- </>
- )
- const className = `block px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer ${!n.readAt ? 'bg-sky-50/50' : ''}`
- return notifHref && !isCorporateInvite ? (
- <Link key={n.id} href={notifHref} role="listitem" className={className} onClick={() => setShowDropdown(false)}>
- {content}
- </Link>
- ) : (
- <div key={n.id} role="listitem" className={className}>
- {content}
- </div>
- )
- })
- )}
- </div>
- </div>
- )}
- </div>
 
  {/* Language switcher — hidden on small mobile to save space */}
  <div className="hidden sm:block">

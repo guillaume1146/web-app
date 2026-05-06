@@ -65,11 +65,13 @@ export class UsersService {
 
   // ─── Notifications ─────────────────────────────────────────────────────
 
-  async getNotifications(userId: string, opts: { unread?: boolean; limit?: number; grouped?: boolean }) {
+  async getNotifications(userId: string, opts: { unread?: boolean; limit?: number; page?: number; grouped?: boolean }) {
     const where: any = { userId };
     if (opts.unread) where.readAt = null;
+    const take = opts.limit || 20;
+    const skip = opts.page ? (opts.page - 1) * take : 0;
     const [notifications, total, unreadCount] = await Promise.all([
-      this.prisma.notification.findMany({ where, orderBy: { createdAt: 'desc' }, take: opts.limit || 50 }),
+      this.prisma.notification.findMany({ where, orderBy: { createdAt: 'desc' }, take, skip }),
       this.prisma.notification.count({ where: { userId } }),
       this.prisma.notification.count({ where: { userId, readAt: null } }),
     ]);
@@ -116,10 +118,11 @@ export class UsersService {
   }
 
   async markAllNotificationsRead(userId: string) {
-    await this.prisma.notification.updateMany({
+    const result = await this.prisma.notification.updateMany({
       where: { userId, readAt: null },
       data: { readAt: new Date() },
     });
+    return { count: result.count };
   }
 
   // ─── Wallet ────────────────────────────────────────────────────────────

@@ -60,20 +60,30 @@ export class UsersController {
   // ─── Notifications ─────────────────────────────────────────────────────
 
   @Get(':id/notifications')
-  async getNotifications(@Param('id') id: string, @CurrentUser() user: JwtPayload, @Query('unread') unread?: string, @Query('limit') limit?: string) {
+  async getNotifications(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Query('unread') unread?: string,
+    @Query('unreadOnly') unreadOnly?: string,
+    @Query('limit') limit?: string,
+    @Query('page') page?: string,
+  ) {
     this.assertSelf(user, id);
-    const result = await this.usersService.getNotifications(id, { unread: unread === 'true', limit: limit ? parseInt(limit) : undefined });
+    const isUnread = unread === 'true' || unreadOnly === 'true';
+    const take = limit ? Math.min(parseInt(limit), 100) : 20;
+    const pageNum = page ? Math.max(1, parseInt(page)) : 1;
+    const result = await this.usersService.getNotifications(id, { unread: isUnread, limit: take, page: pageNum });
     return { success: true, data: result.notifications, meta: result.meta };
   }
 
   @Patch(':id/notifications')
   async markRead(
     @Param('id') id: string,
-    @Body() body: { notificationIds?: string[]; notificationId?: string; markAllRead?: boolean; read?: boolean },
+    @Body() body: { notificationIds?: string[]; notificationId?: string; markAllRead?: boolean; read?: boolean; ids?: string[] },
     @CurrentUser() user: JwtPayload,
   ) {
     this.assertSelf(user, id);
-    let ids = body?.notificationIds;
+    let ids = body?.notificationIds ?? body?.ids;
     if ((!ids || ids.length === 0) && body?.notificationId) {
       ids = [body.notificationId];
     }
@@ -86,6 +96,26 @@ export class UsersController {
     }
     await this.usersService.markNotificationsRead(id, ids);
     return { success: true, message: 'Notifications marked as read' };
+  }
+
+  /** Dedicated mark-all-read endpoint for cleaner API surface */
+  @Patch(':id/notifications/read-all')
+  async markAllRead(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    this.assertSelf(user, id);
+    const result = await this.usersService.markAllNotificationsRead(id);
+    return { success: true, message: 'All notifications marked as read', data: result };
+  }
+
+  /** Mark a single notification as read */
+  @Patch(':id/notifications/:notifId')
+  async markOneRead(
+    @Param('id') id: string,
+    @Param('notifId') notifId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    this.assertSelf(user, id);
+    await this.usersService.markNotificationsRead(id, [notifId]);
+    return { success: true, message: 'Notification marked as read' };
   }
 
   // ─── Wallet ────────────────────────────────────────────────────────────
