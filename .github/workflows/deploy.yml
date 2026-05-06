@@ -99,6 +99,7 @@ jobs:
             --build-arg NEXT_PUBLIC_SOCKET_URL=${{ steps.meta.outputs.app_url }} \
             --build-arg NEXT_PUBLIC_API_URL=${{ steps.meta.outputs.app_url }} \
             --build-arg API_INTERNAL_URL=http://api:3001 \
+            --build-arg NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }} \
             -t ${{ steps.meta.outputs.image_tag }} \
             -f Dockerfile \
             .
