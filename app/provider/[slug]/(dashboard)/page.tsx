@@ -156,15 +156,15 @@ export default function DynamicProviderDashboard() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold text-gray-900">My Workplace</h2>
-          <Link href={`/search/clinics`} className="text-xs text-[#0C6780] font-medium hover:underline flex items-center gap-1">
+          <Link href="/search/organizations" className="text-xs text-[#0C6780] font-medium hover:underline flex items-center gap-1">
             <FaPlus size={10} /> Add Workplace
           </Link>
         </div>
         {workplaces.length === 0 ? (
           <div className="bg-white rounded-xl border border-dashed border-gray-200 p-5 text-center">
             <FaHospital className="text-gray-300 text-2xl mx-auto mb-2" />
-            <p className="text-sm text-gray-500 mb-2">You have not linked a clinic or hospital yet.</p>
-            <Link href="/search/clinics" className="text-xs text-[#0C6780] font-medium hover:underline">Find and join a healthcare entity →</Link>
+            <p className="text-sm text-gray-500 mb-2">You have not linked an organization yet.</p>
+            <Link href="/search/organizations" className="text-xs text-[#0C6780] font-medium hover:underline">Find and join an organization →</Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
