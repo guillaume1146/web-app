@@ -987,4 +987,76 @@ Rules:
       return { medicines: [], rawText: '' };
     }
   }
+
+  /**
+   * Richer authenticated prescription extraction.
+   * Returns structured medication list (name, dosage, frequency), prescriber name, date, and raw text.
+   * Used by POST /api/prescriptions/extract.
+   */
+  async extractPrescriptionDetailed(imageDataUrl: string): Promise<{
+    medications: Array<{ name: string; dosage: string; frequency: string }>;
+    prescriber: string;
+    date: string;
+    rawText: string;
+  }> {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) return { medications: [], prescriber: '', date: '', rawText: '' };
+
+    const visionModel = process.env.GROQ_VISION_MODEL || 'llama-3.2-11b-vision-preview';
+
+    const body = {
+      model: visionModel,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: imageDataUrl } },
+          {
+            type: 'text',
+            text: `You are a clinical pharmacy AI assistant. Carefully extract the following from this prescription image and return ONLY valid JSON with no markdown fences:
+{
+  "medications": [{ "name": "string", "dosage": "string", "frequency": "string" }],
+  "prescriber": "prescriber full name and credentials if visible",
+  "date": "ISO date YYYY-MM-DD if visible, else empty string",
+  "rawText": "full verbatim text extracted from the image"
+}
+Include both brand and generic names in the medication name. If a field is not visible, use an empty string. No text outside the JSON.`,
+          },
+        ],
+      }],
+      max_tokens: 800,
+    };
+
+    try {
+      const res = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json() as { choices?: Array<{ message: { content: string } }>; usage?: { prompt_tokens: number; completion_tokens: number } };
+      const content = (json.choices?.[0]?.message?.content ?? '{}').trim();
+      if (json.usage) {
+        this.logger.log(`[AI] extract-prescription-detailed: in=${json.usage.prompt_tokens} out=${json.usage.completion_tokens}`);
+      }
+      const clean = content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
+      const parsed = JSON.parse(clean) as {
+        medications?: Array<{ name?: string; dosage?: string; frequency?: string }>;
+        prescriber?: string;
+        date?: string;
+        rawText?: string;
+      };
+      return {
+        medications: Array.isArray(parsed.medications)
+          ? parsed.medications
+              .filter((m) => m.name)
+              .map((m) => ({ name: m.name ?? '', dosage: m.dosage ?? '', frequency: m.frequency ?? '' }))
+          : [],
+        prescriber: parsed.prescriber ?? '',
+        date: parsed.date ?? '',
+        rawText: parsed.rawText ?? content,
+      };
+    } catch (err) {
+      this.logger.error('[AI] extract-prescription-detailed error:', err);
+      return { medications: [], prescriber: '', date: '', rawText: '' };
+    }
+  }
 }

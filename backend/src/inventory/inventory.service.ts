@@ -297,7 +297,7 @@ export class InventoryService {
 
   // ─── Health Shop Search ────────────────────────────────────────────────
 
-  async searchShop(opts: { query?: string; category?: string; providerType?: string; limit?: number; offset?: number }) {
+  async searchShop(opts: { query?: string; category?: string; providerType?: string; limit?: number; offset?: number; userId?: string }) {
     const where: any = { isActive: true, inStock: true };
     if (opts.category) where.category = opts.category;
     if (opts.providerType) where.providerType = opts.providerType;
@@ -309,6 +309,37 @@ export class InventoryService {
       ];
     }
 
+    // Fetch active prescription medication names for the user (if userId provided)
+    let prescriptionMedNames: string[] = [];
+    if (opts.userId) {
+      try {
+        const profile = await this.prisma.patientProfile.findUnique({
+          where: { userId: opts.userId },
+          select: {
+            prescriptions: {
+              where: { isActive: true },
+              select: {
+                medicines: {
+                  select: { medicine: { select: { name: true, genericName: true } } },
+                },
+              },
+              take: 10,
+            },
+          },
+        });
+        if (profile?.prescriptions) {
+          for (const rx of profile.prescriptions) {
+            for (const med of rx.medicines) {
+              if (med.medicine?.name) prescriptionMedNames.push(med.medicine.name.toLowerCase());
+              if ((med.medicine as any)?.genericName) prescriptionMedNames.push(((med.medicine as any).genericName as string).toLowerCase());
+            }
+          }
+        }
+      } catch {
+        // Non-fatal — proceed without prescription boosting
+      }
+    }
+
     const [items, total] = await Promise.all([
       this.prisma.providerInventoryItem.findMany({
         where, take: opts.limit || 20, skip: opts.offset || 0,
@@ -316,6 +347,28 @@ export class InventoryService {
       }),
       this.prisma.providerInventoryItem.count({ where }),
     ]);
-    return { items, total };
+
+    // Annotate items with isRecommended and sort recommended ones to the top
+    const annotated = items.map((item) => {
+      const itemText = `${item.name} ${(item as any).genericName ?? ''}`.toLowerCase();
+      const isRecommended = prescriptionMedNames.length > 0
+        && prescriptionMedNames.some((med) => {
+          if (itemText.includes(med)) return true;
+          // Word-level partial match (word > 3 chars)
+          return med.split(/\s+/).some((word) => word.length > 3 && itemText.includes(word));
+        });
+      return { ...item, isRecommended };
+    });
+
+    // Stable sort: recommended first, then featured, then alphabetical
+    annotated.sort((a, b) => {
+      if (a.isRecommended && !b.isRecommended) return -1;
+      if (!a.isRecommended && b.isRecommended) return 1;
+      if (a.isFeatured && !b.isFeatured) return -1;
+      if (!a.isFeatured && b.isFeatured) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    return { items: annotated, total };
   }
 }

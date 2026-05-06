@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AiService } from './ai.service';
 import { Public } from '../auth/decorators/public.decorator';
@@ -8,6 +8,7 @@ import { JwtPayload } from '../auth/jwt.strategy';
 @ApiTags('AI Chat')
 @Controller('ai')
 export class AiController {
+  private readonly logger = new Logger(AiController.name);
   constructor(private aiService: AiService) {}
 
   @Get('chat')
@@ -118,7 +119,7 @@ export class AiController {
     }
   }
 
-  /** POST /api/ai/extract-prescription � public, extracts medicine names from a prescription image */
+  /** POST /api/ai/extract-prescription — public, extracts medicine names from a prescription image */
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('extract-prescription')
@@ -129,6 +130,32 @@ export class AiController {
       return { success: true, data: result };
     } catch {
       return { success: true, data: { medicines: [], rawText: '' } };
+    }
+  }
+
+  /**
+   * POST /api/ai/prescriptions/extract — authenticated, richer extraction
+   * Returns structured medications list with dosage + frequency, prescriber name, and date.
+   * Body: { imageBase64: string, mimeType?: string }
+   * The imageBase64 should be the raw base64 string (without the data: prefix) OR a full data URL.
+   */
+  @HttpCode(HttpStatus.OK)
+  @Post('prescriptions/extract')
+  async extractPrescriptionDetailed(
+    @Body() body: { imageBase64: string; mimeType?: string },
+    @CurrentUser() _user: JwtPayload,
+  ) {
+    if (!body?.imageBase64) return { success: false, message: 'imageBase64 is required' };
+    try {
+      // Accept both raw base64 and full data URLs
+      const dataUrl = body.imageBase64.startsWith('data:')
+        ? body.imageBase64
+        : `data:${body.mimeType || 'image/jpeg'};base64,${body.imageBase64}`;
+      const result = await this.aiService.extractPrescriptionDetailed(dataUrl);
+      return { success: true, data: result };
+    } catch (err) {
+      this.logger.error('POST /api/prescriptions/extract error:', err);
+      return { success: false, message: 'Could not read prescription. Please enter manually.' };
     }
   }
 }

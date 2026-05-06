@@ -7,6 +7,7 @@ import ShopItemCard from '@/components/health-shop/ShopItemCard'
 import FloatingCart from '@/components/health-shop/FloatingCart'
 import { usePrescription } from '@/lib/contexts/prescription-context'
 
+// Client-side rx score is the fallback when no userId (unauthenticated browsing)
 function rxScore(item: ShopItem, medicines: string[]): number {
   if (!medicines.length) return 0
   const text = `${item.name} ${item.genericName ?? ''}`.toLowerCase()
@@ -19,6 +20,13 @@ function rxScore(item: ShopItem, medicines: string[]): number {
     }
   }
   return 0
+}
+
+// Read userId from cookie (client-side, non-httpOnly)
+function getUserIdFromCookie(): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.split('; ').find(row => row.startsWith('mediwyz_user_id='))
+  return match ? decodeURIComponent(match.split('=')[1]) : null
 }
 
 interface ShopItem {
@@ -37,6 +45,7 @@ interface ShopItem {
   inStock: boolean
   requiresPrescription: boolean
   isFeatured: boolean
+  isRecommended?: boolean
 }
 
 interface ShopCategory {
@@ -88,6 +97,9 @@ function HealthShopContent() {
     if (providerType) params.set('providerType', providerType)
     params.set('limit', '20')
     params.set('offset', String(offset))
+    // Pass userId so the backend can boost items matching the user's DB prescriptions
+    const userId = getUserIdFromCookie()
+    if (userId) params.set('userId', userId)
 
     try {
       const res = await fetch(`/api/search/health-shop?${params}`)
@@ -189,9 +201,18 @@ function HealthShopContent() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[...items]
-              .sort((a, b) => rxScore(b, prescription.medicines) - rxScore(a, prescription.medicines))
+              // Merge backend isRecommended with client-side rxScore (local prescription context)
+              .sort((a, b) => {
+                const aScore = (a.isRecommended ? 3 : 0) + rxScore(a, prescription.medicines)
+                const bScore = (b.isRecommended ? 3 : 0) + rxScore(b, prescription.medicines)
+                return bScore - aScore
+              })
               .map(item => (
-                <ShopItemCard key={item.id} product={item} rxMatch={rxScore(item, prescription.medicines) > 0} />
+                <ShopItemCard
+                  key={item.id}
+                  product={item}
+                  rxMatch={!!(item.isRecommended) || rxScore(item, prescription.medicines) > 0}
+                />
               ))}
           </div>
         )}

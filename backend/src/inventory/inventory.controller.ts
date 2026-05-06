@@ -60,10 +60,19 @@ export class InventoryController {
 
   @Public()
   @Get('search/health-shop')
-  async searchShop(@Query('q') q?: string, @Query('category') category?: string, @Query('providerType') providerType?: string, @Query('limit') limit?: string, @Query('offset') offset?: string) {
+  async searchShop(
+    @Query('q') q?: string,
+    @Query('category') category?: string,
+    @Query('providerType') providerType?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('userId') userId?: string,
+  ) {
     const result = await this.inventoryService.searchShop({
       query: q, category, providerType,
-      limit: limit ? parseInt(limit) : undefined, offset: offset ? parseInt(offset) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+      offset: offset ? parseInt(offset) : undefined,
+      userId,
     });
     return { success: true, data: result.items, total: result.total };
   }
