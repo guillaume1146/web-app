@@ -313,25 +313,31 @@ export default function NearMeSection() {
 
   const providerColor = (type: string) => MODES.find(m => m.value === type)?.color ?? '#0C6780'
 
+  function svgUrl(svg: string) {
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+  }
+
   function markerIcon(color: string, size = 32) {
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}' viewBox='0 0 32 32'>
-      <circle cx='16' cy='16' r='14' fill='${color}' stroke='white' stroke-width='2.5'/>
-      <circle cx='16' cy='16' r='6' fill='white'/>
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32">
+      <circle cx="16" cy="16" r="14" fill="${color}" stroke="white" stroke-width="2.5"/>
+      <circle cx="16" cy="16" r="6" fill="white"/>
     </svg>`
     return {
-      url: `data:image/svg+xml;base64,${btoa(svg)}`,
+      url: svgUrl(svg),
       scaledSize: new window.google.maps.Size(size, size),
       anchor: new window.google.maps.Point(size / 2, size / 2),
     }
   }
 
   function entityMarkerIcon(color: string) {
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'>
-      <rect x='4' y='4' width='28' height='28' rx='6' fill='${color}' stroke='white' stroke-width='2.5'/>
-      <text x='18' y='24' text-anchor='middle' font-size='16' fill='white'>🏥</text>
+    // Use a cross/plus shape instead of emoji (emoji breaks btoa on non-Latin1)
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+      <rect x="4" y="4" width="28" height="28" rx="6" fill="${color}" stroke="white" stroke-width="2.5"/>
+      <rect x="15" y="9" width="6" height="18" rx="2" fill="white"/>
+      <rect x="9" y="15" width="18" height="6" rx="2" fill="white"/>
     </svg>`
     return {
-      url: `data:image/svg+xml;base64,${btoa(svg)}`,
+      url: svgUrl(svg),
       scaledSize: new window.google.maps.Size(36, 36),
       anchor: new window.google.maps.Point(18, 18),
     }
@@ -475,12 +481,7 @@ export default function NearMeSection() {
                 <Marker
                   position={userPos}
                   icon={{
-                    url: 'data:image/svg+xml;base64,' + btoa(
-                      `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'>
-                        <circle cx='12' cy='12' r='10' fill='#9AE1FF' stroke='white' stroke-width='3'/>
-                        <circle cx='12' cy='12' r='4' fill='white'/>
-                      </svg>`,
-                    ),
+                    url: svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#9AE1FF" stroke="white" stroke-width="3"/><circle cx="12" cy="12" r="4" fill="white"/></svg>`),
                     scaledSize: new window.google.maps.Size(24, 24),
                     anchor: new window.google.maps.Point(12, 12),
                   }}
