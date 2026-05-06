@@ -119,29 +119,39 @@ export class SearchService {
     const where: any = { userType: uType, accountStatus: 'active' };
 
     // When entityId is supplied, restrict to providers who work at that healthcare entity
+    let entityUserIds: string[] | null = null;
     if (entityId) {
       const workplaces = await (this.prisma.providerWorkplace as any).findMany({
         where: { healthcareEntityId: entityId, isActive: true, status: 'active' },
         select: { providerUserId: true },
       });
       if (workplaces.length === 0) return { data: [], total: 0, page: 1, limit: take, totalPages: 0 };
-      where.id = { in: workplaces.map((w: any) => w.providerUserId) };
+      entityUserIds = workplaces.map((w: any) => w.providerUserId as string);
     }
 
     // When serviceId is supplied, only return providers who have that service
     // in their ProviderServiceConfig (they explicitly offer it).
     // If nobody offers it yet → return empty list; the booking drawer shows
     // "No providers available" rather than a misleading unfiltered list.
+    let serviceUserIds: string[] | null = null;
     if (serviceId) {
       const configs = await this.prisma.providerServiceConfig.findMany({
         where: {
           platformServiceId: serviceId, isActive: true,
-          ...(where.id ? { providerUserId: where.id } : {}),
+          // Pre-filter by entity providers if both filters are active, avoiding overwrite
+          ...(entityUserIds ? { providerUserId: { in: entityUserIds } } : {}),
         },
         select: { providerUserId: true },
       });
       if (configs.length === 0) return { data: [], total: 0, page: 1, limit: take, totalPages: 0 };
-      where.id = { in: configs.map(c => c.providerUserId) };
+      serviceUserIds = configs.map(c => c.providerUserId);
+    }
+
+    // Merge filters: intersection when both are present, otherwise whichever is set
+    if (serviceUserIds !== null) {
+      where.id = { in: serviceUserIds };
+    } else if (entityUserIds !== null) {
+      where.id = { in: entityUserIds };
     }
 
     if (query) {

@@ -40,10 +40,22 @@ export class ProvidersService {
   //   2. Service-specific templates (WorkflowTemplate.platformServiceId = svc.id)
   //      for this provider type created by system or regional admin
   //   3. Generic templates (platformServiceId = null) for this provider type
-  //      (system defaults + regional admin)
+  //      (system defaults + regional admin), de-duplicated to at most one per
+  //      serviceMode so a service with no explicit template doesn't inherit
+  //      all generic templates for every mode.
   //
   // Only services where the provider has a ProviderServiceConfig are returned
   // (the provider must have opted in to offer the service).
+
+  /** Return at most one template per serviceMode (prefer isDefault ordering from query). */
+  private dedupeByServiceMode<T extends { serviceMode: string; id: string }>(templates: T[]): T[] {
+    const seen = new Set<string>();
+    return templates.filter(t => {
+      if (seen.has(t.serviceMode)) return false;
+      seen.add(t.serviceMode);
+      return true;
+    });
+  }
 
   async getServices(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -134,12 +146,14 @@ export class ProvidersService {
       // Priority 2: service-specific system/admin templates
       const svcFallback = svcSpecificFallback.get(svc.id) ?? [];
 
-      // Priority 3: generic role templates
+      // Priority 3: generic role templates — deduplicated to one per serviceMode
+      // so that services without explicit templates don't inherit ALL generic
+      // templates, which would show the same irrelevant options on every service.
       const workflows = explicitWorkflows.length > 0
         ? explicitWorkflows.map(toWorkflow)
         : svcFallback.length > 0
           ? svcFallback.map(toWorkflow)
-          : genericFallback.map(toWorkflow);
+          : this.dedupeByServiceMode(genericFallback).map(toWorkflow);
 
       return {
         id: svc.id,

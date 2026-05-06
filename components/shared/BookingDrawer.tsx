@@ -140,6 +140,9 @@ export default function BookingDrawer() {
   // ── Reason ────────────────────────────────────────────────────────────────
   const [reason, setReason] = useState('')
 
+  // ── Wallet balance ────────────────────────────────────────────────────────
+  const [walletBalance, setWalletBalance] = useState<number | null>(null)
+
   // ─── Reset when drawer opens/closes ──────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return
@@ -149,7 +152,22 @@ export default function BookingDrawer() {
     setAuthEmail('')
     setAuthPassword('')
     setReason('')
-    setLoggedIn(isLoggedIn())
+    const loggedInNow = isLoggedIn()
+    setLoggedIn(loggedInNow)
+
+    // Fetch wallet balance once when opening, if the user is logged in
+    if (loggedInNow) {
+      const userId = document.cookie
+        .split(';')
+        .find(c => c.trim().startsWith('mediwyz_user_id='))
+        ?.split('=')?.[1]
+      if (userId) {
+        fetch(`/api/users/${userId}/wallet`, { credentials: 'include' })
+          .then(r => r.json())
+          .then(j => { if (j.success) setWalletBalance(j.data?.balance ?? null) })
+          .catch(() => { /* non-fatal */ })
+      }
+    }
 
     // Pre-populate from entry options
     const { service, provider, role, organization, date, time } = options
@@ -174,7 +192,7 @@ export default function BookingDrawer() {
       setSelectedTime(time ?? null)
       setStep('providers')
       setStepHistory(['service', 'providers'])
-      fetchProviders(service)
+      fetchProviders(service, null) // org is null — passed explicitly to avoid stale closure
     } else if (provider) {
       setSelectedOrg(null)
       setSelectedService(null)
@@ -280,12 +298,15 @@ export default function BookingDrawer() {
     finally { setServicesLoading(false) }
   }
 
-  async function fetchProviders(service: DrawerService) {
+  // currentOrg is passed explicitly so callers don't rely on a stale closure over
+  // selectedOrg — state updates are async so the value may not have settled yet
+  // when fetchProviders is called in the same render cycle as setSelectedOrg.
+  async function fetchProviders(service: DrawerService, currentOrg: DrawerOrganization | null) {
     setProvidersLoading(true)
     setProviders([])
     try {
       // If an organization was selected, filter providers from that org's data
-      if (selectedOrg) {
+      if (currentOrg) {
         const orgData = (window as any).__orgProvidersData
         const orgProviders: DrawerProvider[] = (orgData?.providers ?? [])
           .filter((p: any) => p.services?.some((s: any) => s.id === service.id))
@@ -302,7 +323,7 @@ export default function BookingDrawer() {
       }
 
       const params = new URLSearchParams({ type: service.providerType ?? '', serviceId: service.id, limit: '30' })
-      if (selectedOrg) params.set('entityId', selectedOrg.id)
+      if (currentOrg) params.set('entityId', currentOrg.id)
       const res = await fetch(`/api/search/providers?${params}`)
       const j = await res.json()
       if (j.success) {
@@ -389,7 +410,7 @@ export default function BookingDrawer() {
     } else {
       // No provider yet → go to providers step
       goTo('providers')
-      fetchProviders(service)
+      fetchProviders(service, selectedOrg)
     }
   }
 
@@ -616,7 +637,7 @@ export default function BookingDrawer() {
                   {step === 'workflow'   && <WorkflowStep workflows={workflows} onSelect={handleSelectWorkflow} selectedId={selectedWorkflow?.id} roleColor={roleColor} />}
                   {step === 'slot'       && <SlotStep days={days} selectedDate={selectedDate} selectedTime={selectedTime} slots={slots} loading={slotsLoading} onSelectDate={handleSelectDate} onSelectTime={handleSelectTime} onNext={handleSlotNext} roleColor={roleColor} />}
                   {step === 'auth'       && <AuthStep email={authEmail} password={authPassword} onEmailChange={setAuthEmail} onPasswordChange={setAuthPassword} onSubmit={handleLogin} loading={authLoading} error={authError} />}
-                  {step === 'confirm'    && <ConfirmStep service={selectedService} provider={selectedProvider} workflow={selectedWorkflow} dateLabel={dateLabel} timeLabel={timeLabel} reason={reason} onReasonChange={setReason} onSubmit={handleSubmit} submitting={submitting} error={error} roleColor={roleColor} />}
+                  {step === 'confirm'    && <ConfirmStep service={selectedService} provider={selectedProvider} workflow={selectedWorkflow} dateLabel={dateLabel} timeLabel={timeLabel} reason={reason} onReasonChange={setReason} onSubmit={handleSubmit} submitting={submitting} error={error} roleColor={roleColor} walletBalance={walletBalance} />}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -1126,7 +1147,7 @@ function AuthStep({
 
 function ConfirmStep({
   service, provider, workflow, dateLabel, timeLabel,
-  reason, onReasonChange, onSubmit, submitting, error, roleColor,
+  reason, onReasonChange, onSubmit, submitting, error, roleColor, walletBalance,
 }: {
   service: DrawerService | null
   provider: DrawerProvider | null
@@ -1139,7 +1160,10 @@ function ConfirmStep({
   submitting: boolean
   error: string | null
   roleColor: string
+  walletBalance: number | null
 }) {
+  const canAfford = walletBalance === null || walletBalance >= (service?.defaultPrice ?? 0)
+
   return (
     <div className="px-4 pt-3 pb-8 space-y-3">
       {error && (
@@ -1201,6 +1225,33 @@ function ConfirmStep({
         />
       )}
 
+      {/* Wallet balance */}
+      {walletBalance !== null && service && (
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2
+          ${canAfford
+            ? 'bg-green-50 border-green-100'
+            : 'bg-red-50 border-red-100'}`}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+            style={{ backgroundColor: canAfford ? '#10b98118' : '#ef444418' }}>
+            💳
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Wallet balance</p>
+            <p className={`text-sm font-semibold leading-tight ${canAfford ? 'text-green-700' : 'text-red-600'}`}>
+              Rs {walletBalance.toLocaleString()}
+              {!canAfford && (
+                <span className="text-[11px] font-normal ml-1 text-red-500">
+                  — need Rs {(service.defaultPrice - walletBalance).toLocaleString()} more
+                </span>
+              )}
+            </p>
+          </div>
+          {canAfford
+            ? <span className="text-green-500 text-base flex-shrink-0">✓</span>
+            : <a href="/patient/billing" className="text-[11px] text-[#0C6780] font-medium hover:underline flex-shrink-0 whitespace-nowrap">Top up →</a>}
+        </div>
+      )}
+
       {/* Optional reason */}
       <div>
         <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5 block">
@@ -1217,7 +1268,7 @@ function ConfirmStep({
 
       <button
         onClick={onSubmit}
-        disabled={submitting || !service || !provider || !dateLabel || !timeLabel}
+        disabled={submitting || !service || !provider || !dateLabel || !timeLabel || !canAfford}
         className="w-full py-4 rounded-xl text-sm font-bold text-white transition-all
           hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2 shadow-lg"
         style={{ backgroundColor: roleColor }}
