@@ -1,8 +1,18 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api'
-import { FaMapMarkerAlt, FaCrosshairs, FaSpinner, FaChevronRight, FaClinicMedical, FaExclamationTriangle } from 'react-icons/fa'
+import {
+  GoogleMap,
+  useJsApiLoader,
+  Marker,
+  InfoWindow,
+  DirectionsService,
+  DirectionsRenderer,
+} from '@react-google-maps/api'
+import {
+  FaMapMarkerAlt, FaCrosshairs, FaSpinner, FaChevronRight,
+  FaClinicMedical, FaExclamationTriangle, FaRoute, FaTimes,
+} from 'react-icons/fa'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -33,6 +43,8 @@ interface EntityPin {
   distanceKm: number
 }
 
+type AnyPin = ProviderPin | EntityPin
+
 type SearchMode = 'DOCTOR' | 'NURSE' | 'DENTIST' | 'PHARMACIST' | 'clinic' | 'hospital' | 'laboratory' | 'ALL'
 
 const MODES: { value: SearchMode; label: string; color: string; emoji: string }[] = [
@@ -47,20 +59,22 @@ const MODES: { value: SearchMode; label: string; color: string; emoji: string }[
 ]
 
 const PROVIDER_TYPES = new Set(['DOCTOR', 'NURSE', 'DENTIST', 'PHARMACIST', 'NANNY', 'CAREGIVER', 'PHYSIOTHERAPIST', 'OPTOMETRIST', 'NUTRITIONIST', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER'])
-const ENTITY_TYPES = new Set(['clinic', 'hospital', 'laboratory', 'pharmacy'])
+const ENTITY_TYPES   = new Set(['clinic', 'hospital', 'laboratory', 'pharmacy'])
 
 const MAURITIUS_CENTER = { lat: -20.2, lng: 57.5 }
 
+const LIBRARIES: ('places' | 'geometry')[] = ['places', 'geometry']
+
 const MAP_STYLES: google.maps.MapTypeStyle[] = [
-  { elementType: 'geometry', stylers: [{ color: '#0a2744' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#001E40' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#9AE1FF' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0C3460' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1a4a6b' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#0C2A44' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#0d3a5c' }] },
-  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2a6090' }] },
-  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#0d2f4a' }] },
+  { elementType: 'geometry',              stylers: [{ color: '#0a2744' }] },
+  { elementType: 'labels.text.stroke',    stylers: [{ color: '#001E40' }] },
+  { elementType: 'labels.text.fill',      stylers: [{ color: '#9AE1FF' }] },
+  { featureType: 'water',    elementType: 'geometry',          stylers: [{ color: '#0C3460' }] },
+  { featureType: 'road',     elementType: 'geometry',          stylers: [{ color: '#1a4a6b' }] },
+  { featureType: 'road',     elementType: 'geometry.stroke',   stylers: [{ color: '#0C2A44' }] },
+  { featureType: 'poi',      elementType: 'geometry',          stylers: [{ color: '#0d3a5c' }] },
+  { featureType: 'administrative', elementType: 'geometry',   stylers: [{ color: '#2a6090' }] },
+  { featureType: 'landscape',      elementType: 'geometry',   stylers: [{ color: '#0d2f4a' }] },
 ]
 
 // ─── Haversine ───────────────────────────────────────────────────────────────
@@ -92,7 +106,6 @@ function MapErrorPanel({ error, apiKey }: { error: Error | null; apiKey: string 
     )
   }
 
-  // Decode the error to give actionable instructions
   const msg = error?.message ?? ''
   let title = 'Map failed to load'
   let detail = msg
@@ -100,7 +113,7 @@ function MapErrorPanel({ error, apiKey }: { error: Error | null; apiKey: string 
 
   if (msg.includes('RefererNotAllowedMapError') || msg.includes('referrer') || msg.includes('Referer')) {
     title = 'Referrer restriction is blocking this domain'
-    detail = 'Your API key only allows specific websites. Localhost is not in the allowed list.'
+    detail = 'Your API key only allows specific websites. This origin is not in the allowed list.'
     fix = 'referrer'
   } else if (msg.includes('ApiNotActivatedMapError') || msg.includes('not activated') || msg.includes('not enabled')) {
     title = 'Maps JavaScript API not enabled'
@@ -123,56 +136,33 @@ function MapErrorPanel({ error, apiKey }: { error: Error | null; apiKey: string 
           <FaExclamationTriangle className="text-amber-400 text-lg flex-shrink-0" />
           <p className="text-white font-bold text-sm">{title}</p>
         </div>
-
-        {detail && (
-          <p className="text-white/60 text-xs mb-4">{detail}</p>
-        )}
-
-        {/* Raw error for debugging */}
+        {detail && <p className="text-white/60 text-xs mb-4">{detail}</p>}
         {msg && (
           <pre className="bg-black/30 text-red-300 text-[10px] px-3 py-2 rounded-lg mb-4 overflow-x-auto whitespace-pre-wrap break-all">
             {msg}
           </pre>
         )}
-
-        {/* Fix instructions */}
         {fix === 'referrer' && (
           <div className="bg-white/5 rounded-xl p-4 text-xs text-white/70 space-y-1.5">
             <p className="font-semibold text-white text-[11px] mb-2">Fix in Google Cloud Console:</p>
-            <p>1. Go to <span className="text-brand-sky">console.cloud.google.com</span> → APIs &amp; Services → Credentials</p>
-            <p>2. Click your API key to edit it</p>
-            <p>3. Under <strong className="text-white">Application restrictions</strong> → Website restrictions</p>
-            <p>4. Add these allowed referrers:</p>
-            <code className="block bg-black/30 px-2 py-1 rounded mt-1 text-green-300">localhost:3000/*</code>
-            <code className="block bg-black/30 px-2 py-1 rounded text-green-300">http://localhost:3000/*</code>
-            <code className="block bg-black/30 px-2 py-1 rounded text-green-300">mediwyz.com/*</code>
-            <code className="block bg-black/30 px-2 py-1 rounded text-green-300">*.mediwyz.com/*</code>
-            <p className="mt-2 text-white/40 text-[10px]">Or set Application restrictions to <strong>None</strong> during development.</p>
+            <p>1. APIs &amp; Services → Credentials → edit your key</p>
+            <p>2. Application restrictions → Website restrictions</p>
+            <p>3. Add: <code className="bg-black/30 px-1 rounded text-green-300">localhost:3000/*</code> and <code className="bg-black/30 px-1 rounded text-green-300">mediwyz.com/*</code></p>
           </div>
         )}
-
         {fix === 'api' && (
           <div className="bg-white/5 rounded-xl p-4 text-xs text-white/70 space-y-1.5">
-            <p className="font-semibold text-white text-[11px] mb-2">Fix in Google Cloud Console:</p>
-            <p>1. Go to <span className="text-brand-sky">console.cloud.google.com</span> → APIs &amp; Services → Library</p>
-            <p>2. Search for <strong className="text-white">"Maps JavaScript API"</strong></p>
-            <p>3. Click it and press <strong className="text-white">Enable</strong></p>
-            <p>4. Also enable: <strong className="text-white">Places API</strong>, <strong className="text-white">Directions API</strong></p>
+            <p className="font-semibold text-white text-[11px] mb-2">Fix:</p>
+            <p>Enable <strong className="text-white">Maps JavaScript API</strong>, <strong className="text-white">Directions API</strong>, and <strong className="text-white">Places API</strong> in the API Library.</p>
           </div>
         )}
-
         {fix === 'billing' && (
           <div className="bg-white/5 rounded-xl p-4 text-xs text-white/70 space-y-1.5">
-            <p className="font-semibold text-white text-[11px] mb-2">Fix in Google Cloud Console:</p>
-            <p>1. Go to <span className="text-brand-sky">console.cloud.google.com</span> → Billing</p>
-            <p>2. Link a billing account to your project</p>
-            <p className="text-white/40 text-[10px] mt-1">Google gives $200 free credit/month — a map with this traffic costs ~$0.</p>
+            <p>Link a billing account at console.cloud.google.com → Billing. Google gives $200 free credit/month.</p>
           </div>
         )}
-
         {fix === 'key' && (
-          <div className="bg-white/5 rounded-xl p-4 text-xs text-white/70 space-y-1.5">
-            <p className="font-semibold text-white text-[11px] mb-2">Fix:</p>
+          <div className="bg-white/5 rounded-xl p-4 text-xs text-white/70">
             <p>Copy the key from Google Cloud Console → Credentials and update <code className="bg-black/30 px-1 rounded">.env.local</code></p>
           </div>
         )}
@@ -189,18 +179,24 @@ export default function NearMeSection() {
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey,
     id: 'mediwyz-map',
-    libraries: ['places'],
+    libraries: LIBRARIES,
   })
 
   const mapRef = useRef<google.maps.Map | null>(null)
-  const [mode, setMode]         = useState<SearchMode>('ALL')
-  const [userPos, setUserPos]   = useState<{ lat: number; lng: number } | null>(null)
-  const [locating, setLocating] = useState(false)
-  const [locError, setLocError] = useState<string | null>(null)
+
+  const [mode, setMode]           = useState<SearchMode>('ALL')
+  const [userPos, setUserPos]     = useState<{ lat: number; lng: number } | null>(null)
+  const [locating, setLocating]   = useState(false)
+  const [locError, setLocError]   = useState<string | null>(null)
   const [providers, setProviders] = useState<ProviderPin[]>([])
   const [entities, setEntities]   = useState<EntityPin[]>([])
   const [loading, setLoading]     = useState(false)
-  const [selected, setSelected]   = useState<(ProviderPin | EntityPin) | null>(null)
+  const [selected, setSelected]   = useState<AnyPin | null>(null)
+
+  // Directions state
+  const [dirTarget, setDirTarget]   = useState<AnyPin | null>(null)         // triggers DirectionsService
+  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null)
+  const [routeInfo, setRouteInfo]   = useState<{ distance: string; duration: string } | null>(null)
 
   // Load all pins on mount
   useEffect(() => {
@@ -232,30 +228,77 @@ export default function NearMeSection() {
     )
   }, [])
 
-  const searchNearest = useCallback(async () => {
+  const sortByDistance = useCallback(async () => {
     if (!userPos) { locate(); return }
     setLoading(true)
-    try {
-      if (mode === 'ALL') {
-        setProviders(prev => [...prev]
-          .map(p => ({ ...p, distanceKm: haversineKm(userPos.lat, userPos.lng, p.latitude, p.longitude) }))
-          .sort((a, b) => a.distanceKm - b.distanceKm))
-        setEntities(prev => [...prev]
-          .map(e => ({ ...e, distanceKm: haversineKm(userPos.lat, userPos.lng, e.latitude, e.longitude) }))
-          .sort((a, b) => a.distanceKm - b.distanceKm))
-        return
-      }
-      if (PROVIDER_TYPES.has(mode)) {
-        const j = await fetch(`/api/geo/providers?type=${mode}&lat=${userPos.lat}&lng=${userPos.lng}&limit=8`).then(r => r.json())
-        if (j.success) setProviders(j.data)
-      } else if (ENTITY_TYPES.has(mode)) {
-        const j = await fetch(`/api/geo/entities?type=${mode}&lat=${userPos.lat}&lng=${userPos.lng}&limit=8`).then(r => r.json())
-        if (j.success) setEntities(j.data)
-      }
-    } catch { /* non-fatal */ }
-    finally { setLoading(false) }
-  }, [userPos, mode, locate])
+    setProviders(prev =>
+      [...prev]
+        .map(p => ({ ...p, distanceKm: haversineKm(userPos.lat, userPos.lng, p.latitude, p.longitude) }))
+        .sort((a, b) => a.distanceKm - b.distanceKm),
+    )
+    setEntities(prev =>
+      [...prev]
+        .map(e => ({ ...e, distanceKm: haversineKm(userPos.lat, userPos.lng, e.latitude, e.longitude) }))
+        .sort((a, b) => a.distanceKm - b.distanceKm),
+    )
+    setLoading(false)
+  }, [userPos, locate])
 
+  // "Find Nearest" — locate then pan to closest visible pin
+  const findNearest = useCallback(() => {
+    if (!navigator.geolocation) { setLocError('Geolocation not supported'); return }
+    setLocating(true)
+    setLocError(null)
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setUserPos(p)
+        setLocating(false)
+
+        const allVisible = [
+          ...providers.map(pr => ({ pin: pr as AnyPin, d: haversineKm(p.lat, p.lng, pr.latitude, pr.longitude) })),
+          ...entities.map(en => ({ pin: en as AnyPin, d: haversineKm(p.lat, p.lng, en.latitude, en.longitude) })),
+        ]
+        if (allVisible.length === 0) return
+
+        const nearest = allVisible.sort((a, b) => a.d - b.d)[0]
+        setSelected(nearest.pin)
+        mapRef.current?.panTo({ lat: nearest.pin.latitude, lng: nearest.pin.longitude })
+        mapRef.current?.setZoom(15)
+      },
+      () => { setLocating(false); setLocError('Location access denied') },
+      { timeout: 8000 },
+    )
+  }, [providers, entities])
+
+  const clearRoute = useCallback(() => {
+    setDirections(null)
+    setDirTarget(null)
+    setRouteInfo(null)
+  }, [])
+
+  const requestRoute = useCallback((pin: AnyPin) => {
+    if (!userPos) { locate(); return }
+    setDirections(null)
+    setRouteInfo(null)
+    setDirTarget(pin)
+    setSelected(null)
+  }, [userPos, locate])
+
+  const onDirectionsCallback = useCallback(
+    (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
+      if (status === 'OK' && result) {
+        setDirections(result)
+        const leg = result.routes[0]?.legs[0]
+        if (leg) setRouteInfo({ distance: leg.distance?.text ?? '', duration: leg.duration?.text ?? '' })
+      }
+      // Clear target regardless so the service doesn't fire again
+      setDirTarget(null)
+    },
+    [],
+  )
+
+  // Visible pins based on mode
   const visibleProviders = mode === 'ALL' || PROVIDER_TYPES.has(mode)
     ? (mode === 'ALL' ? providers : providers.filter(p => p.userType === mode))
     : []
@@ -263,15 +306,10 @@ export default function NearMeSection() {
     ? (mode === 'ALL' ? entities : entities.filter(e => e.type === mode))
     : []
 
-  const nearestProviders = userPos
-    ? [...visibleProviders].sort((a, b) => a.distanceKm - b.distanceKm).slice(0, 5)
-    : visibleProviders.slice(0, 5)
-  const nearestEntities = userPos
-    ? [...visibleEntities].sort((a, b) => a.distanceKm - b.distanceKm).slice(0, 5)
-    : visibleEntities.slice(0, 5)
-  const nearestAll = [...nearestProviders, ...nearestEntities]
+  // Sidebar list (sorted by distance when user location is known)
+  const nearestAll = [...visibleProviders, ...visibleEntities]
     .sort((a, b) => a.distanceKm - b.distanceKm)
-    .slice(0, 6)
+    .slice(0, 8)
 
   const providerColor = (type: string) => MODES.find(m => m.value === type)?.color ?? '#0C6780'
 
@@ -311,18 +349,27 @@ export default function NearMeSection() {
               Find Nearest <span className="text-brand-sky">Healthcare</span>
             </h2>
             <p className="text-sm text-white/60 mt-0.5">
-              Discover providers &amp; clinics near your location across Mauritius
+              Discover providers &amp; clinics near you — tap a pin for directions
             </p>
           </div>
-          <button
-            onClick={locate}
-            disabled={locating}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-teal text-white text-sm font-semibold
-              hover:bg-[#0a5568] disabled:opacity-60 transition-colors flex-shrink-0"
-          >
-            {locating ? <FaSpinner className="animate-spin" /> : <FaCrosshairs />}
-            {userPos ? 'Update location' : 'Use my location'}
-          </button>
+          <div className="flex gap-2 flex-shrink-0">
+            <button
+              onClick={findNearest}
+              disabled={locating}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-sky text-brand-navy text-sm font-bold hover:opacity-90 disabled:opacity-60 transition-colors"
+            >
+              {locating ? <FaSpinner className="animate-spin" /> : <FaMapMarkerAlt />}
+              Find Nearest
+            </button>
+            <button
+              onClick={locate}
+              disabled={locating}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-teal text-white text-sm font-semibold hover:bg-[#0a5568] disabled:opacity-60 transition-colors"
+            >
+              {locating ? <FaSpinner className="animate-spin" /> : <FaCrosshairs />}
+              {userPos ? 'Update' : 'My Location'}
+            </button>
+          </div>
         </div>
 
         {locError && <p className="text-xs text-red-400 mt-2">{locError}</p>}
@@ -346,7 +393,7 @@ export default function NearMeSection() {
 
           {userPos && (
             <button
-              onClick={searchNearest}
+              onClick={sortByDistance}
               disabled={loading}
               className="ml-auto px-4 py-1.5 rounded-full text-xs font-bold bg-brand-sky text-brand-navy transition-colors hover:opacity-90 disabled:opacity-50"
             >
@@ -357,18 +404,30 @@ export default function NearMeSection() {
         </div>
       </div>
 
+      {/* Route info banner */}
+      {routeInfo && (
+        <div className="mx-6 sm:mx-10 lg:mx-16 mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-brand-teal/20 border border-brand-teal/40">
+          <FaRoute className="text-brand-sky flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-xs font-bold text-white">Route calculated</p>
+            <p className="text-xs text-white/70">{routeInfo.distance} · {routeInfo.duration} by car</p>
+          </div>
+          <button onClick={clearRoute} className="text-white/50 hover:text-white transition-colors p-1">
+            <FaTimes className="text-xs" />
+          </button>
+        </div>
+      )}
+
       {/* Map + sidebar */}
       <div className="flex flex-col lg:flex-row" style={{ minHeight: 420 }}>
 
         {/* ── Map ──────────────────────────────────────────────────── */}
         <div className="flex-1 relative" style={{ minHeight: 340 }}>
 
-          {/* Error / missing key overlay */}
           {(!apiKey || loadError) && (
             <MapErrorPanel error={loadError ?? null} apiKey={apiKey} />
           )}
 
-          {/* Loading skeleton */}
           {!isLoaded && !loadError && apiKey && (
             <div className="absolute inset-0 bg-[#0a2a46] flex items-center justify-center z-10">
               <FaSpinner className="text-brand-sky text-3xl animate-spin" />
@@ -391,6 +450,7 @@ export default function NearMeSection() {
                 backgroundColor: '#001E40',
               }}
             >
+              {/* Provider pins */}
               {visibleProviders.map(p => (
                 <Marker
                   key={p.id}
@@ -400,6 +460,7 @@ export default function NearMeSection() {
                 />
               ))}
 
+              {/* Entity pins */}
               {visibleEntities.map(e => (
                 <Marker
                   key={e.id}
@@ -409,11 +470,17 @@ export default function NearMeSection() {
                 />
               ))}
 
+              {/* User location pin */}
               {userPos && (
                 <Marker
                   position={userPos}
                   icon={{
-                    url: 'data:image/svg+xml;base64,' + btoa(`<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10' fill='#9AE1FF' stroke='white' stroke-width='3'/><circle cx='12' cy='12' r='4' fill='white'/></svg>`),
+                    url: 'data:image/svg+xml;base64,' + btoa(
+                      `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'>
+                        <circle cx='12' cy='12' r='10' fill='#9AE1FF' stroke='white' stroke-width='3'/>
+                        <circle cx='12' cy='12' r='4' fill='white'/>
+                      </svg>`,
+                    ),
                     scaledSize: new window.google.maps.Size(24, 24),
                     anchor: new window.google.maps.Point(12, 12),
                   }}
@@ -421,28 +488,37 @@ export default function NearMeSection() {
                 />
               )}
 
+              {/* InfoWindow */}
               {selected && (
                 <InfoWindow
-                  position={'latitude' in selected
-                    ? { lat: selected.latitude, lng: selected.longitude }
-                    : MAURITIUS_CENTER}
+                  position={{ lat: selected.latitude, lng: selected.longitude }}
                   onCloseClick={() => setSelected(null)}
                 >
-                  <div className="min-w-[180px] text-sm p-1">
+                  <div className="min-w-[190px] text-sm p-1">
                     {'firstName' in selected ? (
                       <>
                         <p className="font-bold text-gray-900">{selected.firstName} {selected.lastName}</p>
                         <p className="text-xs text-gray-500 capitalize">{selected.userType.toLowerCase().replace(/_/g, ' ')}</p>
                         {selected.specialty?.length > 0 && (
-                          <p className="text-xs text-brand-teal mt-0.5">{selected.specialty.slice(0, 2).join(', ')}</p>
+                          <p className="text-xs text-[#0C6780] mt-0.5">{selected.specialty.slice(0, 2).join(', ')}</p>
                         )}
                         {selected.address && <p className="text-xs text-gray-400 mt-0.5">{selected.address}</p>}
                         {selected.distanceKm > 0 && (
-                          <p className="text-xs font-semibold text-brand-navy mt-1">{selected.distanceKm.toFixed(1)} km away</p>
+                          <p className="text-xs font-semibold text-[#001E40] mt-1">{selected.distanceKm.toFixed(1)} km away</p>
                         )}
-                        <Link href={`/profile/${selected.id}`} className="block mt-2 text-xs text-center py-1 px-3 bg-brand-navy text-white rounded-lg">
-                          View Profile →
-                        </Link>
+                        <div className="flex gap-1.5 mt-2">
+                          <Link href={`/profile/${selected.id}`} className="flex-1 text-xs text-center py-1 px-2 bg-[#001E40] text-white rounded-lg">
+                            Profile →
+                          </Link>
+                          {userPos && (
+                            <button
+                              onClick={() => requestRoute(selected)}
+                              className="flex-1 text-xs py-1 px-2 bg-[#0C6780] text-white rounded-lg flex items-center justify-center gap-1"
+                            >
+                              <FaRoute className="text-[9px]" /> Directions
+                            </button>
+                          )}
+                        </div>
                       </>
                     ) : (
                       <>
@@ -450,13 +526,49 @@ export default function NearMeSection() {
                         <p className="text-xs text-gray-500 capitalize">{'type' in selected ? selected.type : ''}</p>
                         {'address' in selected && selected.address && <p className="text-xs text-gray-400 mt-0.5">{selected.address}</p>}
                         {'city' in selected && selected.city && <p className="text-xs text-gray-400">{selected.city}</p>}
+                        {'phone' in selected && selected.phone && <p className="text-xs text-gray-400">{selected.phone}</p>}
                         {selected.distanceKm > 0 && (
-                          <p className="text-xs font-semibold text-brand-navy mt-1">{selected.distanceKm.toFixed(1)} km away</p>
+                          <p className="text-xs font-semibold text-[#001E40] mt-1">{selected.distanceKm.toFixed(1)} km away</p>
+                        )}
+                        {userPos && (
+                          <button
+                            onClick={() => requestRoute(selected)}
+                            className="mt-2 w-full text-xs py-1 px-2 bg-[#0C6780] text-white rounded-lg flex items-center justify-center gap-1"
+                          >
+                            <FaRoute className="text-[9px]" /> Get Directions
+                          </button>
                         )}
                       </>
                     )}
                   </div>
                 </InfoWindow>
+              )}
+
+              {/* Directions request — fires once when dirTarget is set */}
+              {dirTarget && userPos && (
+                <DirectionsService
+                  options={{
+                    origin: userPos,
+                    destination: { lat: dirTarget.latitude, lng: dirTarget.longitude },
+                    travelMode: google.maps.TravelMode.DRIVING,
+                  }}
+                  callback={onDirectionsCallback}
+                />
+              )}
+
+              {/* Route overlay */}
+              {directions && (
+                <DirectionsRenderer
+                  options={{
+                    directions,
+                    suppressMarkers: true,
+                    polylineOptions: {
+                      strokeColor: '#9AE1FF',
+                      strokeOpacity: 0.85,
+                      strokeWeight: 5,
+                    },
+                  }}
+                />
               )}
             </GoogleMap>
           )}
@@ -466,7 +578,7 @@ export default function NearMeSection() {
         <div className="lg:w-72 xl:w-80 bg-[#001830] border-t lg:border-t-0 lg:border-l border-white/10 flex flex-col">
           <div className="px-5 py-4 border-b border-white/10">
             <p className="text-sm font-bold text-white">
-              {userPos ? 'Nearest to you' : 'All providers'}&nbsp;
+              {userPos ? 'Nearest to you' : 'All nearby'}&nbsp;
               <span className="text-white/40 font-normal">({nearestAll.length})</span>
             </p>
             {!userPos && <p className="text-xs text-white/50 mt-0.5">Enable location to sort by distance</p>}
@@ -510,12 +622,24 @@ export default function NearMeSection() {
                   </p>
                 </div>
 
-                {userPos && item.distanceKm > 0 && (
-                  <span className="text-[10px] text-brand-sky font-semibold flex-shrink-0">
-                    {item.distanceKm < 1 ? `${Math.round(item.distanceKm * 1000)} m` : `${item.distanceKm.toFixed(1)} km`}
-                  </span>
-                )}
-                <FaChevronRight className="text-white/20 text-[10px] flex-shrink-0" />
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  {userPos && item.distanceKm > 0 && (
+                    <span className="text-[10px] text-brand-sky font-semibold">
+                      {item.distanceKm < 1 ? `${Math.round(item.distanceKm * 1000)} m` : `${item.distanceKm.toFixed(1)} km`}
+                    </span>
+                  )}
+                  {userPos && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); requestRoute(item) }}
+                      className="text-[9px] text-white/40 hover:text-brand-sky transition-colors flex items-center gap-0.5"
+                      title="Get directions"
+                    >
+                      <FaRoute className="text-[8px]" /> Route
+                    </button>
+                  )}
+                </div>
+
+                <FaChevronRight className="text-white/20 text-[10px] flex-shrink-0 ml-0.5" />
               </div>
             ))}
           </div>

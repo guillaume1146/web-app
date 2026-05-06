@@ -4,7 +4,7 @@ import { Public } from '../auth/decorators/public.decorator'
 import { GeoService } from './geo.service'
 
 @ApiTags('geo')
-@Controller('api/geo')
+@Controller('geo')
 export class GeoController {
   constructor(private geo: GeoService) {}
 
