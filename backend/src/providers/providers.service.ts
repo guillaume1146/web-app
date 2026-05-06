@@ -271,6 +271,59 @@ export class ProvidersService {
     });
   }
 
+  // ─── GET /providers/:id/availability — all rows, public ───────────────
+
+  async getAvailability(userId: string) {
+    return this.prisma.providerAvailability.findMany({
+      where: { userId },
+      orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+    });
+  }
+
+  // ─── POST /providers/:id/availability — upsert a day's schedule ────────
+  // Unique constraint: userId + dayOfWeek + startTime.
+  // When a provider updates a day they almost always want ONE window, so we
+  // delete any OTHER rows for that dayOfWeek first, then upsert the new one.
+
+  async upsertAvailability(
+    userId: string,
+    body: {
+      dayOfWeek: number;
+      startTime: string;
+      endTime: string;
+      slotDuration: number;
+      isActive: boolean;
+    },
+  ) {
+    // Remove any stale rows for this day before creating the new one
+    await this.prisma.providerAvailability.deleteMany({
+      where: { userId, dayOfWeek: body.dayOfWeek },
+    });
+
+    return this.prisma.providerAvailability.create({
+      data: {
+        userId,
+        dayOfWeek: body.dayOfWeek,
+        startTime: body.startTime,
+        endTime: body.endTime,
+        slotDuration: body.slotDuration ?? 60,
+        isActive: body.isActive ?? true,
+      },
+    });
+  }
+
+  // ─── DELETE /providers/:id/availability/:availId ─────────────────────
+
+  async deleteAvailability(userId: string, availId: string) {
+    const row = await this.prisma.providerAvailability.findUnique({
+      where: { id: availId },
+    });
+    if (!row || row.userId !== userId) {
+      throw new Error('Not found or forbidden');
+    }
+    return this.prisma.providerAvailability.delete({ where: { id: availId } });
+  }
+
   // ─── GET /providers/:id/workplaces — public workplace list ─────────────
 
   async getWorkplaces(providerUserId: string) {

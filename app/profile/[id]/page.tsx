@@ -30,6 +30,7 @@ const CreatePostForm = dynamic(() => import('@/components/posts/CreatePostForm')
 const ProviderReviews = dynamic(() => import('@/components/shared/ProviderReviews'), { ssr: false })
 const ProfileGoalsTab = dynamic(() => import('@/components/health-tracker/tabs/ProfileGoalsTab'), { ssr: false })
 const UserProfile = dynamic(() => import('@/components/profile/UserProfile'), { ssr: false })
+const AvailabilityPreview = dynamic(() => import('@/components/providers/AvailabilityPreview'), { ssr: false })
 
 type TabId = 'about' | 'posts' | 'reviews' | 'services' | 'health' | 'settings'
 
@@ -192,7 +193,7 @@ export default function UnifiedProfilePage() {
   )
 }
 
-function AboutTab({ profile, isSelf, onSaved }: { profile: ProfileData; isSelf: boolean; onSaved: () => void }) {
+function AboutTab({ profile, isSelf, onSaved }: { profile: ProfileData; isSelf: boolean; onSaved: () => void; }) {
   const [editingBio, setEditingBio] = useState(false)
   const [draft, setDraft] = useState(profile.bio ?? '')
   const [saving, setSaving] = useState(false)
@@ -265,6 +266,15 @@ function AboutTab({ profile, isSelf, onSaved }: { profile: ProfileData; isSelf: 
           </div>
         )}
       </Section>
+
+      {profile.isProvider && (
+        <Section title="Availability">
+          <AvailabilityPreview
+            providerId={profile.id}
+            roleSlug={profile.userType.toLowerCase().replace(/_/g, '-')}
+          />
+        </Section>
+      )}
 
       <Section title="Details">
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">

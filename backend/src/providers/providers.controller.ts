@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Query, Body } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Query, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ProvidersService } from './providers.service';
 import { Public } from '../auth/decorators/public.decorator';
@@ -67,6 +67,42 @@ export class ProvidersController {
   @Get('appointments')
   async getAppointments(@Param('id') id: string, @Query('limit') limit?: string) {
     return { success: true, data: await this.providersService.getAppointments(id, limit ? parseInt(limit) : 50) };
+  }
+
+  // ── GET /providers/:id/availability — public weekly schedule ───────────
+  @Public()
+  @Get('availability')
+  async getAvailability(@Param('id') id: string) {
+    return { success: true, data: await this.providersService.getAvailability(id) };
+  }
+
+  // ── POST /providers/:id/availability — upsert a day's schedule ──────────
+  @Post('availability')
+  async upsertAvailability(
+    @Param('id') id: string,
+    @Body() body: { dayOfWeek: number; startTime: string; endTime: string; slotDuration: number; isActive: boolean },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    if (user.sub !== id) return { success: false, message: 'Forbidden' };
+    const data = await this.providersService.upsertAvailability(id, body);
+    return { success: true, data };
+  }
+
+  // ── DELETE /providers/:id/availability/:availId ──────────────────────────
+  @Delete('availability/:availId')
+  @HttpCode(HttpStatus.OK)
+  async deleteAvailability(
+    @Param('id') id: string,
+    @Param('availId') availId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    if (user.sub !== id) return { success: false, message: 'Forbidden' };
+    try {
+      await this.providersService.deleteAvailability(id, availId);
+      return { success: true };
+    } catch {
+      return { success: false, message: 'Not found or forbidden' };
+    }
   }
 
   // ── GET /providers/:id/workplaces — public list of healthcare entities ──
