@@ -1,17 +1,16 @@
 'use client'
 
-import { use } from 'react'
 import BookingsDashboard from '@/components/bookings/BookingsDashboard'
 import { useAuth } from '@/hooks/useAuth'
 
-export default function BookingsPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(params)
+export default function DoctorBookingsPage() {
   const { user } = useAuth()
   return (
     <BookingsDashboard
       userId={user?.id ?? ''}
       role="provider"
-      basePath={`/provider/${slug}`}
+      userType="Doctor"
+      basePath="/doctor"
     />
   )
 }

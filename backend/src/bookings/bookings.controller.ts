@@ -54,10 +54,18 @@ export class BookingsController {
 
   /** GET /api/bookings/unified — all bookings across all types */
   @Get('unified')
-  async getUnified(@CurrentUser() user: JwtPayload, @Query('role') role?: string) {
+  async getUnified(
+    @CurrentUser() user: JwtPayload,
+    @Query('role') role?: string,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     const r = (role === 'provider' ? 'provider' : 'patient') as 'patient' | 'provider';
-    const data = await this.bookingsService.getUnified(user.sub, r);
-    return { success: true, data };
+    const pageNum = Math.max(1, parseInt(page ?? '1') || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit ?? '20') || 20));
+    const result = await this.bookingsService.getUnified(user.sub, r, { status, page: pageNum, limit: limitNum });
+    return { success: true, data: result.data, total: result.total, page: result.page };
   }
 
   /** POST /api/bookings/cancel */

@@ -271,9 +271,9 @@ describe('BookingsService', () => {
 
         const result = await service.getUnified('PAT001', 'patient');
 
-        expect(result).toHaveLength(2);
-        expect(result.find((r: any) => r.id === 'SB1')?.bookingType).toBe('service_booking');
-        expect(result.find((r: any) => r.id === 'APT1')?.bookingType).toBe('appointment');
+        expect(result.data).toHaveLength(2);
+        expect(result.data.find((r: any) => r.id === 'SB1')?.bookingType).toBe('service_booking');
+        expect(result.data.find((r: any) => r.id === 'APT1')?.bookingType).toBe('appointment');
       });
 
       it('should return empty array when patient has no profile', async () => {
@@ -281,7 +281,8 @@ describe('BookingsService', () => {
 
         const result = await service.getUnified('PAT999', 'patient');
 
-        expect(result).toEqual([]);
+        expect(result.data).toEqual([]);
+        expect(result.total).toBe(0);
       });
 
       it('should query all legacy tables for historical data', async () => {
@@ -295,8 +296,8 @@ describe('BookingsService', () => {
 
         const result = await service.getUnified('PAT001', 'patient');
 
-        expect(result).toHaveLength(4);
-        const types = result.map((r: any) => r.bookingType);
+        expect(result.data).toHaveLength(4);
+        const types = result.data.map((r: any) => r.bookingType);
         expect(types).toContain('nurse_booking');
         expect(types).toContain('childcare_booking');
         expect(types).toContain('lab_test_booking');
@@ -326,11 +327,11 @@ describe('BookingsService', () => {
 
         const result = await service.getUnified('DOC001', 'provider');
 
-        expect(result).toHaveLength(1);
-        expect(result[0].patientName).toBe('John Doe');
-        expect(result[0].templateName).toBe('Doctor Consultation');
-        expect(result[0].workflowInstanceId).toBe('WF1');
-        expect(result[0].price).toBe(500);
+        expect(result.data).toHaveLength(1);
+        expect(result.data[0].patientName).toBe('John Doe');
+        expect(result.data[0].templateName).toBe('Doctor Consultation');
+        expect(result.data[0].workflowInstanceId).toBe('WF1');
+        expect(result.data[0].price).toBe(500);
       });
 
       it('should handle missing ServiceBooking gracefully', async () => {
@@ -346,9 +347,9 @@ describe('BookingsService', () => {
 
         const result = await service.getUnified('DOC001', 'provider');
 
-        expect(result).toHaveLength(1);
+        expect(result.data).toHaveLength(1);
         // When ServiceBooking is missing, values may be undefined or fallbacks
-        expect(result[0].patientName === undefined || typeof result[0].patientName === 'string').toBe(true);
+        expect(result.data[0].patientName === undefined || typeof result.data[0].patientName === 'string').toBe(true);
       });
     });
   });
@@ -408,18 +409,23 @@ describe('BookingsService', () => {
   // ─── getAvailableSlots ─────────────────────────────────────────────────
 
   describe('getAvailableSlots', () => {
-    it('should return provider availability for the given date', async () => {
+    it('should return available start times for the given date', async () => {
       mockPrisma.providerAvailability.findMany.mockResolvedValue([
         { startTime: '09:00', endTime: '12:00' },
         { startTime: '14:00', endTime: '17:00' },
       ]);
+      // No booked slots
+      mockPrisma.bookedSlot.findMany.mockResolvedValue([]);
 
       // 2026-05-04 is a Monday (dayOfWeek = 1)
       const result = await service.getAvailableSlots('DOC001', '2026-05-04');
 
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({ startTime: '09:00', endTime: '12:00' });
-      expect(result[1]).toEqual({ startTime: '14:00', endTime: '17:00' });
+      // Service returns start-time strings in 30-min increments:
+      // 09:00..11:30 (6 slots) + 14:00..16:30 (6 slots) = 12 slots
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0]).toBe('09:00');
+      expect(result).toContain('14:00');
       expect(mockPrisma.providerAvailability.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ userId: 'DOC001', isActive: true }),

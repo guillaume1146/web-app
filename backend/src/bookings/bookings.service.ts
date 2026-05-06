@@ -259,12 +259,13 @@ export class BookingsService {
 
   // ─── Unified Bookings List (reads from all tables including legacy) ────
 
-  async getUnified(userId: string, role: 'patient' | 'provider') {
+  async getUnified(userId: string, role: 'patient' | 'provider', opts: { status?: string; page?: number; limit?: number } = {}) {
     const results: any[] = [];
+    const { status: statusFilter, page = 1, limit = 50 } = opts;
 
     if (role === 'patient') {
       const profile = await this.prisma.patientProfile.findUnique({ where: { userId }, select: { id: true } });
-      if (!profile) return [];
+      if (!profile) return { data: [] as any[], total: 0, page };
 
       // Query ServiceBooking (universal) + legacy tables for historical data
       const [serviceBookings, appointments, nurseBookings, childcareBookings, labTests, emergencyBookings] = await Promise.all([
@@ -354,7 +355,23 @@ export class BookingsService {
       });
     }
 
-    return results;
+    // Apply optional status filter
+    const filtered = statusFilter
+      ? results.filter(r => (r.status || r.bookingStatus || '').toLowerCase() === statusFilter.toLowerCase())
+      : results;
+
+    // Sort by most recent first (scheduledAt or createdAt or updatedAt)
+    filtered.sort((a, b) => {
+      const da = new Date(a.updatedAt ?? a.scheduledAt ?? a.createdAt ?? 0).getTime();
+      const db = new Date(b.updatedAt ?? b.scheduledAt ?? b.createdAt ?? 0).getTime();
+      return db - da;
+    });
+
+    const total = filtered.length;
+    const offset = (page - 1) * limit;
+    const data = filtered.slice(offset, offset + limit);
+
+    return { data, total, page };
   }
 
   // ─── Cancel ────────────────────────────────────────────────────────────
