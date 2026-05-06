@@ -11,19 +11,21 @@ export default function FloatingCart() {
 
   return (
     <>
-      {/* Floating button — always visible */}
+      {/* Floating button — slot 4: highest position */}
       <button
         onClick={() => setOpen(!open)}
-        title="Health Shop Cart"
-        aria-label="Health Shop Cart"
-        className={`fixed bottom-40 right-5 sm:right-6 z-50
-          w-14 h-14 rounded-full shadow-xl flex items-center justify-center
+        title="Health Shop"
+        aria-label="Health Shop"
+        className={`fixed bottom-[276px] sm:bottom-[200px] right-4 sm:right-5 z-[150]
+          h-12 pl-3 pr-5 rounded-full shadow-lg shadow-black/25
+          flex items-center gap-2.5 text-sm font-semibold
           transition-all hover:scale-105 active:scale-95
           ${totalItems > 0 ? 'bg-[#0C6780] text-white' : 'bg-white border-2 border-gray-200 text-gray-400 hover:border-[#0C6780] hover:text-[#0C6780]'}`}
       >
-        <FaShoppingCart className="text-xl" />
+        <FaShoppingCart className="text-base flex-shrink-0" />
+        <span>Health Shop</span>
         {totalItems > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-white">
             {totalItems}
           </span>
         )}
@@ -31,7 +33,7 @@ export default function FloatingCart() {
 
       {/* Empty cart panel */}
       {open && totalItems === 0 && (
-        <div className="fixed bottom-56 right-5 sm:right-6 z-50 bg-white rounded-2xl shadow-xl border border-gray-200 p-4 w-52">
+        <div className="fixed bottom-[344px] sm:bottom-[268px] right-4 sm:right-5 z-[150] bg-white rounded-2xl shadow-xl border border-gray-200 p-4 w-52">
           <p className="text-sm font-semibold text-gray-900 mb-1">Health Shop</p>
           <p className="text-xs text-gray-500 mb-3">Your cart is empty. Browse products from all providers.</p>
           <Link href="/search/health-shop" className="block w-full text-center bg-[#0C6780] text-white py-2 rounded-xl text-xs font-medium">
@@ -42,7 +44,7 @@ export default function FloatingCart() {
 
       {/* Cart panel — when items present */}
       {open && totalItems > 0 && (
-        <div className="fixed bottom-44 right-5 sm:right-6 z-50 w-[360px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
+        <div className="fixed bottom-[344px] sm:bottom-[268px] right-4 sm:right-5 z-[150] w-[360px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b bg-gray-50">
             <h3 className="font-bold text-gray-900 text-sm">Cart ({totalItems} items)</h3>

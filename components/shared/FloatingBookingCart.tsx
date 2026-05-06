@@ -54,7 +54,7 @@ export default function FloatingBookingCart() {
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 60, scale: 0.95 }}
               transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              className="fixed bottom-32 right-4 sm:right-6 z-[60] w-[300px] sm:w-[320px] bg-white rounded-2xl shadow-2xl overflow-hidden"
+              className="fixed bottom-[280px] sm:bottom-[204px] right-4 sm:right-5 z-[60] w-[300px] sm:w-[320px] bg-white rounded-2xl shadow-2xl overflow-hidden"
               style={{ boxShadow: '0 24px 60px rgba(0,30,64,0.25)' }}
             >
               {/* Panel header */}
@@ -144,33 +144,38 @@ export default function FloatingBookingCart() {
         )}
       </AnimatePresence>
 
-      {/* ── FAB button ───────────────────────────────────────────── */}
+      {/* ── FAB button — slot 3 ──────────────────────────────────── */}
       {hasSelection ? (
         <motion.button
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           onClick={() => setOpen(v => !v)}
-          className="fixed bottom-24 right-5 sm:right-6 z-50 w-14 h-14 rounded-full shadow-xl
-            text-white flex items-center justify-center
+          className="fixed bottom-[216px] sm:bottom-[140px] right-4 sm:right-5 z-[150]
+            h-12 pl-3 pr-5 rounded-full shadow-lg shadow-black/25
+            text-white flex items-center gap-2.5 text-sm font-semibold
             transition-all hover:scale-105 active:scale-95"
           style={{
             backgroundColor: selection?.role.color ?? '#0C6780',
             boxShadow: `0 8px 24px ${selection?.role.color ?? '#0C6780'}50`,
           }}
         >
-          <FaCalendarAlt className="text-xl" />
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">1</span>
+          <FaCalendarAlt className="text-base flex-shrink-0" />
+          <span>My Booking</span>
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-white">1</span>
         </motion.button>
       ) : (
         <button
           onClick={() => setOpen(v => !v)}
-          className="fixed bottom-24 right-5 sm:right-6 z-50 w-14 h-14 rounded-full
-            bg-white border-2 border-gray-200 shadow-lg flex items-center justify-center
+          className="fixed bottom-[216px] sm:bottom-[140px] right-4 sm:right-5 z-[150]
+            h-12 pl-3 pr-5 rounded-full shadow-lg
+            bg-white border-2 border-gray-200
+            flex items-center gap-2.5 text-sm font-semibold
             text-gray-400 hover:border-[#0C6780] hover:text-[#0C6780] transition-all hover:scale-105 active:scale-95"
-          aria-label="Booking cart"
-          title="Your booking cart"
+          aria-label="My Booking"
+          title="My Booking"
         >
-          <FaCalendarAlt className="text-xl" />
+          <FaCalendarAlt className="text-base flex-shrink-0" />
+          <span>My Booking</span>
         </button>
       )}
 
@@ -181,7 +186,7 @@ export default function FloatingBookingCart() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            className="fixed bottom-40 right-5 sm:right-7 z-50 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 w-52 text-center"
+            className="fixed bottom-[280px] sm:bottom-[204px] right-4 sm:right-5 z-[150] bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 w-52 text-center"
           >
             <p className="text-xs font-semibold text-gray-700">No service selected</p>
             <p className="text-[10px] text-gray-400 mt-0.5">Pick a date & service from the booking widget above</p>

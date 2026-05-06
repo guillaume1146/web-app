@@ -189,21 +189,23 @@ export default function FloatingChatWidget() {
         </>
       )}
 
-      {/* ─── Floating trigger button (circular) ─────────────────────── */}
+      {/* ─── Floating trigger — pill button, slot 1 (lowest) ────────── */}
       <button
         onClick={() => setOpen(v => !v)}
         title={open ? 'Close Wyzo' : 'Wyzo — Health AI Assistant'}
         aria-label={open ? 'Close Wyzo' : 'Wyzo — Health AI Assistant'}
-        className={`fixed bottom-6 right-5 sm:right-6 z-50
-          w-14 h-14 rounded-full shadow-xl
-          flex items-center justify-center
+        className={`fixed bottom-24 sm:bottom-5 right-4 sm:right-5 z-[150]
+          h-12 pl-3 pr-5 rounded-full shadow-lg shadow-black/25
+          flex items-center gap-2.5 text-sm font-semibold text-white
           transition-all duration-200 hover:scale-105 active:scale-95
-          ${open ? 'bg-gray-700' : 'bg-gradient-to-br from-brand-navy to-brand-teal'}`}
+          ${open ? 'bg-gray-700' : 'bg-gradient-to-r from-[#001E40] to-[#0C6780]'}`}
       >
-        {open
-          ? <FaTimes className="text-white text-base" />
-          : <Image src="/images/logo-icon.png" alt="Wyzo" width={32} height={32} className="rounded-full" />
-        }
+        {open ? (
+          <FaTimes className="text-white text-sm" />
+        ) : (
+          <Image src="/images/logo-icon.png" alt="Wyzo" width={28} height={28} className="rounded-full flex-shrink-0" />
+        )}
+        <span>{open ? 'Close' : 'Wyzo AI'}</span>
         {!open && turns.length > 1 && (
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
         )}

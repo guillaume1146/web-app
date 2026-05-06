@@ -426,32 +426,28 @@ export default function FloatingPrescriptionFAB() {
         </div>
       )}
 
-      {/* FAB — teal when logged in, white when logged out; amber when prescription is active */}
-      <div className="group">
-        <button
-          onClick={() => setOpen(v => !v)}
-          aria-label="Add Prescription"
-          title="Add Prescription"
-          className="fixed bottom-20 right-5 sm:bottom-6 sm:right-6 z-[150] w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
-          style={{ backgroundColor: hasPrescription ? '#f59e0b' : '#0C6780', border: 'none' }}
-        >
-          <FaFileMedical className="text-white text-xl" />
-          {isExtracting && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-300 rounded-full flex items-center justify-center">
-              <FaSpinner className="text-white text-[10px] animate-spin" />
-            </span>
-          )}
-          {hasPrescription && !isExtracting && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-              <FaCheckCircle className="text-white text-[10px]" />
-            </span>
-          )}
-        </button>
-        {/* Desktop tooltip */}
-        <span className="pointer-events-none fixed bottom-[5.5rem] sm:bottom-[5rem] right-20 sm:right-24 z-[149] hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg">
-          Add Prescription
-        </span>
-      </div>
+      {/* FAB — slot 2: above Wyzo AI */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        aria-label="Prescription"
+        title="Prescription"
+        className="fixed bottom-[156px] sm:bottom-[80px] right-4 sm:right-5 z-[150]
+          h-12 pl-3 pr-5 rounded-full shadow-lg shadow-black/25
+          flex items-center gap-2.5 text-sm font-semibold text-white
+          transition-all duration-200 hover:scale-105 active:scale-95"
+        style={{ backgroundColor: hasPrescription ? '#f59e0b' : '#0C6780', border: 'none' }}
+      >
+        <FaFileMedical className="text-base flex-shrink-0" />
+        <span>Prescription</span>
+        {isExtracting && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-300 rounded-full flex items-center justify-center border-2 border-white">
+            <FaSpinner className="text-white text-[9px] animate-spin" />
+          </span>
+        )}
+        {hasPrescription && !isExtracting && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
+        )}
+      </button>
     </>
   )
 }
