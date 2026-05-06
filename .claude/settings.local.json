@@ -261,7 +261,12 @@
       "Bash(where psql *)",
       "Bash(where pg_isready)",
       "Read(//c/Program Files/PostgreSQL/**)",
-      "Bash(C:/Program Files/PostgreSQL/16/bin/psql.exe *)"
+      "Bash(C:/Program Files/PostgreSQL/16/bin/psql.exe *)",
+      "Bash(git config *)",
+      "Bash(Start-Process -NoNewWindow -FilePath \"npm\" -ArgumentList \"run\",\"dev\")",
+      "Bash(echo \"PID: $!\")",
+      "Bash(echo \"started PID $!\")",
+      "Bash(curl -s http://localhost:3001/api/roles)"
     ]
   }
 }
