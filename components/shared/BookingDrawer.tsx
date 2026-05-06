@@ -7,7 +7,7 @@ import {
   FaTimes, FaArrowLeft, FaArrowRight, FaCheckCircle, FaCalendarAlt,
   FaUserMd, FaConciergeBell, FaClock, FaLock, FaStar,
 } from 'react-icons/fa'
-import { useBookingDrawer, DrawerService, DrawerProvider, DrawerRole, DrawerOrganization } from '@/lib/contexts/booking-drawer-context'
+import { useBookingDrawer, DrawerService, DrawerProvider, DrawerRole, DrawerOrganization, DrawerWorkflow } from '@/lib/contexts/booking-drawer-context'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -172,7 +172,19 @@ export default function BookingDrawer() {
     // Pre-populate from entry options
     const { service, provider, role, organization, date, time } = options
 
-    if (organization) {
+    if (service && provider && (date || time)) {
+      // Hero widget fast-path: all key fields supplied — skip straight to confirm
+      setSelectedOrg(null)
+      setSelectedService(service)
+      setSelectedProvider(provider)
+      const wfRaw: DrawerWorkflow | null | undefined = options.workflow
+      setSelectedWorkflow(wfRaw ? { id: wfRaw.id, name: wfRaw.name, serviceMode: wfRaw.serviceMode, steps: [] } : null)
+      setSelectedDate(date ? new Date(date + 'T12:00:00') : null)
+      setSelectedTime(time ?? null)
+      setStep('confirm')
+      setStepHistory(['service', 'providers', 'slot', 'confirm'])
+      return
+    } else if (organization) {
       // Organization-first entry: service → providers (filtered by organization)
       setSelectedOrg(organization)
       setSelectedService(null)

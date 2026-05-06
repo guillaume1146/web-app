@@ -41,11 +41,18 @@ export interface DrawerOrganization {
   logoUrl?: string | null
 }
 
+export interface DrawerWorkflow {
+  id: string
+  name: string
+  serviceMode: string
+}
+
 export interface OpenDrawerOptions {
   service?: DrawerService | null
   provider?: DrawerProvider | null
   role?: DrawerRole | null
   organization?: DrawerOrganization | null   // start booking from a specific organization
+  workflow?: DrawerWorkflow | null           // pre-selected workflow (skips workflow step)
   date?: string | null        // YYYY-MM-DD
   time?: string | null        // HH:MM
   timeLabel?: string | null   // '9:00 AM'
