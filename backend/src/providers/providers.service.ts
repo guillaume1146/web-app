@@ -34,28 +34,15 @@ export class ProvidersService {
   // Returns active PlatformServices for this provider with their attached
   // workflow templates.
   //
-  // Workflow resolution (most-specific wins):
-  //   1. Provider explicitly attached templates via ProviderServiceWorkflow
-  //      → use exactly those (respects per-provider appointment type choice)
-  //   2. Service-specific templates (WorkflowTemplate.platformServiceId = svc.id)
-  //      for this provider type created by system or regional admin
-  //   3. Generic templates (platformServiceId = null) for this provider type
-  //      (system defaults + regional admin), de-duplicated to at most one per
-  //      serviceMode so a service with no explicit template doesn't inherit
-  //      all generic templates for every mode.
+  // Business rule: each (provider × service) pair has its own explicit list of
+  // workflow templates assigned by the provider via ProviderServiceWorkflow.
+  // There is NO default/fallback: no system template is auto-attached to a
+  // service type, no generic template is auto-attached to a provider role.
+  // If a provider offers service S but has not explicitly configured workflows
+  // for (provider, S), the service is returned with workflows: [].
   //
   // Only services where the provider has a ProviderServiceConfig are returned
   // (the provider must have opted in to offer the service).
-
-  /** Return at most one template per serviceMode (prefer isDefault ordering from query). */
-  private dedupeByServiceMode<T extends { serviceMode: string; id: string }>(templates: T[]): T[] {
-    const seen = new Set<string>();
-    return templates.filter(t => {
-      if (seen.has(t.serviceMode)) return false;
-      seen.add(t.serviceMode);
-      return true;
-    });
-  }
 
   async getServices(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -91,35 +78,7 @@ export class ProvidersService {
       orderBy: { serviceName: 'asc' },
     });
 
-    // Fallback templates — used when a config has no explicitly attached workflows.
-    // Fetch once: service-specific + generic for this provider type, from system & regional admin.
-    const fallbackTemplates = await this.prisma.workflowTemplate.findMany({
-      where: {
-        isActive: true,
-        providerType: user.userType as string,
-        createdByProviderId: null,   // system or regional admin only
-        OR: [
-          { platformServiceId: { in: svcIds } },  // service-specific
-          { platformServiceId: null },              // generic for this role
-        ],
-      },
-      select: { id: true, name: true, serviceMode: true, steps: true, platformServiceId: true },
-      orderBy: [{ platformServiceId: 'desc' }, { isDefault: 'desc' }, { serviceMode: 'asc' }],
-    });
-
-    // Build maps for fast lookup
     const configMap = new Map(configs.map(c => [c.platformServiceId, c]));
-    const svcSpecificFallback = new Map<string, typeof fallbackTemplates>();
-    const genericFallback: typeof fallbackTemplates = [];
-    for (const t of fallbackTemplates) {
-      if (t.platformServiceId) {
-        const list = svcSpecificFallback.get(t.platformServiceId) ?? [];
-        list.push(t);
-        svcSpecificFallback.set(t.platformServiceId, list);
-      } else {
-        genericFallback.push(t);
-      }
-    }
 
     const normaliseSteps = (raw: any[]) =>
       [...raw]
@@ -138,22 +97,13 @@ export class ProvidersService {
       const config = configMap.get(svc.id);
       const price = config?.priceOverride ?? svc.defaultPrice;
 
-      // Priority 1: workflows explicitly attached by the provider for this service
+      // Only workflows explicitly assigned by the provider for this service.
+      // No fallback to system or generic templates — business rule: each
+      // (provider × service) pair must be configured explicitly.
       const explicitWorkflows = (config?.workflowTemplates ?? [])
-        .map(link => link.workflowTemplate)
-        .filter(wt => wt.isActive);
-
-      // Priority 2: service-specific system/admin templates
-      const svcFallback = svcSpecificFallback.get(svc.id) ?? [];
-
-      // Priority 3: generic role templates — deduplicated to one per serviceMode
-      // so that services without explicit templates don't inherit ALL generic
-      // templates, which would show the same irrelevant options on every service.
-      const workflows = explicitWorkflows.length > 0
-        ? explicitWorkflows.map(toWorkflow)
-        : svcFallback.length > 0
-          ? svcFallback.map(toWorkflow)
-          : this.dedupeByServiceMode(genericFallback).map(toWorkflow);
+        .map((link: any) => link.workflowTemplate)
+        .filter((wt: any) => wt?.isActive)
+        .map(toWorkflow);
 
       return {
         id: svc.id,
@@ -162,7 +112,7 @@ export class ProvidersService {
         description: svc.description,
         price,
         duration: svc.duration,
-        workflows,
+        workflows: explicitWorkflows,
       };
     });
   }

@@ -395,6 +395,12 @@ export default function BookingDrawer() {
       const wfs = ((service as any)._workflows as WorkflowOption[] | undefined) ??
         await fetchWorkflowsForProviderService(selectedProvider, service)
       setWorkflows(wfs)
+      if (wfs.length === 0) {
+        setError(`${selectedProvider.name} has not configured booking for ${service.serviceName} yet. Please choose a different provider.`)
+        // Stay on the providers step — don't advance
+        goTo('providers')
+        return
+      }
       if (wfs.length > 1) {
         goTo('workflow')
       } else {
@@ -421,6 +427,11 @@ export default function BookingDrawer() {
     if (selectedService) {
       const wfs = await fetchWorkflowsForProviderService(provider, selectedService)
       setWorkflows(wfs)
+      if (wfs.length === 0) {
+        setError(`${provider.name} has not configured booking for ${selectedService.serviceName} yet. Please choose a different provider.`)
+        // Stay on the providers step — don't advance
+        return
+      }
       if (wfs.length > 1) {
         goTo('workflow')
       } else {
@@ -633,7 +644,7 @@ export default function BookingDrawer() {
                   transition={{ duration: 0.18 }}
                 >
                   {step === 'service'    && <ServiceStep services={services} loading={servicesLoading} onSelect={handleSelectService} selectedId={selectedService?.id} roleColor={roleColor} />}
-                  {step === 'providers'  && <ProviderStep providers={providers} loading={providersLoading} onSelect={handleSelectProvider} selectedId={selectedProvider?.id} service={selectedService} roleColor={roleColor} />}
+                  {step === 'providers'  && <ProviderStep providers={providers} loading={providersLoading} onSelect={handleSelectProvider} selectedId={selectedProvider?.id} service={selectedService} roleColor={roleColor} error={error} />}
                   {step === 'workflow'   && <WorkflowStep workflows={workflows} onSelect={handleSelectWorkflow} selectedId={selectedWorkflow?.id} roleColor={roleColor} />}
                   {step === 'slot'       && <SlotStep days={days} selectedDate={selectedDate} selectedTime={selectedTime} slots={slots} loading={slotsLoading} onSelectDate={handleSelectDate} onSelectTime={handleSelectTime} onNext={handleSlotNext} roleColor={roleColor} />}
                   {step === 'auth'       && <AuthStep email={authEmail} password={authPassword} onEmailChange={setAuthEmail} onPasswordChange={setAuthPassword} onSubmit={handleLogin} loading={authLoading} error={authError} />}
@@ -744,7 +755,7 @@ function ServiceStep({
 // ─── PROVIDER STEP ─────────────────────────────────────────────────────────────
 
 function ProviderStep({
-  providers, loading, onSelect, selectedId, service, roleColor,
+  providers, loading, onSelect, selectedId, service, roleColor, error,
 }: {
   providers: DrawerProvider[]
   loading: boolean
@@ -752,6 +763,7 @@ function ProviderStep({
   selectedId?: string
   service: DrawerService | null
   roleColor: string
+  error?: string | null
 }) {
   const [q, setQ] = useState('')
   const filtered = providers.filter(p =>
@@ -760,6 +772,11 @@ function ProviderStep({
 
   return (
     <div className="px-4 pt-3 pb-6">
+      {error && (
+        <div className="mb-3 px-3 py-2.5 rounded-xl bg-red-50 border border-red-100">
+          <p className="text-xs text-red-600">{error}</p>
+        </div>
+      )}
       {service && (
         <div className="mb-3 px-3 py-2 bg-[#0C6780]/8 rounded-xl flex items-center gap-2">
           <span className="text-base">{service.emoji ?? '⚕️'}</span>
