@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { FaSearch, FaMapMarkerAlt, FaHospital, FaBriefcaseMedical, FaFlask, FaTooth, FaEye, FaHeart } from 'react-icons/fa'
+import { FaSearch, FaMapMarkerAlt, FaHospital, FaBriefcaseMedical, FaFlask, FaTooth, FaEye, FaHeart, FaCalendarAlt } from 'react-icons/fa'
 import { MdVerified } from 'react-icons/md'
+import { useBookingDrawer } from '@/lib/contexts/booking-drawer-context'
 
 interface ClinicEntity {
   id: string
@@ -43,58 +44,72 @@ const TYPE_ICONS: Record<string, React.ComponentType<any>> = {
 }
 
 function ClinicCard({ entity }: { entity: ClinicEntity }) {
+  const { openDrawer } = useBookingDrawer()
   const color = TYPE_COLORS[entity.type] ?? '#0C6780'
   const Icon = TYPE_ICONS[entity.type] ?? FaBriefcaseMedical
 
+  function handleBook(e: React.MouseEvent) {
+    e.preventDefault()
+    openDrawer({ clinic: { id: entity.id, name: entity.name, type: entity.type, logoUrl: entity.logoUrl } })
+  }
+
   return (
-    <Link
-      href={`/search/clinics/${entity.id}`}
-      className="w-[200px] sm:w-[220px] flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden block"
-    >
+    <div className="w-[200px] sm:w-[220px] flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden">
       <div className="h-1" style={{ background: color }} />
       <div className="p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}18` }}>
-            {entity.logoUrl ? (
-              <Image src={entity.logoUrl} alt={entity.name} width={32} height={32} className="rounded-lg object-cover" />
-            ) : (
-              <Icon style={{ color }} className="text-lg" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1">
-              <p className="text-xs font-bold text-[#001E40] leading-tight line-clamp-2">{entity.name}</p>
-              {entity.isVerified && <MdVerified className="text-[#0C6780] flex-shrink-0" size={13} />}
+        <Link href={`/search/clinics/${entity.id}`} className="block">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}18` }}>
+              {entity.logoUrl ? (
+                <Image src={entity.logoUrl} alt={entity.name} width={32} height={32} className="rounded-lg object-cover" unoptimized />
+              ) : (
+                <Icon style={{ color }} className="text-lg" />
+              )}
             </div>
-            <span className="text-[10px] font-medium capitalize" style={{ color }}>{entity.type.replace('_', ' ')}</span>
-          </div>
-        </div>
-
-        {entity.address && (
-          <div className="flex items-start gap-1 mb-2">
-            <FaMapMarkerAlt className="flex-shrink-0 mt-0.5 text-gray-300" size={9} />
-            <p className="text-[10px] text-gray-400 line-clamp-1">{entity.city ?? entity.address}</p>
-          </div>
-        )}
-
-        {entity.sampleProviders.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            <div className="flex -space-x-1.5">
-              {entity.sampleProviders.slice(0, 3).map(p => (
-                <div key={p.id} className="w-5 h-5 rounded-full bg-gray-100 border border-white flex items-center justify-center overflow-hidden">
-                  {p.profileImage ? (
-                    <Image src={p.profileImage} alt={p.name} width={20} height={20} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-[8px] font-bold text-gray-400">{p.name.charAt(0)}</span>
-                  )}
-                </div>
-              ))}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1">
+                <p className="text-xs font-bold text-[#001E40] leading-tight line-clamp-2">{entity.name}</p>
+                {entity.isVerified && <MdVerified className="text-[#0C6780] flex-shrink-0" size={13} />}
+              </div>
+              <span className="text-[10px] font-medium capitalize" style={{ color }}>{entity.type.replace('_', ' ')}</span>
             </div>
-            <span className="text-[10px] text-gray-400">{entity.providerCount} provider{entity.providerCount !== 1 ? 's' : ''}</span>
           </div>
-        )}
+
+          {entity.address && (
+            <div className="flex items-start gap-1 mb-2">
+              <FaMapMarkerAlt className="flex-shrink-0 mt-0.5 text-gray-300" size={9} />
+              <p className="text-[10px] text-gray-400 line-clamp-1">{entity.city ?? entity.address}</p>
+            </div>
+          )}
+
+          {entity.sampleProviders.length > 0 && (
+            <div className="flex items-center gap-1.5 mb-3">
+              <div className="flex -space-x-1.5">
+                {entity.sampleProviders.slice(0, 3).map(p => (
+                  <div key={p.id} className="w-5 h-5 rounded-full bg-gray-100 border border-white flex items-center justify-center overflow-hidden">
+                    {p.profileImage ? (
+                      <Image src={p.profileImage} alt={p.name} width={20} height={20} className="w-full h-full object-cover" unoptimized />
+                    ) : (
+                      <span className="text-[8px] font-bold text-gray-400">{p.name.charAt(0)}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <span className="text-[10px] text-gray-400">{entity.providerCount} provider{entity.providerCount !== 1 ? 's' : ''}</span>
+            </div>
+          )}
+        </Link>
+
+        {/* Book CTA */}
+        <button
+          onClick={handleBook}
+          className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold text-white transition-opacity hover:opacity-90"
+          style={{ background: color }}
+        >
+          <FaCalendarAlt size={9} /> Book Here
+        </button>
       </div>
-    </Link>
+    </div>
   )
 }
 

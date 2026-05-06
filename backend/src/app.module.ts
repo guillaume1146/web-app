@@ -44,6 +44,7 @@ import { SharedModule } from './shared/shared.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { HealthStreakModule } from './health-streak/health-streak.module';
 import { RemindersModule } from './reminders/reminders.module';
+import { ClinicsModule } from './clinics/clinics.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { RemindersModule } from './reminders/reminders.module';
     FavoritesModule,
     HealthStreakModule,
     RemindersModule,
+    ClinicsModule,
     RegionalModule,
     AdminModule,
     ConnectionsModule,

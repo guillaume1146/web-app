@@ -34,10 +34,18 @@ export interface DrawerRole {
   iconKey?: string | null
 }
 
+export interface DrawerClinic {
+  id: string
+  name: string
+  type: string
+  logoUrl?: string | null
+}
+
 export interface OpenDrawerOptions {
   service?: DrawerService | null
   provider?: DrawerProvider | null
   role?: DrawerRole | null
+  clinic?: DrawerClinic | null   // start booking from a specific clinic
   date?: string | null        // YYYY-MM-DD
   time?: string | null        // HH:MM
   timeLabel?: string | null   // '9:00 AM'

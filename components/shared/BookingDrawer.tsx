@@ -7,7 +7,7 @@ import {
   FaTimes, FaArrowLeft, FaArrowRight, FaCheckCircle, FaCalendarAlt,
   FaUserMd, FaConciergeBell, FaClock, FaLock, FaStar,
 } from 'react-icons/fa'
-import { useBookingDrawer, DrawerService, DrawerProvider, DrawerRole } from '@/lib/contexts/booking-drawer-context'
+import { useBookingDrawer, DrawerService, DrawerProvider, DrawerRole, DrawerClinic } from '@/lib/contexts/booking-drawer-context'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -109,6 +109,7 @@ export default function BookingDrawer() {
   const [step, setStep] = useState<DrawerStep>('service')
   const [stepHistory, setStepHistory] = useState<DrawerStep[]>([])
 
+  const [selectedClinic, setSelectedClinic] = useState<DrawerClinic | null>(null)
   const [selectedService, setSelectedService] = useState<DrawerService | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<DrawerProvider | null>(null)
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowOption | null>(null)
@@ -151,19 +152,31 @@ export default function BookingDrawer() {
     setLoggedIn(isLoggedIn())
 
     // Pre-populate from entry options
-    const { service, provider, role, date, time } = options
+    const { service, provider, role, clinic, date, time } = options
 
-    if (service) {
+    if (clinic) {
+      // Clinic-first entry: service → providers (filtered by clinic)
+      setSelectedClinic(clinic)
+      setSelectedService(null)
+      setSelectedProvider(null)
+      setSelectedWorkflow(null)
+      setSelectedDate(date ? new Date(date + 'T12:00:00') : null)
+      setSelectedTime(time ?? null)
+      setStep('service')
+      setStepHistory(['service'])
+      fetchServicesForClinic(clinic.id)
+    } else if (service) {
+      setSelectedClinic(null)
       setSelectedService(service)
       setSelectedProvider(provider ?? null)
       setSelectedWorkflow(null)
       setSelectedDate(date ? new Date(date + 'T12:00:00') : null)
       setSelectedTime(time ?? null)
-      // 'service' is kept in history so the back button returns to it
       setStep('providers')
       setStepHistory(['service', 'providers'])
       fetchProviders(service)
     } else if (provider) {
+      setSelectedClinic(null)
       setSelectedService(null)
       setSelectedProvider(provider)
       setSelectedWorkflow(null)
@@ -173,7 +186,7 @@ export default function BookingDrawer() {
       setStepHistory(['service'])
       fetchServicesForProvider(provider)
     } else {
-      // Hero widget entry: role + date + time pre-filled
+      setSelectedClinic(null)
       setSelectedService(null)
       setSelectedProvider(null)
       setSelectedWorkflow(null)
@@ -206,6 +219,33 @@ export default function BookingDrawer() {
   const canGoBack = stepHistory.length > 1
 
   // ─── Data fetchers ────────────────────────────────────────────────────────
+
+  async function fetchServicesForClinic(entityId: string) {
+    setServicesLoading(true)
+    setServices([])
+    try {
+      const res = await fetch(`/api/clinics/${entityId}/providers-services`)
+      const j = await res.json()
+      if (j.success) {
+        // Flatten: collect unique services across all providers
+        const svcMap = new Map<string, DrawerService>()
+        for (const p of j.data?.providers ?? []) {
+          for (const s of p.services ?? []) {
+            if (!svcMap.has(s.id)) svcMap.set(s.id, {
+              id: s.id, serviceName: s.serviceName, category: s.category,
+              description: s.description, defaultPrice: s.defaultPrice ?? 0,
+              duration: s.duration, providerType: p.userType,
+              iconKey: s.iconKey, emoji: s.emoji,
+            })
+          }
+        }
+        setServices(Array.from(svcMap.values()))
+        // Store full entity data for provider-filtering later
+        ;(window as any).__clinicProvidersData = j.data
+      }
+    } catch { /* non-fatal */ }
+    finally { setServicesLoading(false) }
+  }
 
   async function fetchServicesForRole(roleCode: string) {
     setServicesLoading(true)
@@ -244,7 +284,25 @@ export default function BookingDrawer() {
     setProvidersLoading(true)
     setProviders([])
     try {
+      // If a clinic was selected, filter providers from that clinic's data
+      if (selectedClinic) {
+        const clinicData = (window as any).__clinicProvidersData
+        const clinicProviders: DrawerProvider[] = (clinicData?.providers ?? [])
+          .filter((p: any) => p.services?.some((s: any) => s.id === service.id))
+          .map((p: any) => ({
+            id: p.id, name: p.name, userType: p.userType,
+            profileImage: p.profileImage ?? null,
+            address: null, rating: 0, specializations: [],
+            bio: '',
+          }))
+        if (clinicProviders.length > 0) {
+          setProviders(clinicProviders)
+          return
+        }
+      }
+
       const params = new URLSearchParams({ type: service.providerType ?? '', serviceId: service.id, limit: '30' })
+      if (selectedClinic) params.set('entityId', selectedClinic.id)
       const res = await fetch(`/api/search/providers?${params}`)
       const j = await res.json()
       if (j.success) {
@@ -531,6 +589,17 @@ export default function BookingDrawer() {
 
             {/* ── Step progress dots ── */}
             <StepDots step={step} skippedSlot={!!(selectedTime && selectedDate && step !== 'slot')} />
+
+            {/* ── Clinic context banner (when booking via a clinic) ── */}
+            {selectedClinic && (
+              <div className="mx-5 mt-3 px-3 py-2 rounded-xl bg-[#0C6780]/8 border border-[#0C6780]/20 flex items-center gap-2">
+                <span className="text-base">🏥</span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-[#0C6780] truncate">{selectedClinic.name}</p>
+                  <p className="text-[10px] text-gray-400 capitalize">{selectedClinic.type?.replace('_', ' ')}</p>
+                </div>
+              </div>
+            )}
 
             {/* ── Body ── */}
             <div className="flex-1 overflow-y-auto min-h-0">

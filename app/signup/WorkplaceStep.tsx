@@ -1,0 +1,210 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { FaSearch, FaHospital, FaCheck, FaArrowRight, FaTimes } from 'react-icons/fa'
+
+interface ClinicResult {
+  id: string
+  name: string
+  type: string
+  city: string | null
+}
+
+interface WorkplaceSelection {
+  entityId: string
+  entityName: string
+  role: string
+}
+
+interface WorkplaceStepProps {
+  onContinue: (selection: WorkplaceSelection | null) => void
+  onSkip: () => void
+}
+
+export default function WorkplaceStep({ onContinue, onSkip }: WorkplaceStepProps) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<ClinicResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [selected, setSelected] = useState<ClinicResult | null>(null)
+  const [role, setRole] = useState('')
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!query.trim() || query.length < 2) { setResults([]); return }
+
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const res = await fetch(`/api/search/clinics?q=${encodeURIComponent(query.trim())}`)
+        const json = await res.json()
+        if (json.success && Array.isArray(json.data)) {
+          setResults(json.data as ClinicResult[])
+        }
+      } catch { /* silent */ }
+      finally { setSearching(false) }
+    }, 350)
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [query])
+
+  function selectClinic(clinic: ClinicResult) {
+    setSelected(clinic)
+    setQuery(clinic.name)
+    setResults([])
+  }
+
+  function clearSelection() {
+    setSelected(null)
+    setQuery('')
+    setRole('')
+    setResults([])
+  }
+
+  function handleContinue() {
+    if (selected) {
+      onContinue({ entityId: selected.id, entityName: selected.name, role: role.trim() })
+    } else {
+      onContinue(null)
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-2xl font-bold text-gray-900">Where do you work?</h2>
+        <button
+          type="button"
+          onClick={onSkip}
+          className="text-sm text-gray-400 hover:text-gray-600 transition-colors font-medium flex items-center gap-1"
+        >
+          Skip for now <FaArrowRight className="text-[10px]" />
+        </button>
+      </div>
+      <p className="text-gray-500 text-sm mb-6">
+        Link your account to a clinic or hospital on MediWyz. You can do this later from your dashboard.
+      </p>
+
+      {/* Search */}
+      <div className="relative">
+        <div className="relative">
+          <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+          <input
+            type="text"
+            value={query}
+            onChange={e => { setQuery(e.target.value); if (selected) setSelected(null) }}
+            placeholder="Search clinics, hospitals, pharmacies…"
+            className="w-full pl-10 pr-10 py-3 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0C6780] focus:border-[#0C6780] outline-none transition-colors"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={clearSelection}
+              aria-label="Clear"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <FaTimes className="text-xs" />
+            </button>
+          )}
+        </div>
+
+        {/* Dropdown results */}
+        {results.length > 0 && !selected && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden max-h-64 overflow-y-auto">
+            {searching && (
+              <div className="px-4 py-2 text-xs text-gray-400">Searching…</div>
+            )}
+            {results.map(clinic => (
+              <button
+                key={clinic.id}
+                type="button"
+                onClick={() => selectClinic(clinic)}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100 last:border-0"
+              >
+                <div className="w-9 h-9 rounded-lg bg-[#001E40] flex items-center justify-center flex-shrink-0">
+                  <FaHospital className="text-white text-sm" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{clinic.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] bg-[#9AE1FF]/30 text-[#001E40] px-2 py-0.5 rounded-full font-medium">
+                      {clinic.type}
+                    </span>
+                    {clinic.city && (
+                      <span className="text-[10px] text-gray-400">{clinic.city}</span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* No results */}
+        {query.length >= 2 && !searching && results.length === 0 && !selected && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-30 px-4 py-4 text-center">
+            <p className="text-sm text-gray-500">No clinics found for &quot;{query}&quot;</p>
+            <p className="text-xs text-gray-400 mt-1">Your entity may not be on MediWyz yet — you can request it later.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Selected clinic card */}
+      {selected && (
+        <div className="mt-4 flex items-center gap-3 bg-[#0C6780]/5 border-2 border-[#0C6780]/30 rounded-xl px-4 py-3">
+          <div className="w-10 h-10 rounded-lg bg-[#001E40] flex items-center justify-center flex-shrink-0">
+            <FaHospital className="text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-gray-900 text-sm truncate">{selected.name}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[10px] bg-[#9AE1FF]/30 text-[#001E40] px-2 py-0.5 rounded-full font-medium">
+                {selected.type}
+              </span>
+              {selected.city && <span className="text-[10px] text-gray-400">{selected.city}</span>}
+            </div>
+          </div>
+          <FaCheck className="text-[#0C6780] flex-shrink-0" />
+        </div>
+      )}
+
+      {/* Role input */}
+      {selected && (
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Your role at {selected.name} <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input
+            type="text"
+            value={role}
+            onChange={e => setRole(e.target.value)}
+            placeholder="e.g. Cardiologist, Head Nurse, Senior Pharmacist"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#0C6780] focus:border-[#0C6780] outline-none"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            This is visible to the entity admin when reviewing your membership request.
+          </p>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onSkip}
+          className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
+        >
+          Skip this step
+        </button>
+        <button
+          type="button"
+          onClick={handleContinue}
+          className="flex items-center gap-2 bg-[#0C6780] hover:bg-[#0a5568] text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors"
+        >
+          {selected ? 'Continue' : 'Skip & Continue'}
+          <FaArrowRight className="text-xs" />
+        </button>
+      </div>
+    </div>
+  )
+}

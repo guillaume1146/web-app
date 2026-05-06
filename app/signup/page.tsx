@@ -10,16 +10,29 @@ import AccountTypeStep from './AccountTypeStep'
 import BasicInfoStep from './BasicInfoStep'
 import NavigationButtons from './NavigationButtons'
 import LegalModals from './LegalModals'
+import WorkplaceStep from './WorkplaceStep'
 import { captureReferralParams, getTrackingId, setTrackingId, clearReferralTracking } from '@/lib/referral-tracking'
+
+// User types that are providers (not patients/members)
+const MEMBER_TYPES = new Set(['patient', 'member', 'referral-partner'])
+
+interface WorkplaceSelection {
+ entityId: string
+ entityName: string
+ role: string
+}
 
 export default function RegistrationForm() {
  const [currentStep, setCurrentStep] = useState(1)
+ // Sub-step: 'basic' = step 2 form, 'workplace' = workplace picker (providers only)
+ const [subStep, setSubStep] = useState<'basic' | 'workplace'>('basic')
  const [selectedUserType, setSelectedUserType] = useState<string>('patient')
  const [showPassword, setShowPassword] = useState(false)
  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
  const [isSubmitting, setIsSubmitting] = useState(false)
  const [submissionSuccess, setSubmissionSuccess] = useState(false)
  const [submissionError, setSubmissionError] = useState<string | null>(null)
+ const [workplaceSelection, setWorkplaceSelection] = useState<WorkplaceSelection | null>(null)
 
  // Modal states
  const [disclaimerOpen, setDisclaimerOpen] = useState(false)
@@ -114,6 +127,8 @@ export default function RegistrationForm() {
  setFormData(prev => ({ ...prev, userType: userTypeId }))
  }
 
+ const isProviderType = (userType: string) => !MEMBER_TYPES.has(userType)
+
  const validateStep = (step: number): boolean => {
  switch (step) {
  case 1:
@@ -136,34 +151,46 @@ export default function RegistrationForm() {
  }
 
  const nextStep = () => {
- if (validateStep(currentStep)) {
- // On step 2, go to step 3 which auto-submits
+ if (!validateStep(currentStep)) return
+
  if (currentStep === 2) {
+ // If provider → show workplace step before submitting
+ if (isProviderType(selectedUserType) && subStep === 'basic') {
+ setSubStep('workplace')
+ return
+ }
+ // Otherwise (member, or already done workplace step) → go to step 3 (submit)
  setCurrentStep(3)
- // Auto-submit on reaching step 3
  handleSubmit(new Event('submit') as unknown as FormEvent)
  return
  }
+
  setCurrentStep(prev => Math.min(prev + 1, 3))
- }
  }
 
  const prevStep = () => {
+ if (currentStep === 2 && subStep === 'workplace') {
+ // Go back to basic info within step 2
+ setSubStep('basic')
+ return
+ }
  setCurrentStep(prev => Math.max(prev - 1, 1))
  }
 
- const handleSubmit = async (e: FormEvent) => {
- e.preventDefault()
+ // Called from WorkplaceStep when user picks a workplace or skips
+ const handleWorkplaceComplete = (selection: WorkplaceSelection | null) => {
+ setWorkplaceSelection(selection)
+ setCurrentStep(3)
+ handleSubmitWithWorkplace(selection)
+ }
 
+ const handleSubmitWithWorkplace = async (workplace: WorkplaceSelection | null) => {
  setIsSubmitting(true)
  setSubmissionError(null)
 
  try {
- // Collect required document IDs for this user type (they will upload post-registration)
  const requiredDocs = documentRequirements[formData.userType] || []
- const skippedDocuments = requiredDocs
- .filter(doc => doc.required)
- .map(doc => doc.id)
+ const skippedDocuments = requiredDocs.filter(doc => doc.required).map(doc => doc.id)
 
  const response = await fetch('/api/auth/register', {
  method: 'POST',
@@ -184,36 +211,49 @@ export default function RegistrationForm() {
  throw new Error(result.message || 'Registration failed')
  }
 
- // Clear referral tracking data
  clearReferralTracking()
 
- // Persist user in localStorage so the app knows who is logged in
  if (result.user) {
    localStorage.setItem('mediwyz_user', JSON.stringify(result.user))
  }
 
- // Set success state
+ // If user selected a workplace, link them (best-effort, non-blocking)
+ if (workplace && result.user?.id) {
+   fetch(`/api/providers/${result.user.id}/workplaces`, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     credentials: 'include',
+     body: JSON.stringify({
+       healthcareEntityId: workplace.entityId,
+       role: workplace.role || undefined,
+       isPrimary: true,
+     }),
+   }).catch(() => { /* non-fatal */ })
+ }
+
  setSubmissionSuccess(true)
 
  if (result.redirectPath) {
-   // Auto-logged in — go directly to dashboard
    router.push(result.redirectPath)
  } else {
-   // Pending account (admin approval required) — send to login
-   setTimeout(() => {
-     router.push('/login?registration=success')
-   }, 2000)
+   setTimeout(() => { router.push('/login?registration=success') }, 2000)
  }
 
  } catch (error) {
  console.error('Registration error:', error)
  const message = error instanceof Error ? error.message : 'Registration failed. Please try again later or contact support.'
  setSubmissionError(message)
- // Go back to step 2 so user can fix and retry
+ // Go back to step 2 / basic info so user can fix and retry
  setCurrentStep(2)
+ setSubStep('basic')
  } finally {
  setIsSubmitting(false)
  }
+ }
+
+ const handleSubmit = async (e: FormEvent) => {
+ e.preventDefault()
+ await handleSubmitWithWorkplace(workplaceSelection)
  }
 
  const selectedType = userTypes.find(type => type.id === selectedUserType)
@@ -253,6 +293,13 @@ export default function RegistrationForm() {
  </p>
  </div>
  )}
+ {workplaceSelection && (
+ <div className="bg-[#9AE1FF]/20 border border-[#9AE1FF]/40 rounded-lg p-4 mb-4">
+ <p className="text-[#001E40] text-sm">
+ Your workplace link to <strong>{workplaceSelection.entityName}</strong> is pending admin approval.
+ </p>
+ </div>
+ )}
  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
  <p className="text-blue-800 text-sm">
  Taking you to your dashboard...
@@ -279,7 +326,7 @@ export default function RegistrationForm() {
  )}
 
  {/* Step 2: Basic Information + Agreement */}
- {currentStep === 2 && (
+ {currentStep === 2 && subStep === 'basic' && (
  <BasicInfoStep
  formData={formData}
  selectedType={selectedType}
@@ -289,6 +336,14 @@ export default function RegistrationForm() {
  onPasswordToggle={() => setShowPassword(!showPassword)}
  onConfirmPasswordToggle={() => setShowConfirmPassword(!showConfirmPassword)}
  onProfileImageChange={(url) => setFormData(prev => ({ ...prev, profileImageUrl: url }))}
+ />
+ )}
+
+ {/* Step 2 (provider sub-step): Workplace selection */}
+ {currentStep === 2 && subStep === 'workplace' && (
+ <WorkplaceStep
+ onContinue={handleWorkplaceComplete}
+ onSkip={() => handleWorkplaceComplete(null)}
  />
  )}
 
@@ -324,8 +379,8 @@ export default function RegistrationForm() {
  </div>
  )}
 
- {/* Navigation Buttons (only show on steps 1-2) */}
- {currentStep <= 2 && (
+ {/* Navigation Buttons — only on step 1 and step 2 basic info */}
+ {currentStep <= 2 && subStep === 'basic' && (
  <NavigationButtons
  currentStep={currentStep}
  isSubmitting={isSubmitting}
@@ -388,6 +443,7 @@ export default function RegistrationForm() {
  </>
  )}
  </div>
+ </div>
 
  {/* Legal Modals */}
  <LegalModals
@@ -398,7 +454,6 @@ export default function RegistrationForm() {
  onCloseTerms={() => setTermsOpen(false)}
  onClosePrivacy={() => setPrivacyOpen(false)}
  />
- </div>
  </div>
  )
 }

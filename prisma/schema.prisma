@@ -294,6 +294,8 @@ model User {
 
   // Healthcare entity workplaces (providers can belong to a clinic/hospital)
   workplaces           ProviderWorkplace[]
+  foundedEntities      HealthcareEntity[]   @relation("EntityFounder")
+  sentInvitations      WorkplaceInvitation[] @relation("InvitationSender")
 
   @@index([email])
   @@index([userType])
@@ -2988,8 +2990,13 @@ model HealthcareEntity {
   isVerified  Boolean @default(false)
   isActive    Boolean @default(true)
 
+  // Founder — the user who created/manages this entity
+  founderUserId String?
+  founder       User?   @relation("EntityFounder", fields: [founderUserId], references: [id], onDelete: SetNull)
+
   // Providers affiliated with this entity
-  providers   ProviderWorkplace[]
+  providers     ProviderWorkplace[]
+  invitations   WorkplaceInvitation[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -2998,6 +3005,7 @@ model HealthcareEntity {
   @@index([type])
   @@index([city, country])
   @@index([isActive])
+  @@index([founderUserId])
 }
 
 // ─── Provider Workplace (many-to-many: provider ↔ HealthcareEntity) ──────────
@@ -3009,9 +3017,13 @@ model ProviderWorkplace {
   healthcareEntityId String
   entity             HealthcareEntity @relation(fields: [healthcareEntityId], references: [id], onDelete: Cascade)
 
-  role               String?  // e.g. "Senior Consultant", "Visiting Physician" (provider's role at this entity)
-  isPrimary          Boolean  @default(false) // provider's main workplace shown on public profile
+  role               String?  // e.g. "Senior Consultant", "Visiting Physician"
+  isPrimary          Boolean  @default(false)
   isActive           Boolean  @default(true)
+  // pending_approval = employee requested to join (founder must approve)
+  // active           = confirmed member
+  // rejected         = founder rejected the request
+  status             String   @default("active")
 
   startDate          DateTime?
   endDate            DateTime?
@@ -3022,4 +3034,30 @@ model ProviderWorkplace {
   @@unique([providerUserId, healthcareEntityId])
   @@index([providerUserId])
   @@index([healthcareEntityId])
+  @@index([status])
+}
+
+// ─── Workplace Invitation (founder invites provider by email) ─────────────────
+
+model WorkplaceInvitation {
+  id                 String          @id @default(uuid())
+  healthcareEntityId String
+  entity             HealthcareEntity @relation(fields: [healthcareEntityId], references: [id], onDelete: Cascade)
+  invitedByUserId    String
+  invitedBy          User            @relation("InvitationSender", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  invitedEmail       String          // email the invite was sent to
+  suggestedRole      String?         // founder can suggest a role
+  token              String          @unique @default(uuid())
+  // pending, accepted, rejected, expired
+  status             String          @default("pending")
+  expiresAt          DateTime
+  acceptedByUserId   String?         // set when the invited user accepts
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([healthcareEntityId])
+  @@index([invitedEmail])
+  @@index([token])
+  @@index([status])
 }

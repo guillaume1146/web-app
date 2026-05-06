@@ -109,7 +109,7 @@ export class SearchService {
     return { slots, providerCount: providers.length };
   }
 
-  async searchProviders(type: string, query?: string, page?: number, limit?: number, specialty?: string, serviceId?: string) {
+  async searchProviders(type: string, query?: string, page?: number, limit?: number, specialty?: string, serviceId?: string, entityId?: string) {
     if (!type) throw new BadRequestException('type parameter is required');
     const uType = type.toUpperCase();
     const take = Math.min(limit || 50, 100);
@@ -118,13 +118,26 @@ export class SearchService {
 
     const where: any = { userType: uType, accountStatus: 'active' };
 
+    // When entityId is supplied, restrict to providers who work at that healthcare entity
+    if (entityId) {
+      const workplaces = await (this.prisma.providerWorkplace as any).findMany({
+        where: { healthcareEntityId: entityId, isActive: true, status: 'active' },
+        select: { providerUserId: true },
+      });
+      if (workplaces.length === 0) return { data: [], total: 0, page: 1, limit: take, totalPages: 0 };
+      where.id = { in: workplaces.map((w: any) => w.providerUserId) };
+    }
+
     // When serviceId is supplied, only return providers who have that service
     // in their ProviderServiceConfig (they explicitly offer it).
     // If nobody offers it yet → return empty list; the booking drawer shows
     // "No providers available" rather than a misleading unfiltered list.
     if (serviceId) {
       const configs = await this.prisma.providerServiceConfig.findMany({
-        where: { platformServiceId: serviceId, isActive: true },
+        where: {
+          platformServiceId: serviceId, isActive: true,
+          ...(where.id ? { providerUserId: where.id } : {}),
+        },
         select: { providerUserId: true },
       });
       if (configs.length === 0) return { data: [], total: 0, page: 1, limit: take, totalPages: 0 };

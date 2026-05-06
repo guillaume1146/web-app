@@ -250,7 +250,18 @@
       "Bash(Select-Object -First 20)",
       "Bash(dir \"C:\\\\Github Repositories\\\\healthways-typescript\\\\public\\\\images\" /B /S)",
       "Bash(dir \"C:\\\\Github Repositories\\\\healthways-typescript\\\\app\\\\regional\" /s /b)",
-      "Bash(Select-Object -ExpandProperty Name)"
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash($SSHPASS *)",
+      "PowerShell(Get-Command *)",
+      "Bash(gh auth *)",
+      "Bash(npm ls *)",
+      "Bash(Select-String -Pattern \"error|Error|ERROR|failed|FAILED|Cannot|cannot|Module not found|not found|OOM|killed|SIGKILL|exit\")",
+      "Bash(psql *)",
+      "Bash(where psql *)",
+      "Bash(where pg_isready)",
+      "Read(//c/Program Files/PostgreSQL/**)",
+      "Bash(C:/Program Files/PostgreSQL/16/bin/psql.exe *)"
     ]
   }
 }
