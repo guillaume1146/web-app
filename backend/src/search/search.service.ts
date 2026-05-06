@@ -118,19 +118,17 @@ export class SearchService {
 
     const where: any = { userType: uType, accountStatus: 'active' };
 
-    // When serviceId is supplied, prefer providers who have explicitly configured
-    // that service in ProviderServiceConfig.  If none have done so (e.g. freshly
-    // seeded DB where no provider has yet opted in), fall back to all providers of
-    // the requested type so the UI never shows an empty list.
+    // When serviceId is supplied, only return providers who have that service
+    // in their ProviderServiceConfig (they explicitly offer it).
+    // If nobody offers it yet → return empty list; the booking drawer shows
+    // "No providers available" rather than a misleading unfiltered list.
     if (serviceId) {
       const configs = await this.prisma.providerServiceConfig.findMany({
         where: { platformServiceId: serviceId, isActive: true },
         select: { providerUserId: true },
       });
-      if (configs.length > 0) {
-        where.id = { in: configs.map(c => c.providerUserId) };
-      }
-      // configs.length === 0 → no filter applied; show all providers of this type
+      if (configs.length === 0) return { data: [], total: 0, page: 1, limit: take, totalPages: 0 };
+      where.id = { in: configs.map(c => c.providerUserId) };
     }
 
     if (query) {
