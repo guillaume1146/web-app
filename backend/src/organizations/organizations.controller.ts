@@ -11,15 +11,15 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { ClinicsService } from './clinics.service';
+import { OrganizationsService } from './organizations.service';
 import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/jwt.strategy';
 
-@ApiTags('Clinics')
-@Controller('clinics')
-export class ClinicsController {
-  constructor(private readonly clinicsService: ClinicsService) {}
+@ApiTags('Organizations')
+@Controller('organizations')
+export class OrganizationsController {
+  constructor(private readonly organizationsService: OrganizationsService) {}
 
   // ─── Public search / browse ─────────────────────────────────────────────
 
@@ -34,7 +34,7 @@ export class ClinicsController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    const result = await this.clinicsService.findAll({
+    const result = await this.organizationsService.findAll({
       q,
       type,
       city,
@@ -49,7 +49,7 @@ export class ClinicsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new healthcare entity (clinic, hospital, etc.)' })
+  @ApiOperation({ summary: 'Create a new healthcare entity (organization, hospital, etc.)' })
   async create(
     @Body()
     body: {
@@ -65,7 +65,7 @@ export class ClinicsController {
     },
     @CurrentUser() user: JwtPayload,
   ) {
-    const data = await this.clinicsService.create(user.sub, body);
+    const data = await this.organizationsService.create(user.sub, body);
     return { success: true, data };
   }
 
@@ -75,7 +75,7 @@ export class ClinicsController {
   @Get('invitations/:token')
   @ApiOperation({ summary: 'Get invitation details by token (public)' })
   async getInvitation(@Param('token') token: string) {
-    const data = await this.clinicsService.getInvitation(token);
+    const data = await this.organizationsService.getInvitation(token);
     return { success: true, data };
   }
 
@@ -88,7 +88,7 @@ export class ClinicsController {
     @Param('token') token: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    const data = await this.clinicsService.acceptInvitation(token, user.sub);
+    const data = await this.organizationsService.acceptInvitation(token, user.sub);
     return { success: true, data };
   }
 
@@ -98,7 +98,7 @@ export class ClinicsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get a single healthcare entity with active members' })
   async findOne(@Param('id') id: string) {
-    const data = await this.clinicsService.findOne(id);
+    const data = await this.organizationsService.findOne(id);
     return { success: true, data };
   }
 
@@ -124,7 +124,7 @@ export class ClinicsController {
     },
     @CurrentUser() user: JwtPayload,
   ) {
-    const data = await this.clinicsService.update(id, user.sub, body);
+    const data = await this.organizationsService.update(id, user.sub, body);
     return { success: true, data };
   }
 
@@ -141,7 +141,7 @@ export class ClinicsController {
     if (!body.logoData) {
       return { success: false, message: 'logoData is required' };
     }
-    const data = await this.clinicsService.uploadLogo(id, user.sub, body.logoData);
+    const data = await this.organizationsService.uploadLogo(id, user.sub, body.logoData);
     return { success: true, data };
   }
 
@@ -156,7 +156,7 @@ export class ClinicsController {
     @Param('id') id: string,
     @CurrentUser() user?: JwtPayload,
   ) {
-    const data = await this.clinicsService.getMembers(id, user?.sub);
+    const data = await this.organizationsService.getMembers(id, user?.sub);
     return { success: true, data };
   }
 
@@ -168,7 +168,7 @@ export class ClinicsController {
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    const data = await this.clinicsService.getInvitations(id, user.sub);
+    const data = await this.organizationsService.getInvitations(id, user.sub);
     return { success: true, data };
   }
 
@@ -185,7 +185,7 @@ export class ClinicsController {
     if (!body.email) {
       return { success: false, message: 'email is required' };
     }
-    const data = await this.clinicsService.inviteMember(id, user.sub, body);
+    const data = await this.organizationsService.inviteMember(id, user.sub, body);
     return { success: true, data };
   }
 
@@ -199,7 +199,7 @@ export class ClinicsController {
     @Param('workplaceId') workplaceId: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    const data = await this.clinicsService.approveMember(id, user.sub, workplaceId);
+    const data = await this.organizationsService.approveMember(id, user.sub, workplaceId);
     return { success: true, data };
   }
 
@@ -213,7 +213,7 @@ export class ClinicsController {
     @Param('workplaceId') workplaceId: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    const data = await this.clinicsService.rejectMember(id, user.sub, workplaceId);
+    const data = await this.organizationsService.rejectMember(id, user.sub, workplaceId);
     return { success: true, data };
   }
 
@@ -227,7 +227,7 @@ export class ClinicsController {
     @Param('workplaceId') workplaceId: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    const data = await this.clinicsService.removeMember(id, user.sub, workplaceId);
+    const data = await this.organizationsService.removeMember(id, user.sub, workplaceId);
     return { success: true, data };
   }
 
@@ -241,7 +241,7 @@ export class ClinicsController {
     @Body() body: { role?: string; isPrimary?: boolean },
     @CurrentUser() user: JwtPayload,
   ) {
-    const data = await this.clinicsService.requestToJoin(id, user.sub, body);
+    const data = await this.organizationsService.requestToJoin(id, user.sub, body);
     return { success: true, data };
   }
 
@@ -251,7 +251,7 @@ export class ClinicsController {
   @Get(':id/providers-services')
   @ApiOperation({ summary: 'Get all active providers and their bookable services for this entity (public)' })
   async getProvidersServices(@Param('id') id: string) {
-    const data = await this.clinicsService.getProvidersServices(id);
+    const data = await this.organizationsService.getProvidersServices(id);
     return { success: true, data };
   }
 }

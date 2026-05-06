@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { FaSearch, FaHospital, FaCheck, FaArrowRight, FaTimes } from 'react-icons/fa'
 
-interface ClinicResult {
+interface OrgResult {
   id: string
   name: string
   type: string
@@ -23,9 +23,9 @@ interface WorkplaceStepProps {
 
 export default function WorkplaceStep({ onContinue, onSkip }: WorkplaceStepProps) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<ClinicResult[]>([])
+  const [results, setResults] = useState<OrgResult[]>([])
   const [searching, setSearching] = useState(false)
-  const [selected, setSelected] = useState<ClinicResult | null>(null)
+  const [selected, setSelected] = useState<OrgResult | null>(null)
   const [role, setRole] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -36,10 +36,10 @@ export default function WorkplaceStep({ onContinue, onSkip }: WorkplaceStepProps
     debounceRef.current = setTimeout(async () => {
       setSearching(true)
       try {
-        const res = await fetch(`/api/search/clinics?q=${encodeURIComponent(query.trim())}`)
+        const res = await fetch(`/api/search/organizations?q=${encodeURIComponent(query.trim())}`)
         const json = await res.json()
         if (json.success && Array.isArray(json.data)) {
-          setResults(json.data as ClinicResult[])
+          setResults(json.data as OrgResult[])
         }
       } catch { /* silent */ }
       finally { setSearching(false) }
@@ -48,9 +48,9 @@ export default function WorkplaceStep({ onContinue, onSkip }: WorkplaceStepProps
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [query])
 
-  function selectClinic(clinic: ClinicResult) {
-    setSelected(clinic)
-    setQuery(clinic.name)
+  function selectOrg(org: OrgResult) {
+    setSelected(org)
+    setQuery(org.name)
     setResults([])
   }
 
@@ -82,7 +82,7 @@ export default function WorkplaceStep({ onContinue, onSkip }: WorkplaceStepProps
         </button>
       </div>
       <p className="text-gray-500 text-sm mb-6">
-        Link your account to a clinic or hospital on MediWyz. You can do this later from your dashboard.
+        Link your account to an organization on MediWyz. You can do this later from your dashboard.
       </p>
 
       {/* Search */}
@@ -114,24 +114,24 @@ export default function WorkplaceStep({ onContinue, onSkip }: WorkplaceStepProps
             {searching && (
               <div className="px-4 py-2 text-xs text-gray-400">Searching…</div>
             )}
-            {results.map(clinic => (
+            {results.map(org => (
               <button
-                key={clinic.id}
+                key={org.id}
                 type="button"
-                onClick={() => selectClinic(clinic)}
+                onClick={() => selectOrg(org)}
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100 last:border-0"
               >
                 <div className="w-9 h-9 rounded-lg bg-[#001E40] flex items-center justify-center flex-shrink-0">
                   <FaHospital className="text-white text-sm" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{clinic.name}</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{org.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[10px] bg-[#9AE1FF]/30 text-[#001E40] px-2 py-0.5 rounded-full font-medium">
-                      {clinic.type}
+                      {org.type}
                     </span>
-                    {clinic.city && (
-                      <span className="text-[10px] text-gray-400">{clinic.city}</span>
+                    {org.city && (
+                      <span className="text-[10px] text-gray-400">{org.city}</span>
                     )}
                   </div>
                 </div>
@@ -143,7 +143,7 @@ export default function WorkplaceStep({ onContinue, onSkip }: WorkplaceStepProps
         {/* No results */}
         {query.length >= 2 && !searching && results.length === 0 && !selected && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-30 px-4 py-4 text-center">
-            <p className="text-sm text-gray-500">No clinics found for &quot;{query}&quot;</p>
+            <p className="text-sm text-gray-500">No organizations found for &quot;{query}&quot;</p>
             <p className="text-xs text-gray-400 mt-1">Your entity may not be on MediWyz yet — you can request it later.</p>
           </div>
         )}

@@ -7,7 +7,7 @@ import {
   FaTimes, FaArrowLeft, FaArrowRight, FaCheckCircle, FaCalendarAlt,
   FaUserMd, FaConciergeBell, FaClock, FaLock, FaStar,
 } from 'react-icons/fa'
-import { useBookingDrawer, DrawerService, DrawerProvider, DrawerRole, DrawerClinic } from '@/lib/contexts/booking-drawer-context'
+import { useBookingDrawer, DrawerService, DrawerProvider, DrawerRole, DrawerOrganization } from '@/lib/contexts/booking-drawer-context'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -109,7 +109,7 @@ export default function BookingDrawer() {
   const [step, setStep] = useState<DrawerStep>('service')
   const [stepHistory, setStepHistory] = useState<DrawerStep[]>([])
 
-  const [selectedClinic, setSelectedClinic] = useState<DrawerClinic | null>(null)
+  const [selectedOrg, setSelectedOrg] = useState<DrawerOrganization | null>(null)
   const [selectedService, setSelectedService] = useState<DrawerService | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<DrawerProvider | null>(null)
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowOption | null>(null)
@@ -152,11 +152,11 @@ export default function BookingDrawer() {
     setLoggedIn(isLoggedIn())
 
     // Pre-populate from entry options
-    const { service, provider, role, clinic, date, time } = options
+    const { service, provider, role, organization, date, time } = options
 
-    if (clinic) {
-      // Clinic-first entry: service → providers (filtered by clinic)
-      setSelectedClinic(clinic)
+    if (organization) {
+      // Organization-first entry: service → providers (filtered by organization)
+      setSelectedOrg(organization)
       setSelectedService(null)
       setSelectedProvider(null)
       setSelectedWorkflow(null)
@@ -164,9 +164,9 @@ export default function BookingDrawer() {
       setSelectedTime(time ?? null)
       setStep('service')
       setStepHistory(['service'])
-      fetchServicesForClinic(clinic.id)
+      fetchServicesForOrg(organization.id)
     } else if (service) {
-      setSelectedClinic(null)
+      setSelectedOrg(null)
       setSelectedService(service)
       setSelectedProvider(provider ?? null)
       setSelectedWorkflow(null)
@@ -176,7 +176,7 @@ export default function BookingDrawer() {
       setStepHistory(['service', 'providers'])
       fetchProviders(service)
     } else if (provider) {
-      setSelectedClinic(null)
+      setSelectedOrg(null)
       setSelectedService(null)
       setSelectedProvider(provider)
       setSelectedWorkflow(null)
@@ -186,7 +186,7 @@ export default function BookingDrawer() {
       setStepHistory(['service'])
       fetchServicesForProvider(provider)
     } else {
-      setSelectedClinic(null)
+      setSelectedOrg(null)
       setSelectedService(null)
       setSelectedProvider(null)
       setSelectedWorkflow(null)
@@ -220,11 +220,11 @@ export default function BookingDrawer() {
 
   // ─── Data fetchers ────────────────────────────────────────────────────────
 
-  async function fetchServicesForClinic(entityId: string) {
+  async function fetchServicesForOrg(entityId: string) {
     setServicesLoading(true)
     setServices([])
     try {
-      const res = await fetch(`/api/clinics/${entityId}/providers-services`)
+      const res = await fetch(`/api/organizations/${entityId}/providers-services`)
       const j = await res.json()
       if (j.success) {
         // Flatten: collect unique services across all providers
@@ -241,7 +241,7 @@ export default function BookingDrawer() {
         }
         setServices(Array.from(svcMap.values()))
         // Store full entity data for provider-filtering later
-        ;(window as any).__clinicProvidersData = j.data
+        ;(window as any).__orgProvidersData = j.data
       }
     } catch { /* non-fatal */ }
     finally { setServicesLoading(false) }
@@ -284,10 +284,10 @@ export default function BookingDrawer() {
     setProvidersLoading(true)
     setProviders([])
     try {
-      // If a clinic was selected, filter providers from that clinic's data
-      if (selectedClinic) {
-        const clinicData = (window as any).__clinicProvidersData
-        const clinicProviders: DrawerProvider[] = (clinicData?.providers ?? [])
+      // If an organization was selected, filter providers from that org's data
+      if (selectedOrg) {
+        const orgData = (window as any).__orgProvidersData
+        const orgProviders: DrawerProvider[] = (orgData?.providers ?? [])
           .filter((p: any) => p.services?.some((s: any) => s.id === service.id))
           .map((p: any) => ({
             id: p.id, name: p.name, userType: p.userType,
@@ -295,14 +295,14 @@ export default function BookingDrawer() {
             address: null, rating: 0, specializations: [],
             bio: '',
           }))
-        if (clinicProviders.length > 0) {
-          setProviders(clinicProviders)
+        if (orgProviders.length > 0) {
+          setProviders(orgProviders)
           return
         }
       }
 
       const params = new URLSearchParams({ type: service.providerType ?? '', serviceId: service.id, limit: '30' })
-      if (selectedClinic) params.set('entityId', selectedClinic.id)
+      if (selectedOrg) params.set('entityId', selectedOrg.id)
       const res = await fetch(`/api/search/providers?${params}`)
       const j = await res.json()
       if (j.success) {
@@ -590,13 +590,13 @@ export default function BookingDrawer() {
             {/* ── Step progress dots ── */}
             <StepDots step={step} skippedSlot={!!(selectedTime && selectedDate && step !== 'slot')} />
 
-            {/* ── Clinic context banner (when booking via a clinic) ── */}
-            {selectedClinic && (
+            {/* ── Organization context banner (when booking via an organization) ── */}
+            {selectedOrg && (
               <div className="mx-5 mt-3 px-3 py-2 rounded-xl bg-[#0C6780]/8 border border-[#0C6780]/20 flex items-center gap-2">
                 <span className="text-base">🏥</span>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-[#0C6780] truncate">{selectedClinic.name}</p>
-                  <p className="text-[10px] text-gray-400 capitalize">{selectedClinic.type?.replace('_', ' ')}</p>
+                  <p className="text-xs font-semibold text-[#0C6780] truncate">{selectedOrg.name}</p>
+                  <p className="text-[10px] text-gray-400 capitalize">{selectedOrg.type?.replace('_', ' ')}</p>
                 </div>
               </div>
             )}

@@ -10,8 +10,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 @Injectable()
-export class ClinicsService {
-  private readonly logger = new Logger(ClinicsService.name);
+export class OrganizationsService {
+  private readonly logger = new Logger(OrganizationsService.name);
 
   constructor(private prisma: PrismaService) {}
 
@@ -246,14 +246,14 @@ export class ClinicsService {
         base64Payload = matches[2];
       }
 
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'clinics', id);
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'organizations', id);
       fs.mkdirSync(uploadDir, { recursive: true });
 
       const filename = `logo.${ext}`;
       const filePath = path.join(uploadDir, filename);
       fs.writeFileSync(filePath, Buffer.from(base64Payload, 'base64'));
 
-      logoUrl = `/uploads/clinics/${id}/${filename}`;
+      logoUrl = `/uploads/organizations/${id}/${filename}`;
       this.logger.log(`Logo saved for entity ${id}: ${filePath}`);
     }
 

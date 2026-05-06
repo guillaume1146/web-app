@@ -198,9 +198,9 @@ export class SearchController {
     }
   }
 
-  // ── GET /search/clinics — healthcare entity search ──────────────────────
-  @Public() @Get('clinics')
-  async searchClinics(
+  // ── GET /search/organizations — healthcare entity search ────────────────
+  @Public() @Get('organizations')
+  async searchOrganizations(
     @Query('q') q?: string,
     @Query('type') type?: string,
     @Query('city') city?: string,
@@ -266,7 +266,7 @@ export class SearchController {
         totalPages: Math.ceil(total / take),
       };
     } catch (error) {
-      console.error('GET /search/clinics error:', error);
+      console.error('GET /search/organizations error:', error);
       return { success: false, data: [], message: 'Search failed' };
     }
   }

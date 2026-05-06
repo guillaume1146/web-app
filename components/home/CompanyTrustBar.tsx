@@ -22,7 +22,7 @@ interface Company {
   isInsuranceCompany: boolean
 }
 
-interface ClinicEntity {
+interface OrgEntity {
   id: string
   name: string
   type: string
@@ -54,13 +54,13 @@ function companiestoItems(companies: Company[]): TrustItem[] {
   }))
 }
 
-function clinicsToItems(clinics: ClinicEntity[]): TrustItem[] {
-  return clinics.map(cl => ({
-    id: `clinic-${cl.id}`,
-    name: cl.name,
-    logoUrl: cl.logoUrl ?? undefined,
-    badge: cl.type ?? 'Clinic',
-    href: `/search/clinics/${cl.id}`,
+function orgsToItems(orgs: OrgEntity[]): TrustItem[] {
+  return orgs.map(org => ({
+    id: `org-${org.id}`,
+    name: org.name,
+    logoUrl: org.logoUrl ?? undefined,
+    badge: org.type ?? 'Organization',
+    href: `/search/organizations/${org.id}`,
   }))
 }
 
@@ -70,9 +70,9 @@ const FALLBACK: TrustItem[] = [
   { id: 'f1', name: 'MediShield Mauritius', badge: 'Insurance', href: '/search/company' },
   { id: 'f2', name: 'Rogers Group', badge: 'Corporate', href: '/search/company' },
   { id: 'f3', name: 'Swan Life Ltd', badge: 'Insurance', href: '/search/company' },
-  { id: 'f4', name: 'City Clinic Rose Hill', badge: 'Clinic', href: '/search/clinics' },
+  { id: 'f4', name: 'City Clinic Rose Hill', badge: 'Clinic', href: '/search/organizations' },
   { id: 'f5', name: 'MUA Insurance', badge: 'Insurance', href: '/search/company' },
-  { id: 'f6', name: 'Grand Baie Medical', badge: 'Hospital', href: '/search/clinics' },
+  { id: 'f6', name: 'Grand Baie Medical', badge: 'Hospital', href: '/search/organizations' },
 ]
 
 // ─── Badge icon ──────────────────────────────────────────────────────────────
@@ -92,9 +92,9 @@ export default function CompanyTrustBar() {
   useEffect(() => {
     async function load() {
       try {
-        const [corpRes, clinicRes] = await Promise.allSettled([
+        const [corpRes, orgRes] = await Promise.allSettled([
           fetch('/api/corporate/companies?type=all').then(r => r.json()),
-          fetch('/api/search/clinics?limit=20').then(r => r.json()),
+          fetch('/api/search/organizations?limit=20').then(r => r.json()),
         ])
 
         const corpItems =
@@ -102,12 +102,12 @@ export default function CompanyTrustBar() {
             ? companiestoItems(corpRes.value.data as Company[])
             : []
 
-        const clinicItems =
-          clinicRes.status === 'fulfilled' && clinicRes.value.success && Array.isArray(clinicRes.value.data)
-            ? clinicsToItems(clinicRes.value.data as ClinicEntity[])
+        const orgItems =
+          orgRes.status === 'fulfilled' && orgRes.value.success && Array.isArray(orgRes.value.data)
+            ? orgsToItems(orgRes.value.data as OrgEntity[])
             : []
 
-        const merged = [...corpItems, ...clinicItems]
+        const merged = [...corpItems, ...orgItems]
         if (merged.length > 0) setItems(merged)
       } catch { /* keep fallback */ }
     }
@@ -122,7 +122,7 @@ export default function CompanyTrustBar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-3">
         <div className="flex items-center justify-between">
           <p className="text-white/70 text-xs sm:text-sm font-medium tracking-wide uppercase">
-            Trusted by companies &amp; clinics across the region
+            Trusted by companies &amp; organizations across the region
           </p>
           <Link
             href="/search/company"
@@ -148,7 +148,7 @@ export default function CompanyTrustBar() {
           {track.map((item, idx) => {
             const color = itemColor(item.name)
             const inits = initials(item.name)
-            const isClinic = item.id.startsWith('clinic-') || item.id.startsWith('f4') || item.id.startsWith('f6')
+            const isClinic = item.id.startsWith('org-') || item.id.startsWith('f4') || item.id.startsWith('f6')
 
             return (
               <Link

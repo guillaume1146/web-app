@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useState } from 'react'
 
-type Choice = 'services' | 'providers' | 'community' | 'health-shop' | 'clinics'
+type Choice = 'services' | 'providers' | 'community' | 'health-shop' | 'organizations'
 
 const ServicesSection = dynamic(() => import('./ServicesSection'), {
   ssr: false,
@@ -21,7 +21,7 @@ const HealthShopMarketplace = dynamic(() => import('./HealthShopMarketplace'), {
   ssr: false,
   loading: () => <SectionSkeleton />,
 })
-const ClinicsSection = dynamic(() => import('./ClinicsSection'), {
+const OrganizationsSection = dynamic(() => import('./OrganizationsSection'), {
   ssr: false,
   loading: () => <SectionSkeleton />,
 })
@@ -48,7 +48,7 @@ interface ChoiceDef {
 const CHOICES: ChoiceDef[] = [
   { id: 'services',    emoji: '🩺', title: 'Book a Service',  color: '#0C6780' },
   { id: 'providers',   emoji: '👨‍⚕️', title: 'Find a Provider', color: '#001E40' },
-  { id: 'clinics',     emoji: '🏥', title: 'Find a Clinic',   color: '#C53030' },
+  { id: 'organizations', emoji: '🏥', title: 'Organizations 🏥', color: '#C53030' },
   { id: 'community',   emoji: '💬', title: 'Community',        color: '#0a5c73' },
   { id: 'health-shop', emoji: '🛒', title: 'Health Shop',      color: '#1a6b8a' },
 ]
@@ -108,7 +108,7 @@ export default function DiscoverSection() {
       <div key={selected}>
         {selected === 'services'    && <ServicesSection />}
         {selected === 'providers'   && <ProvidersSection />}
-        {selected === 'clinics'     && <ClinicsSection />}
+        {selected === 'organizations' && <OrganizationsSection />}
         {selected === 'community'   && <CommunityPosts />}
         {selected === 'health-shop' && <HealthShopMarketplace />}
       </div>
