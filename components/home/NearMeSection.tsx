@@ -1,10 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import { FaMapMarkerAlt, FaCrosshairs, FaSpinner, FaChevronRight, FaClinicMedical } from 'react-icons/fa'
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api'
+import { FaMapMarkerAlt, FaCrosshairs, FaSpinner, FaChevronRight, FaClinicMedical, FaExclamationTriangle } from 'react-icons/fa'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -51,52 +49,21 @@ const MODES: { value: SearchMode; label: string; color: string; emoji: string }[
 const PROVIDER_TYPES = new Set(['DOCTOR', 'NURSE', 'DENTIST', 'PHARMACIST', 'NANNY', 'CAREGIVER', 'PHYSIOTHERAPIST', 'OPTOMETRIST', 'NUTRITIONIST', 'LAB_TECHNICIAN', 'EMERGENCY_WORKER'])
 const ENTITY_TYPES = new Set(['clinic', 'hospital', 'laboratory', 'pharmacy'])
 
-const MAURITIUS_CENTER: [number, number] = [-20.2, 57.5]
+const MAURITIUS_CENTER = { lat: -20.2, lng: 57.5 }
 
-// ─── Leaflet marker factory (SVG div icons, no image dependency) ──────────────
+const MAP_STYLES: google.maps.MapTypeStyle[] = [
+  { elementType: 'geometry', stylers: [{ color: '#0a2744' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#001E40' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#9AE1FF' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0C3460' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1a4a6b' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#0C2A44' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#0d3a5c' }] },
+  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2a6090' }] },
+  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#0d2f4a' }] },
+]
 
-function makeCircleIcon(color: string, size = 28) {
-  return L.divIcon({
-    html: `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32">
-      <circle cx="16" cy="16" r="14" fill="${color}" stroke="white" stroke-width="2.5"/>
-      <circle cx="16" cy="16" r="6" fill="white"/>
-    </svg>`,
-    className: '',
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    popupAnchor: [0, -(size / 2)],
-  })
-}
-
-function makeSquareIcon(color: string, emoji = '🏥') {
-  return L.divIcon({
-    html: `<div style="width:32px;height:32px;background:${color};border-radius:8px;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:14px">${emoji}</div>`,
-    className: '',
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-    popupAnchor: [0, -16],
-  })
-}
-
-const userIcon = L.divIcon({
-  html: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
-    <circle cx="11" cy="11" r="9" fill="#9AE1FF" stroke="white" stroke-width="3"/>
-    <circle cx="11" cy="11" r="4" fill="white"/>
-  </svg>`,
-  className: '',
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
-})
-
-// ─── Internal component: flies map to a new center ────────────────────────────
-
-function FlyTo({ pos, zoom }: { pos: [number, number]; zoom: number }) {
-  const map = useMap()
-  useEffect(() => { map.flyTo(pos, zoom, { duration: 1.2 }) }, [map, pos, zoom])
-  return null
-}
-
-// ─── Haversine (client-side) ─────────────────────────────────────────────────
+// ─── Haversine ───────────────────────────────────────────────────────────────
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371
@@ -108,28 +75,132 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
+// ─── Error panel ─────────────────────────────────────────────────────────────
+
+function MapErrorPanel({ error, apiKey }: { error: Error | null; apiKey: string }) {
+  if (!apiKey) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-[#0a2a46] z-10">
+        <div className="text-center px-6 max-w-sm">
+          <FaMapMarkerAlt className="text-brand-sky text-4xl mx-auto mb-3" />
+          <p className="text-white font-semibold text-sm">Google Maps API key not configured</p>
+          <p className="text-white/50 text-xs mt-1">
+            Add <code className="bg-white/10 px-1 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to your <code className="bg-white/10 px-1 rounded">.env.local</code>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Decode the error to give actionable instructions
+  const msg = error?.message ?? ''
+  let title = 'Map failed to load'
+  let detail = msg
+  let fix = ''
+
+  if (msg.includes('RefererNotAllowedMapError') || msg.includes('referrer') || msg.includes('Referer')) {
+    title = 'Referrer restriction is blocking this domain'
+    detail = 'Your API key only allows specific websites. Localhost is not in the allowed list.'
+    fix = 'referrer'
+  } else if (msg.includes('ApiNotActivatedMapError') || msg.includes('not activated') || msg.includes('not enabled')) {
+    title = 'Maps JavaScript API not enabled'
+    detail = 'The "Maps JavaScript API" service must be enabled for your key.'
+    fix = 'api'
+  } else if (msg.includes('BillingNotEnabledMapError') || msg.includes('billing') || msg.includes('quota')) {
+    title = 'Billing not enabled'
+    detail = 'Google Maps Platform requires billing to be enabled even for the free tier.'
+    fix = 'billing'
+  } else if (msg.includes('InvalidKeyMapError') || msg.includes('invalid') || msg.includes('API key')) {
+    title = 'Invalid API key'
+    detail = 'The API key may have been deleted, rotated, or is malformed.'
+    fix = 'key'
+  }
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-[#0a2a46] z-10 p-6">
+      <div className="max-w-md w-full">
+        <div className="flex items-center gap-2 mb-3">
+          <FaExclamationTriangle className="text-amber-400 text-lg flex-shrink-0" />
+          <p className="text-white font-bold text-sm">{title}</p>
+        </div>
+
+        {detail && (
+          <p className="text-white/60 text-xs mb-4">{detail}</p>
+        )}
+
+        {/* Raw error for debugging */}
+        {msg && (
+          <pre className="bg-black/30 text-red-300 text-[10px] px-3 py-2 rounded-lg mb-4 overflow-x-auto whitespace-pre-wrap break-all">
+            {msg}
+          </pre>
+        )}
+
+        {/* Fix instructions */}
+        {fix === 'referrer' && (
+          <div className="bg-white/5 rounded-xl p-4 text-xs text-white/70 space-y-1.5">
+            <p className="font-semibold text-white text-[11px] mb-2">Fix in Google Cloud Console:</p>
+            <p>1. Go to <span className="text-brand-sky">console.cloud.google.com</span> → APIs &amp; Services → Credentials</p>
+            <p>2. Click your API key to edit it</p>
+            <p>3. Under <strong className="text-white">Application restrictions</strong> → Website restrictions</p>
+            <p>4. Add these allowed referrers:</p>
+            <code className="block bg-black/30 px-2 py-1 rounded mt-1 text-green-300">localhost:3000/*</code>
+            <code className="block bg-black/30 px-2 py-1 rounded text-green-300">http://localhost:3000/*</code>
+            <code className="block bg-black/30 px-2 py-1 rounded text-green-300">mediwyz.com/*</code>
+            <code className="block bg-black/30 px-2 py-1 rounded text-green-300">*.mediwyz.com/*</code>
+            <p className="mt-2 text-white/40 text-[10px]">Or set Application restrictions to <strong>None</strong> during development.</p>
+          </div>
+        )}
+
+        {fix === 'api' && (
+          <div className="bg-white/5 rounded-xl p-4 text-xs text-white/70 space-y-1.5">
+            <p className="font-semibold text-white text-[11px] mb-2">Fix in Google Cloud Console:</p>
+            <p>1. Go to <span className="text-brand-sky">console.cloud.google.com</span> → APIs &amp; Services → Library</p>
+            <p>2. Search for <strong className="text-white">"Maps JavaScript API"</strong></p>
+            <p>3. Click it and press <strong className="text-white">Enable</strong></p>
+            <p>4. Also enable: <strong className="text-white">Places API</strong>, <strong className="text-white">Directions API</strong></p>
+          </div>
+        )}
+
+        {fix === 'billing' && (
+          <div className="bg-white/5 rounded-xl p-4 text-xs text-white/70 space-y-1.5">
+            <p className="font-semibold text-white text-[11px] mb-2">Fix in Google Cloud Console:</p>
+            <p>1. Go to <span className="text-brand-sky">console.cloud.google.com</span> → Billing</p>
+            <p>2. Link a billing account to your project</p>
+            <p className="text-white/40 text-[10px] mt-1">Google gives $200 free credit/month — a map with this traffic costs ~$0.</p>
+          </div>
+        )}
+
+        {fix === 'key' && (
+          <div className="bg-white/5 rounded-xl p-4 text-xs text-white/70 space-y-1.5">
+            <p className="font-semibold text-white text-[11px] mb-2">Fix:</p>
+            <p>Copy the key from Google Cloud Console → Credentials and update <code className="bg-black/30 px-1 rounded">.env.local</code></p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function NearMeSection() {
-  const [mode, setMode] = useState<SearchMode>('ALL')
-  const [userPos, setUserPos]   = useState<[number, number] | null>(null)
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: apiKey,
+    id: 'mediwyz-map',
+    libraries: ['places'],
+  })
+
+  const mapRef = useRef<google.maps.Map | null>(null)
+  const [mode, setMode]         = useState<SearchMode>('ALL')
+  const [userPos, setUserPos]   = useState<{ lat: number; lng: number } | null>(null)
   const [locating, setLocating] = useState(false)
   const [locError, setLocError] = useState<string | null>(null)
   const [providers, setProviders] = useState<ProviderPin[]>([])
   const [entities, setEntities]   = useState<EntityPin[]>([])
   const [loading, setLoading]     = useState(false)
-  const [flyTarget, setFlyTarget] = useState<{ pos: [number, number]; zoom: number } | null>(null)
-
-  // Fix Leaflet's default icon path issue in Next.js
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (L.Icon.Default.prototype as any)._getIconUrl
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-    })
-  }, [])
+  const [selected, setSelected]   = useState<(ProviderPin | EntityPin) | null>(null)
 
   // Load all pins on mount
   useEffect(() => {
@@ -150,10 +221,11 @@ export default function NearMeSection() {
     setLocError(null)
     navigator.geolocation.getCurrentPosition(
       pos => {
-        const p: [number, number] = [pos.coords.latitude, pos.coords.longitude]
+        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude }
         setUserPos(p)
         setLocating(false)
-        setFlyTarget({ pos: p, zoom: 13 })
+        mapRef.current?.panTo(p)
+        mapRef.current?.setZoom(13)
       },
       () => { setLocating(false); setLocError('Location access denied') },
       { timeout: 8000 },
@@ -166,25 +238,24 @@ export default function NearMeSection() {
     try {
       if (mode === 'ALL') {
         setProviders(prev => [...prev]
-          .map(p => ({ ...p, distanceKm: haversineKm(userPos[0], userPos[1], p.latitude, p.longitude) }))
+          .map(p => ({ ...p, distanceKm: haversineKm(userPos.lat, userPos.lng, p.latitude, p.longitude) }))
           .sort((a, b) => a.distanceKm - b.distanceKm))
         setEntities(prev => [...prev]
-          .map(e => ({ ...e, distanceKm: haversineKm(userPos[0], userPos[1], e.latitude, e.longitude) }))
+          .map(e => ({ ...e, distanceKm: haversineKm(userPos.lat, userPos.lng, e.latitude, e.longitude) }))
           .sort((a, b) => a.distanceKm - b.distanceKm))
         return
       }
       if (PROVIDER_TYPES.has(mode)) {
-        const j = await fetch(`/api/geo/providers?type=${mode}&lat=${userPos[0]}&lng=${userPos[1]}&limit=8`).then(r => r.json())
+        const j = await fetch(`/api/geo/providers?type=${mode}&lat=${userPos.lat}&lng=${userPos.lng}&limit=8`).then(r => r.json())
         if (j.success) setProviders(j.data)
       } else if (ENTITY_TYPES.has(mode)) {
-        const j = await fetch(`/api/geo/entities?type=${mode}&lat=${userPos[0]}&lng=${userPos[1]}&limit=8`).then(r => r.json())
+        const j = await fetch(`/api/geo/entities?type=${mode}&lat=${userPos.lat}&lng=${userPos.lng}&limit=8`).then(r => r.json())
         if (j.success) setEntities(j.data)
       }
     } catch { /* non-fatal */ }
     finally { setLoading(false) }
   }, [userPos, mode, locate])
 
-  // Visible pins depending on mode
   const visibleProviders = mode === 'ALL' || PROVIDER_TYPES.has(mode)
     ? (mode === 'ALL' ? providers : providers.filter(p => p.userType === mode))
     : []
@@ -203,6 +274,32 @@ export default function NearMeSection() {
     .slice(0, 6)
 
   const providerColor = (type: string) => MODES.find(m => m.value === type)?.color ?? '#0C6780'
+
+  function markerIcon(color: string, size = 32) {
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}' viewBox='0 0 32 32'>
+      <circle cx='16' cy='16' r='14' fill='${color}' stroke='white' stroke-width='2.5'/>
+      <circle cx='16' cy='16' r='6' fill='white'/>
+    </svg>`
+    return {
+      url: `data:image/svg+xml;base64,${btoa(svg)}`,
+      scaledSize: new window.google.maps.Size(size, size),
+      anchor: new window.google.maps.Point(size / 2, size / 2),
+    }
+  }
+
+  function entityMarkerIcon(color: string) {
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'>
+      <rect x='4' y='4' width='28' height='28' rx='6' fill='${color}' stroke='white' stroke-width='2.5'/>
+      <text x='18' y='24' text-anchor='middle' font-size='16' fill='white'>🏥</text>
+    </svg>`
+    return {
+      url: `data:image/svg+xml;base64,${btoa(svg)}`,
+      scaledSize: new window.google.maps.Size(36, 36),
+      anchor: new window.google.maps.Point(18, 18),
+    }
+  }
+
+  const onMapLoad = useCallback((map: google.maps.Map) => { mapRef.current = map }, [])
 
   return (
     <section className="bg-[#001E40] overflow-hidden">
@@ -263,82 +360,106 @@ export default function NearMeSection() {
       {/* Map + sidebar */}
       <div className="flex flex-col lg:flex-row" style={{ minHeight: 420 }}>
 
-        {/* ── Leaflet map ──────────────────────────────────────────────── */}
+        {/* ── Map ──────────────────────────────────────────────────── */}
         <div className="flex-1 relative" style={{ minHeight: 340 }}>
-          <MapContainer
-            center={MAURITIUS_CENTER}
-            zoom={10}
-            style={{ width: '100%', height: '100%', minHeight: 340 }}
-            scrollWheelZoom={false}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
 
-            {/* Fly to user location when located */}
-            {flyTarget && <FlyTo pos={flyTarget.pos} zoom={flyTarget.zoom} />}
+          {/* Error / missing key overlay */}
+          {(!apiKey || loadError) && (
+            <MapErrorPanel error={loadError ?? null} apiKey={apiKey} />
+          )}
 
-            {/* Provider pins */}
-            {visibleProviders.map(p => (
-              <Marker
-                key={p.id}
-                position={[p.latitude, p.longitude]}
-                icon={makeCircleIcon(providerColor(p.userType))}
-              >
-                <Popup>
-                  <div className="min-w-[160px] text-sm">
-                    <p className="font-bold text-gray-900">{p.firstName} {p.lastName}</p>
-                    <p className="text-xs text-gray-500 capitalize">{p.userType.toLowerCase().replace(/_/g, ' ')}</p>
-                    {p.specialty?.length > 0 && (
-                      <p className="text-xs text-blue-600 mt-0.5">{p.specialty.slice(0, 2).join(', ')}</p>
-                    )}
-                    {p.address && <p className="text-xs text-gray-400 mt-0.5">{p.address}</p>}
-                    {p.distanceKm > 0 && (
-                      <p className="text-xs font-semibold mt-1">{p.distanceKm.toFixed(1)} km away</p>
-                    )}
-                    <a
-                      href={`/profile/${p.id}`}
-                      className="block mt-2 text-xs text-center py-1 px-3 bg-[#001E40] text-white rounded-lg"
-                    >
-                      View Profile →
-                    </a>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
+          {/* Loading skeleton */}
+          {!isLoaded && !loadError && apiKey && (
+            <div className="absolute inset-0 bg-[#0a2a46] flex items-center justify-center z-10">
+              <FaSpinner className="text-brand-sky text-3xl animate-spin" />
+            </div>
+          )}
 
-            {/* Entity pins */}
-            {visibleEntities.map(e => {
-              const modeInfo = MODES.find(m => m.value === e.type)
-              return (
+          {isLoaded && !loadError && (
+            <GoogleMap
+              mapContainerStyle={{ width: '100%', height: '100%', minHeight: 340 }}
+              center={userPos ?? MAURITIUS_CENTER}
+              zoom={userPos ? 12 : 10}
+              onLoad={onMapLoad}
+              options={{
+                styles: MAP_STYLES,
+                disableDefaultUI: false,
+                zoomControl: true,
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: true,
+                backgroundColor: '#001E40',
+              }}
+            >
+              {visibleProviders.map(p => (
+                <Marker
+                  key={p.id}
+                  position={{ lat: p.latitude, lng: p.longitude }}
+                  icon={markerIcon(providerColor(p.userType))}
+                  onClick={() => setSelected(p)}
+                />
+              ))}
+
+              {visibleEntities.map(e => (
                 <Marker
                   key={e.id}
-                  position={[e.latitude, e.longitude]}
-                  icon={makeSquareIcon(modeInfo?.color ?? '#DC2626', modeInfo?.emoji ?? '🏥')}
-                >
-                  <Popup>
-                    <div className="min-w-[160px] text-sm">
-                      <p className="font-bold text-gray-900">{e.name}</p>
-                      <p className="text-xs text-gray-500 capitalize">{e.type}</p>
-                      {e.address && <p className="text-xs text-gray-400 mt-0.5">{e.address}</p>}
-                      {e.city && <p className="text-xs text-gray-400">{e.city}</p>}
-                      {e.distanceKm > 0 && (
-                        <p className="text-xs font-semibold mt-1">{e.distanceKm.toFixed(1)} km away</p>
-                      )}
-                    </div>
-                  </Popup>
-                </Marker>
-              )
-            })}
+                  position={{ lat: e.latitude, lng: e.longitude }}
+                  icon={entityMarkerIcon('#DC2626')}
+                  onClick={() => setSelected(e)}
+                />
+              ))}
 
-            {/* User position */}
-            {userPos && (
-              <Marker position={userPos} icon={userIcon}>
-                <Popup><span className="text-sm font-semibold">Your location</span></Popup>
-              </Marker>
-            )}
-          </MapContainer>
+              {userPos && (
+                <Marker
+                  position={userPos}
+                  icon={{
+                    url: 'data:image/svg+xml;base64,' + btoa(`<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10' fill='#9AE1FF' stroke='white' stroke-width='3'/><circle cx='12' cy='12' r='4' fill='white'/></svg>`),
+                    scaledSize: new window.google.maps.Size(24, 24),
+                    anchor: new window.google.maps.Point(12, 12),
+                  }}
+                  zIndex={999}
+                />
+              )}
+
+              {selected && (
+                <InfoWindow
+                  position={'latitude' in selected
+                    ? { lat: selected.latitude, lng: selected.longitude }
+                    : MAURITIUS_CENTER}
+                  onCloseClick={() => setSelected(null)}
+                >
+                  <div className="min-w-[180px] text-sm p-1">
+                    {'firstName' in selected ? (
+                      <>
+                        <p className="font-bold text-gray-900">{selected.firstName} {selected.lastName}</p>
+                        <p className="text-xs text-gray-500 capitalize">{selected.userType.toLowerCase().replace(/_/g, ' ')}</p>
+                        {selected.specialty?.length > 0 && (
+                          <p className="text-xs text-brand-teal mt-0.5">{selected.specialty.slice(0, 2).join(', ')}</p>
+                        )}
+                        {selected.address && <p className="text-xs text-gray-400 mt-0.5">{selected.address}</p>}
+                        {selected.distanceKm > 0 && (
+                          <p className="text-xs font-semibold text-brand-navy mt-1">{selected.distanceKm.toFixed(1)} km away</p>
+                        )}
+                        <Link href={`/profile/${selected.id}`} className="block mt-2 text-xs text-center py-1 px-3 bg-brand-navy text-white rounded-lg">
+                          View Profile →
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-bold text-gray-900">{'name' in selected ? selected.name : ''}</p>
+                        <p className="text-xs text-gray-500 capitalize">{'type' in selected ? selected.type : ''}</p>
+                        {'address' in selected && selected.address && <p className="text-xs text-gray-400 mt-0.5">{selected.address}</p>}
+                        {'city' in selected && selected.city && <p className="text-xs text-gray-400">{selected.city}</p>}
+                        {selected.distanceKm > 0 && (
+                          <p className="text-xs font-semibold text-brand-navy mt-1">{selected.distanceKm.toFixed(1)} km away</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </InfoWindow>
+              )}
+            </GoogleMap>
+          )}
         </div>
 
         {/* ── Nearest results sidebar ──────────────────────────────── */}
@@ -348,9 +469,7 @@ export default function NearMeSection() {
               {userPos ? 'Nearest to you' : 'All providers'}&nbsp;
               <span className="text-white/40 font-normal">({nearestAll.length})</span>
             </p>
-            {!userPos && (
-              <p className="text-xs text-white/50 mt-0.5">Enable location to sort by distance</p>
-            )}
+            {!userPos && <p className="text-xs text-white/50 mt-0.5">Enable location to sort by distance</p>}
           </div>
 
           <div className="flex-1 overflow-y-auto">
@@ -358,14 +477,17 @@ export default function NearMeSection() {
               <div className="px-5 py-10 text-center">
                 <FaClinicMedical className="text-white/20 text-3xl mx-auto mb-2" />
                 <p className="text-xs text-white/40">No results for this filter</p>
-                <p className="text-xs text-white/30 mt-1">Seed geo coordinates to see pins</p>
               </div>
             )}
             {nearestAll.map(item => (
               <div
                 key={item.id}
                 className="flex items-center gap-3 px-4 py-3.5 border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors"
-                onClick={() => setFlyTarget({ pos: [item.latitude, item.longitude], zoom: 15 })}
+                onClick={() => {
+                  setSelected(item)
+                  mapRef.current?.panTo({ lat: item.latitude, lng: item.longitude })
+                  mapRef.current?.setZoom(15)
+                }}
               >
                 <div className="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden bg-white/10 flex items-center justify-center">
                   {'firstName' in item && item.profileImage ? (
@@ -390,9 +512,7 @@ export default function NearMeSection() {
 
                 {userPos && item.distanceKm > 0 && (
                   <span className="text-[10px] text-brand-sky font-semibold flex-shrink-0">
-                    {item.distanceKm < 1
-                      ? `${Math.round(item.distanceKm * 1000)} m`
-                      : `${item.distanceKm.toFixed(1)} km`}
+                    {item.distanceKm < 1 ? `${Math.round(item.distanceKm * 1000)} m` : `${item.distanceKm.toFixed(1)} km`}
                   </span>
                 )}
                 <FaChevronRight className="text-white/20 text-[10px] flex-shrink-0" />
@@ -401,10 +521,7 @@ export default function NearMeSection() {
           </div>
 
           <div className="px-4 py-3 border-t border-white/10">
-            <Link
-              href="/search/providers"
-              className="block w-full text-center text-xs font-semibold text-brand-sky hover:text-white transition-colors"
-            >
+            <Link href="/search/providers" className="block w-full text-center text-xs font-semibold text-brand-sky hover:text-white transition-colors">
               Browse all providers →
             </Link>
           </div>
